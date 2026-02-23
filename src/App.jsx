@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { supabase } from "./supabase.js";
 
 const initialSettings = {
   world: `【時代】21世紀末〜22世紀初頭。人口約6,000万人の近未来日本。
@@ -38,23 +39,31 @@ const initialScenes = [
 const statusColors = { done: "#4ade80", draft: "#facc15", empty: "#334155" };
 const statusLabels = { done: "完成", draft: "執筆中", empty: "未着手" };
 
+
 async function storageGet(key) {
   try {
-    if (window.storage) {
-      const r = await window.storage.get(key);
-      return r ? JSON.parse(r.value) : null;
-    }
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : null;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data } = await supabase
+      .from("minato_data")
+      .select("value")
+      .eq("user_id", user.id)
+      .eq("key", key)
+      .single();
+    return data ? data.value : null;
   } catch { return null; }
 }
+
 async function storageSet(key, value) {
   try {
-    if (window.storage) {
-      await window.storage.set(key, JSON.stringify(value));
-    } else {
-      localStorage.setItem(key, JSON.stringify(value));
-    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase.from("minato_data").upsert({
+      user_id: user.id,
+      key,
+      value,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "user_id,key" });
   } catch (e) { console.error(e); }
 }
 
@@ -74,9 +83,7 @@ function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onAp
     try {
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -152,9 +159,7 @@ function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoa
     try {
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -216,9 +221,7 @@ function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResu
     try {
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
-        headers: { "Content-Type": "application/json",
-          "anthropic-version": "2023-06-01",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
@@ -265,7 +268,7 @@ function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResu
   );
 }
 
-function VerticalEditor({ initialText, onChange }) {
+function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }) {
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; });
 
@@ -293,7 +296,7 @@ body { display:flex; align-items:stretch; padding:20px; }
   writing-mode: vertical-rl;
   text-orientation: mixed;
   font-family: 'Noto Serif JP', Georgia, serif;
-  font-size: 16px; line-height: 2.2; color: #c8d8e8;
+  font-size: ${fontSize}px; line-height: ${lineHeight}; color: #c8d8e8;
   letter-spacing: 0.1em; white-space: pre-wrap;
   min-height: calc(100% - 0px); min-width: max-content;
   outline: none; caret-color: #7ab3e0;
@@ -317,6 +320,51 @@ body { display:flex; align-items:stretch; padding:20px; }
 }
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+      setUser(session?.user ?? null);
+      setAuthLoading(false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authLoading) return (
+    <div style={{ height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0e1a", color: "#2a4060", fontSize: 12, letterSpacing: 2 }}>読み込み中…</div>
+  );
+
+  if (!user) return (
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
+      <div>
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+          <rect x="4" y="4" width="20" height="20" rx="2" stroke="#1e3050" strokeWidth="1.5"/>
+          <line x1="8" y1="9" x2="20" y2="9" stroke="#2a4060" strokeWidth="1.2"/>
+          <line x1="8" y1="13" x2="20" y2="13" stroke="#2a4060" strokeWidth="1.2"/>
+          <line x1="8" y1="17" x2="16" y2="17" stroke="#1e3050" strokeWidth="1.2"/>
+          <circle cx="22" cy="22" r="5" fill="#0a0e1a" stroke="#4a6fa5" strokeWidth="1"/>
+          <line x1="20" y1="22" x2="24" y2="22" stroke="#4a6fa5" strokeWidth="1"/>
+          <line x1="22" y1="20" x2="22" y2="24" stroke="#4a6fa5" strokeWidth="1"/>
+        </svg>
+        <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
+      </div>
+      <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>港に届いた例外</div>
+      <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{
+        padding: "10px 28px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5",
+        color: "#7ab3e0", cursor: "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
+      }}>Googleでログイン</button>
+    </div>
+  );
+
+  return <Studio user={user} />;
+}
+
+function Studio({ user }) {
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState("saved");
   const [lastSavedTime, setLastSavedTime] = useState(null);
@@ -357,21 +405,28 @@ export default function App() {
 
   useEffect(() => {
     (async () => {
-      const [sc, st, ms, pt, bk] = await Promise.all([
+      const [sc, st, ms, pt, bk, es] = await Promise.all([
         storageGet("minato:scenes"),
         storageGet("minato:settings"),
         storageGet("minato:manuscripts"),
         storageGet("minato:title"),
         storageGet("minato:backups"),
+        storageGet("minato:editorSettings"),
       ]);
       if (sc) setScenes(sc);
       if (st) setSettings(st);
       if (ms) setManuscripts(ms);
       if (pt) setProjectTitle(pt);
       if (bk) setBackups(bk);
+      if (es) setEditorSettings(es);
       setLoaded(true);
     })();
   }, []);
+
+  useEffect(() => {
+    if (!loaded) return;
+    storageSet("minato:editorSettings", editorSettings);
+  }, [editorSettings, loaded]);
 
   const save = async (sc, st, ms, pt) => {
     setSaveStatus("saving");
@@ -623,6 +678,7 @@ export default function App() {
           <button onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
           <button onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
           <button onClick={() => setShowExport(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
+          <button onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#2a3548", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>ログアウト</button>
         </div>
       </header>
 
@@ -852,6 +908,8 @@ export default function App() {
                     key={selectedSceneId}
                     initialText={manuscriptText}
                     onChange={handleManuscriptChange}
+                    fontSize={editorSettings.fontSize}
+                    lineHeight={editorSettings.lineHeight}
                   />
                 ) : (
                   <textarea value={manuscriptText} onChange={e => handleManuscriptChange(e.target.value)} placeholder="ここに本文を書く…" style={{ flex: 1, minHeight: 400, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, padding: "16px 12px", resize: "none", outline: "none", borderRadius: 6, width: "100%", boxSizing: "border-box" }} />
