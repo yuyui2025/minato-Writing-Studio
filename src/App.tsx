@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
@@ -512,20 +512,6 @@ function Studio({ user }: { user: User }) {
     storageSet("minato:editorSettings", editorSettings);
   }, [editorSettings, loaded]);
 
-  const save = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string) => {
-    setSaveStatus("saving");
-    try {
-      await Promise.all([
-        storageSet("minato:scenes", sc),
-        storageSet("minato:settings", st),
-        storageSet("minato:manuscripts", ms),
-        storageSet("minato:title", pt),
-      ]);
-      setSaveStatus("saved");
-      setLastSavedTime(new Date());
-    } catch { setSaveStatus("error"); }
-  };
-
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
     try {
@@ -584,7 +570,7 @@ function Studio({ user }: { user: User }) {
   const [exportContent, setExportContent] = useState<string>("");
   const [showExportContent, setShowExportContent] = useState<boolean>(false);
 
-  const downloadFile = (content: string, _filename?: string) => {
+  const downloadFile = (content: string) => {
     setExportContent(content);
     setShowExportContent(true);
   };
@@ -595,15 +581,15 @@ function Studio({ user }: { user: User }) {
     const content = fmt === "md"
       ? `# ${selectedScene.chapter} — ${selectedScene.title}\n\n${selectedScene.synopsis ? `> ${selectedScene.synopsis}\n\n` : ""}${text}`
       : `${selectedScene.chapter} — ${selectedScene.title}\n${"=".repeat(30)}\n${selectedScene.synopsis ? `${selectedScene.synopsis}\n\n` : ""}${text}`;
-    downloadFile(content, `${selectedScene.title}.${fmt}`);
+    downloadFile(content);
     setShowExport(false);
   };
 
   const exportAll = (fmt: "md" | "txt") => {
     const content = fmt === "md"
-      ? `# 港に届いた例外\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
+      ? `# ${projectTitle}\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
       : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
-    downloadFile(content, `港に届いた例外.${fmt}`);
+    downloadFile(content);
     setShowExport(false);
   };
 
@@ -826,7 +812,7 @@ function Studio({ user }: { user: User }) {
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {[["chapter", "章名"], ["title", "タイトル"], ["synopsis", "概要"]].map(([key, ph]) => (
-                        <input key={key} placeholder={ph} value={newScene[key]} onChange={e => setNewScene({ ...newScene, [key]: e.target.value })} style={{ background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 3, fontSize: 11, fontFamily: "inherit", outline: "none" }} />
+                        <input key={key} placeholder={ph} value={newScene[key as keyof SceneDraft]} onChange={e => setNewScene({ ...newScene, [key]: e.target.value })} style={{ background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 3, fontSize: 11, fontFamily: "inherit", outline: "none" }} />
                       ))}
                       <div style={{ display: "flex", gap: 4 }}>
                         <button onClick={handleAddScene} style={{ flex: 1, padding: "5px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追加</button>
@@ -844,7 +830,7 @@ function Studio({ user }: { user: User }) {
                   if (!acc[ch]) acc[ch] = [];
                   acc[ch].push(scene);
                   return acc;
-                }, {});
+                }, {} as Record<string, Scene[]>);
                 return (
                   <div style={{ padding: "10px 10px", display: "flex", flexDirection: "column", gap: 12 }}>
                     {Object.entries(chapters).map(([chapter, chScenes]) => {
@@ -901,7 +887,7 @@ function Studio({ user }: { user: User }) {
                   {[["world","世界観"],["characters","キャラクター"],["theme","テーマ"]].map(([key, label]) => (
                     <div key={key}>
                       <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 4 }}>{label}</div>
-                      <textarea value={settings[key]} onChange={e => setSettings({ ...settings, [key]: e.target.value })} style={{ width: "100%", minHeight: 80, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "inherit", fontSize: 11, lineHeight: 1.8, padding: "6px 8px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }} />
+                      <textarea value={settings[key as keyof Settings]} onChange={e => setSettings({ ...settings, [key]: e.target.value })} style={{ width: "100%", minHeight: 80, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "inherit", fontSize: 11, lineHeight: 1.8, padding: "6px 8px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }} />
                     </div>
                   ))}
                 </div>
@@ -1047,7 +1033,7 @@ function Studio({ user }: { user: User }) {
               if (!acc[ch]) acc[ch] = [];
               acc[ch].push(scene);
               return acc;
-            }, {});
+            }, {} as Record<string, Scene[]>);
             const totalChars = Object.values(manuscripts).reduce((a, t) => a + t.replace(/\s/g, "").length, 0);
 
             return (
