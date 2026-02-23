@@ -1,4 +1,4 @@
-# minato Writing Studio1
+# minato Writing Studio
 
 「港に届いた例外」執筆支援PWAアプリ
 
