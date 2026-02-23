@@ -845,7 +845,7 @@ function Studio({ user }) {
                 { key: "prefs", label: "環境" },
               ].map(({ key, label }) => (
                 <button key={key} onClick={() => setTab(key)} style={{
-                  padding: "14px 0", width: "100%", background: "transparent", border: "none",
+                  padding: "14px 0", width: "100%", border: "none",
                   borderBottom: "1px solid #0e1520",
                   color: tab === key ? "#7ab3e0" : "#2a4060",
                   cursor: "pointer", fontSize: 10, fontFamily: "inherit",
