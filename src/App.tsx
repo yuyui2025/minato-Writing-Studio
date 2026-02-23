@@ -1,7 +1,54 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import { supabase } from "./supabase.js";
+import type { Dispatch, SetStateAction } from "react";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "./supabase";
 
-const initialSettings = {
+type SceneStatus = "done" | "draft" | "empty";
+
+type Scene = {
+  id: number;
+  chapter: string;
+  title: string;
+  status: SceneStatus;
+  synopsis: string;
+};
+
+type Settings = {
+  world: string;
+  characters: string;
+  theme: string;
+};
+
+type Manuscripts = Record<number, string>;
+type AppliedState = Record<number, boolean | "replace" | "insert">;
+
+type AiResults = {
+  polish: string;
+  hint: string;
+  check: string;
+  continue: string;
+  synopsis: string;
+  worldExpand: string;
+};
+
+type AiLoading = Record<keyof AiResults, boolean>;
+
+type Backup = {
+  timestamp: string;
+  label: string | null;
+  scenes: Scene[];
+  manuscripts: Manuscripts;
+};
+
+type HintItem = { hint: string; reason: string; keyword?: string };
+type PolishSuggestion = { original: string; suggestion: string; reason: string };
+
+type SceneDraft = Pick<Scene, "chapter" | "title" | "synopsis">;
+type EditorSettings = { fontSize: number; lineHeight: number };
+type TabKey = "write" | "structure" | "settings" | "prefs";
+type SaveStatus = "saving" | "saved" | "error";
+
+const initialSettings: Settings = {
   world: `【時代】21世紀末〜22世紀初頭。人口約6,000万人の近未来日本。
 【社会】AI主導のロゴス統治。行動評価スコア（ロゴス・スコア）により福祉・信用が配分。
 【都市】サブスク型生活。完全デジタル行政。競争圧力は弱まり「維持型社会」へ。
@@ -30,17 +77,17 @@ const initialSettings = {
 ・夜明け前の霧の港が象徴的な風景。`,
 };
 
-const initialScenes = [
+const initialScenes: Scene[] = [
   { id: 1, chapter: "第一章", title: "夜明け前の接岸", status: "draft", synopsis: "主人公が夜明け前の港で自律貨物船を待つ。軍用規格の木箱が届く。" },
   { id: 2, chapter: "第一章", title: "箱の中身", status: "empty", synopsis: "" },
   { id: 3, chapter: "第二章", title: "起動", status: "empty", synopsis: "" },
 ];
 
-const statusColors = { done: "#4ade80", draft: "#facc15", empty: "#334155" };
-const statusLabels = { done: "完成", draft: "執筆中", empty: "未着手" };
+const statusColors: Record<SceneStatus, string> = { done: "#4ade80", draft: "#facc15", empty: "#334155" };
+const statusLabels: Record<SceneStatus, string> = { done: "完成", draft: "執筆中", empty: "未着手" };
 
 
-async function storageGet(key) {
+async function storageGet<T = unknown>(key: string): Promise<T | null> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
@@ -54,7 +101,7 @@ async function storageGet(key) {
   } catch { return null; }
 }
 
-async function storageSet(key, value) {
+async function storageSet(key: string, value: unknown): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -67,12 +114,22 @@ async function storageSet(key, value) {
   } catch (e) { console.error(e); }
 }
 
-function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onApplied, manuscriptText, onInsert }) {
+function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onApplied, manuscriptText, onInsert }: {
+  prompt: string;
+  result: string;
+  onResult: (value: string) => void;
+  loading: boolean;
+  onLoading: (value: boolean) => void;
+  applied: AppliedState;
+  onApplied: Dispatch<SetStateAction<AppliedState>>;
+  manuscriptText: string;
+  onInsert: (value: string) => void;
+}) {
   const hints = (() => {
     if (!result) return null;
     try {
       const clean = result.replace(/```json|```/g, "").trim();
-      return JSON.parse(clean);
+      return JSON.parse(clean) as HintItem[];
     } catch { return null; }
   })();
 
@@ -96,7 +153,7 @@ function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onAp
     onLoading(false);
   };
 
-  const handleApply = (h, i) => {
+  const handleApply = (h: HintItem, i: number) => {
     const comment = `\n※[ヒント: ${h.hint}]`;
     const idx = h.keyword ? manuscriptText.indexOf(h.keyword) : -1;
     if (idx !== -1) {
@@ -142,13 +199,22 @@ function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onAp
   );
 }
 
-function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoading, applied, onApplied }) {
+function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoading, applied, onApplied }: {
+  manuscriptText: string;
+  onApply: (original: string, suggestion: string) => void;
+  result: string;
+  onResult: (value: string) => void;
+  loading: boolean;
+  onLoading: (value: boolean) => void;
+  applied: AppliedState;
+  onApplied: Dispatch<SetStateAction<AppliedState>>;
+}) {
 
   const suggestions = (() => {
     if (!result) return null;
     try {
       const clean = result.replace(/```json|```/g, "").trim();
-      return JSON.parse(clean);
+      return JSON.parse(clean) as PolishSuggestion[];
     } catch { return null; }
   })();
 
@@ -211,7 +277,16 @@ function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoa
   );
 }
 
-function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResult, loading = false, onLoading }) {
+function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResult, loading = false, onLoading }: {
+  label: string;
+  prompt: string;
+  onAppend: (text: string) => void;
+  compact?: boolean;
+  result?: string;
+  onResult: (value: string) => void;
+  loading?: boolean;
+  onLoading: (value: boolean) => void;
+}) {
   const onAppendRef = useRef(onAppend);
   useEffect(() => { onAppendRef.current = onAppend; });
 
@@ -268,7 +343,12 @@ function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResu
   );
 }
 
-function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }) {
+function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }: {
+  initialText: string;
+  onChange: (text: string) => void;
+  fontSize?: number;
+  lineHeight?: number;
+}) {
   const onChangeRef = useRef(onChange);
   useEffect(() => { onChangeRef.current = onChange; });
 
@@ -320,7 +400,7 @@ body { display:flex; align-items:stretch; padding:20px; }
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   useEffect(() => {
@@ -364,40 +444,40 @@ export default function App() {
   return <Studio user={user} />;
 }
 
-function Studio({ user }) {
+function Studio({ user }: { user: User }) {
   const [loaded, setLoaded] = useState(false);
-  const [saveStatus, setSaveStatus] = useState("saved");
-  const [lastSavedTime, setLastSavedTime] = useState(null);
-  const [tab, setTab] = useState("write");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
+  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
+  const [tab, setTab] = useState<TabKey>("write");
   const [settings, setSettings] = useState(initialSettings);
-  const [settingsTab, setSettingsTab] = useState("world");
+  const [settingsTab, setSettingsTab] = useState<keyof Settings>("world");
   const [scenes, setScenes] = useState(initialScenes);
-  const [selectedSceneId, setSelectedSceneId] = useState(null);
-  const [manuscripts, setManuscripts] = useState({});
+  const [selectedSceneId, setSelectedSceneId] = useState<number | null>(null);
+  const [manuscripts, setManuscripts] = useState<Manuscripts>({});
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [newScene, setNewScene] = useState({ chapter: "", title: "", synopsis: "" });
+  const [newScene, setNewScene] = useState<SceneDraft>({ chapter: "", title: "", synopsis: "" });
   const [addingScene, setAddingScene] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const [addingChapter, setAddingChapter] = useState(false);
   const [projectTitle, setProjectTitle] = useState("港に届いた例外");
   const [editingTitle, setEditingTitle] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [sceneSearch, setSceneSearch] = useState("");
-  const [backups, setBackups] = useState([]);
+  const [backups, setBackups] = useState<Backup[]>([]);
   const [showBackups, setShowBackups] = useState(false);
   const [verticalPreview, setVerticalPreview] = useState(false);
   const [editingSceneTitle, setEditingSceneTitle] = useState(false);
   const [editingSceneSynopsis, setEditingSceneSynopsis] = useState(false);
   const [sidebarFloat, setSidebarFloat] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState("write");
-  const [editorSettings, setEditorSettings] = useState({ fontSize: 15, lineHeight: 2.2 });
+  const [sidebarTab, setSidebarTab] = useState<TabKey>("write");
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>({ fontSize: 15, lineHeight: 2.2 });
   const [aiFloat, setAiFloat] = useState(false);
   const [aiWide, setAiWide] = useState(false);
-  const [aiResults, setAiResults] = useState({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
-  const [aiLoading, setAiLoading] = useState({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
-  const [aiApplied, setAiApplied] = useState({});
-  const [hintApplied, setHintApplied] = useState({});
+  const [aiResults, setAiResults] = useState<AiResults>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
+  const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
+  const [aiApplied, setAiApplied] = useState<AppliedState>({});
+  const [hintApplied, setHintApplied] = useState<AppliedState>({});
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
@@ -406,12 +486,12 @@ function Studio({ user }) {
   useEffect(() => {
     (async () => {
       const [sc, st, ms, pt, bk, es] = await Promise.all([
-        storageGet("minato:scenes"),
-        storageGet("minato:settings"),
-        storageGet("minato:manuscripts"),
-        storageGet("minato:title"),
-        storageGet("minato:backups"),
-        storageGet("minato:editorSettings"),
+        storageGet<Scene[]>("minato:scenes"),
+        storageGet<Settings>("minato:settings"),
+        storageGet<Manuscripts>("minato:manuscripts"),
+        storageGet<string>("minato:title"),
+        storageGet<Backup[]>("minato:backups"),
+        storageGet<EditorSettings>("minato:editorSettings"),
       ]);
       if (sc) setScenes(sc);
       if (st) setSettings(st);
@@ -428,7 +508,7 @@ function Studio({ user }) {
     storageSet("minato:editorSettings", editorSettings);
   }, [editorSettings, loaded]);
 
-  const save = async (sc, st, ms, pt) => {
+  const save = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string) => {
     setSaveStatus("saving");
     try {
       await Promise.all([
@@ -442,7 +522,7 @@ function Studio({ user }) {
     } catch { setSaveStatus("error"); }
   };
 
-  const saveWithBackup = async (sc, st, ms, pt, label = null) => {
+  const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
     try {
       const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms };
@@ -479,16 +559,16 @@ function Studio({ user }) {
     return () => clearTimeout(t);
   }, [scenes, settings, manuscripts, projectTitle, loaded]);
 
-  const handleSceneSelect = (scene) => { setSelectedSceneId(scene.id); setTab("write"); };
-  const handleManuscriptChange = (text) => setManuscripts(prev => ({ ...prev, [selectedSceneId]: text }));
-  const handleStatusChange = (id, status) => setScenes(scenes.map(s => s.id === id ? { ...s, status } : s));
+  const handleSceneSelect = (scene: Scene) => { setSelectedSceneId(scene.id); setTab("write"); };
+  const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
+  const handleStatusChange = (id: number, status: SceneStatus) => setScenes(scenes.map(s => s.id === id ? { ...s, status } : s));
   const handleAddScene = () => {
     const scene = { ...newScene, id: Date.now(), status: "empty" };
     setScenes([...scenes, scene]);
     setNewScene({ chapter: "", title: "", synopsis: "" });
     setAddingScene(false);
   };
-  const handleDeleteScene = (id) => setConfirmDelete(id);
+  const handleDeleteScene = (id: number) => setConfirmDelete(id);
   const confirmDeleteExecute = () => {
     const id = confirmDelete;
     setScenes(prev => prev.filter(s => s.id !== id));
@@ -497,15 +577,15 @@ function Studio({ user }) {
     setConfirmDelete(null);
   };
 
-  const [exportContent, setExportContent] = useState("");
-  const [showExportContent, setShowExportContent] = useState(false);
+  const [exportContent, setExportContent] = useState<string>("");
+  const [showExportContent, setShowExportContent] = useState<boolean>(false);
 
-  const downloadFile = (content) => {
+  const downloadFile = (content: string, _filename?: string) => {
     setExportContent(content);
     setShowExportContent(true);
   };
 
-  const exportScene = (fmt) => {
+  const exportScene = (fmt: "md" | "txt") => {
     if (!selectedScene) return;
     const text = manuscripts[selectedScene.id] || "";
     const content = fmt === "md"
@@ -515,7 +595,7 @@ function Studio({ user }) {
     setShowExport(false);
   };
 
-  const exportAll = (fmt) => {
+  const exportAll = (fmt: "md" | "txt") => {
     const content = fmt === "md"
       ? `# 港に届いた例外\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
       : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
@@ -845,7 +925,7 @@ function Studio({ user }) {
                 { key: "prefs", label: "環境" },
               ].map(({ key, label }) => (
                 <button key={key} onClick={() => setTab(key)} style={{
-                  padding: "14px 0", width: "100%", background: "transparent", border: "none",
+                  padding: "14px 0", width: "100%", border: "none",
                   borderBottom: "1px solid #0e1520",
                   color: tab === key ? "#7ab3e0" : "#2a4060",
                   cursor: "pointer", fontSize: 10, fontFamily: "inherit",
