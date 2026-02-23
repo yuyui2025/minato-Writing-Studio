@@ -10,7 +10,11 @@ npm install
 
 # APIキーを設定
 cp .env.example .env
-# .envを編集してANTHROPIC_API_KEYを設定
+# .envを編集して必要な値を設定
+# - ANTHROPIC_API_KEY
+# - VITE_SUPABASE_URL
+# - VITE_SUPABASE_ANON_KEY
+# - VITE_SUPABASE_REDIRECT_TO（Supabaseの認証URL許可リストと一致させる）
 
 # 開発サーバー起動
 npm run dev
@@ -63,3 +67,9 @@ APIキーはフロントエンドに含まれるため、**自分専用の閉じ
 
 - ブラウザのlocalStorageに保存
 - クリアすると消えるので定期的に「出力」からバックアップを
+
+## Google認証が戻ってこないとき
+
+- `.env` の `VITE_SUPABASE_REDIRECT_TO` を、実際に開いているURL（例: `https://your-domain.com/`）に設定してください。
+- Supabaseダッシュボードの **Authentication > URL Configuration > Redirect URLs** に同じURLを登録してください。
+- URLが完全一致していないと、Google認証後にアプリへ復帰できません。

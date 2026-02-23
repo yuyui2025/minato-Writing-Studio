@@ -322,6 +322,26 @@ body { display:flex; align-items:stretch; padding:20px; }
 export default function App() {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [authError, setAuthError] = useState("");
+  const [signingIn, setSigningIn] = useState(false);
+
+  const handleGoogleSignIn = async () => {
+    setAuthError("");
+    setSigningIn(true);
+
+    const redirectTo = import.meta.env.VITE_SUPABASE_REDIRECT_TO
+      || `${window.location.origin}${window.location.pathname}`;
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+
+    if (error) {
+      setAuthError(`ログイン開始に失敗しました: ${error.message}`);
+      setSigningIn(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -354,10 +374,14 @@ export default function App() {
         <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
       </div>
       <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>港に届いた例外</div>
-      <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{
+      <button onClick={handleGoogleSignIn} disabled={signingIn} style={{
         padding: "10px 28px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5",
-        color: "#7ab3e0", cursor: "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
-      }}>Googleでログイン</button>
+        color: "#7ab3e0", cursor: signingIn ? "default" : "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
+        opacity: signingIn ? 0.7 : 1,
+      }}>{signingIn ? "Google認証へ接続中…" : "Googleでログイン"}</button>
+      {authError && (
+        <div style={{ maxWidth: 420, color: "#d68585", fontSize: 12, lineHeight: 1.6, textAlign: "center" }}>{authError}</div>
+      )}
     </div>
   );
 
