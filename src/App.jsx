@@ -75,7 +75,6 @@ function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onAp
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY || "",
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -155,7 +154,6 @@ function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoa
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY || "",
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
@@ -221,7 +219,6 @@ function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResu
       const res = await fetch("/api/anthropic/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json",
-          "x-api-key": import.meta.env.VITE_ANTHROPIC_API_KEY || "",
           "anthropic-version": "2023-06-01",
           "anthropic-dangerous-direct-browser-access": "true",
         },
