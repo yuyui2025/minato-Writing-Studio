@@ -353,7 +353,7 @@ function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2
   useEffect(() => { onChangeRef.current = onChange; });
 
   useEffect(() => {
-    const handler = (e) => {
+    const handler = (e: MessageEvent) => {
       if (e.data?.type === "vertical-input") onChangeRef.current(e.data.text);
     };
     window.addEventListener("message", handler);
@@ -366,7 +366,10 @@ function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2
       .replace(/&/g, "&amp;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;")
       .replace(/\n/g, "<br>");
+    const parentOrigin = window.location.origin;
     srcDocRef.current = `<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><style>
 * { margin:0; padding:0; box-sizing:border-box; }
@@ -386,7 +389,7 @@ body { display:flex; align-items:stretch; padding:20px; }
 <script>
   const editor = document.getElementById('editor');
   editor.addEventListener('input', () => {
-    window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '*');
+    window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '${parentOrigin}');
   });
 </script></body></html>`;
   }
@@ -478,6 +481,7 @@ function Studio({ user }: { user: User }) {
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
+  const backupLabelRef = useRef<HTMLInputElement>(null);
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
@@ -636,7 +640,7 @@ function Studio({ user }: { user: User }) {
               readOnly
               value={exportContent}
               style={{ flex: 1, minHeight: 300, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "inherit", fontSize: 12, lineHeight: 1.8, padding: "10px", resize: "none", outline: "none", borderRadius: 4 }}
-              onClick={e => e.target.select()}
+              onClick={e => (e.target as HTMLTextAreaElement).select()}
             />
             <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
               <button onClick={() => { navigator.clipboard.writeText(exportContent); }} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>クリップボードにコピー</button>
@@ -676,17 +680,17 @@ function Studio({ user }: { user: User }) {
             {/* 手動バックアップ作成 */}
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <input
+                ref={backupLabelRef}
                 placeholder="バージョン名（省略可）"
-                id="backup-label-input"
                 style={{ flex: 1, background: "#070a14", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 10px", borderRadius: 4, fontSize: 12, fontFamily: "inherit", outline: "none" }}
               />
               <button onClick={() => {
-                const label = document.getElementById("backup-label-input").value || null;
+                const label = backupLabelRef.current?.value || null;
                 const newBackup = { timestamp: new Date().toISOString(), label, scenes, manuscripts };
                 const updated = [newBackup, ...backups].slice(0, 5);
                 setBackups(updated);
                 storageSet("minato:backups", updated);
-                document.getElementById("backup-label-input").value = "";
+                if (backupLabelRef.current) backupLabelRef.current.value = "";
               }} style={{ padding: "5px 14px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>記録</button>
             </div>
             {backups.length === 0 ? (
