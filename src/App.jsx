@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { supabase } from "./supabase.js";
 
 const initialSettings = {
   world: `【時代】21世紀末〜22世紀初頭。人口約6,000万人の近未来日本。
@@ -38,11 +39,6 @@ const initialScenes = [
 const statusColors = { done: "#4ade80", draft: "#facc15", empty: "#334155" };
 const statusLabels = { done: "完成", draft: "執筆中", empty: "未着手" };
 
-import { createClient } from "@supabase/supabase-js";
-
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 async function storageGet(key) {
   try {
