@@ -53,7 +53,7 @@ cp .env.example .env
 
 ```
 # Anthropic（開発時のみ使用。本番はサーバー側で設定）
-VITE_ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
+ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
 
 # Supabase
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -117,10 +117,9 @@ APIキーをサーバー側で管理できるため、最もセキュアな構�
 ```bash
 npm run build
 # dist/ をCloudflare Pagesにアップロード
-# 環境変数 VITE_ANTHROPIC_API_KEY を設定
 ```
 
-> **注意：** Cloudflare Pagesでは `api/anthropic.js` が動作しないため、APIキーがフロントエンドに含まれます。自分専用の閉じた環境での利用にとどめてください。
+> **注意：** Cloudflare Pagesでは `api/anthropic.js` が動作しないため、AI機能を使うには別途バックエンドプロキシが必要です。APIキーをそのままフロントエンドに含める構成はサポートしていません。
 
 ### VPS / 自宅サーバー
 
