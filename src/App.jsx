@@ -76,6 +76,10 @@ function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onAp
         method: "POST",
         headers: { "Content-Type": "application/json",
           "anthropic-version": "2023-06-01",
+<<<<<<< HEAD
+=======
+          "anthropic-dangerous-direct-browser-access": "true",
+>>>>>>> a48f6864d7e7e49a7ef3ad49fc882a9d3c861431
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
@@ -154,6 +158,10 @@ function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoa
         method: "POST",
         headers: { "Content-Type": "application/json",
           "anthropic-version": "2023-06-01",
+<<<<<<< HEAD
+=======
+          "anthropic-dangerous-direct-browser-access": "true",
+>>>>>>> a48f6864d7e7e49a7ef3ad49fc882a9d3c861431
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
@@ -218,6 +226,10 @@ function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResu
         method: "POST",
         headers: { "Content-Type": "application/json",
           "anthropic-version": "2023-06-01",
+<<<<<<< HEAD
+=======
+          "anthropic-dangerous-direct-browser-access": "true",
+>>>>>>> a48f6864d7e7e49a7ef3ad49fc882a9d3c861431
         },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
