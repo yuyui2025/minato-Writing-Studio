@@ -63,16 +63,16 @@ export default function App() {
 function Studio({ user }: { user: User }) {
   const {
     loaded, saveStatus, lastSavedTime, tab, setTab, settings, setSettings,
-    settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId, setSelectedSceneId,
+    settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId,
     manuscripts, setManuscripts, showSettings, setShowSettings, sidebarOpen, setSidebarOpen,
     newScene, setNewScene, addingScene, setAddingScene, confirmDelete, setConfirmDelete,
     addingChapter, setAddingChapter, projectTitle, setProjectTitle, editingTitle, setEditingTitle,
-    showExport, setShowExport, sceneSearch, setSceneSearch, backups, setBackups,
+    showExport, setShowExport, sceneSearch, setSceneSearch, backups,
     showBackups, setShowBackups, verticalPreview, setVerticalPreview,
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
     aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
-    aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent, setExportContent,
+    aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent,
     showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
@@ -105,7 +105,7 @@ function Studio({ user }: { user: User }) {
       {showExport && (
         <ExportModal
           selectedScene={selectedScene}
-          projectTitle={projectTitle}
+          _projectTitle={projectTitle}
           onExportScene={exportScene}
           onExportAll={exportAll}
           onClose={() => setShowExport(false)}
@@ -115,9 +115,9 @@ function Studio({ user }: { user: User }) {
       {showBackups && (
         <BackupModal
           backups={backups}
-          scenes={scenes}
-          settings={settings}
-          manuscripts={manuscripts}
+          _scenes={scenes}
+          _settings={settings}
+          _manuscripts={manuscripts}
           onRestore={(sc, ms) => {
             setScenes(sc);
             setManuscripts(ms);

@@ -3,7 +3,7 @@ import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
 import type {
-  Scene, Settings, Manuscripts, AppliedState,
+  Scene, Settings, AppliedState,
   AiResults, AiLoading, AiErrors
 } from "../../types";
 

@@ -2,7 +2,7 @@ import { Scene } from "../../types";
 
 type ExportModalProps = {
   selectedScene: Scene | null;
-  projectTitle: string;
+  _projectTitle: string;
   onExportScene: (fmt: "md" | "txt") => void;
   onExportAll: (fmt: "md" | "txt") => void;
   onClose: () => void;
@@ -10,7 +10,7 @@ type ExportModalProps = {
 
 export function ExportModal({
   selectedScene,
-  projectTitle,
+  _projectTitle,
   onExportScene,
   onExportAll,
   onClose,

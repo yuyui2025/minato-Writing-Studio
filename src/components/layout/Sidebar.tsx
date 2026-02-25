@@ -1,5 +1,5 @@
 import React from "react";
-import { statusColors, statusLabels } from "../../constants";
+import { statusColors } from "../../constants";
 import type {
   Scene, Manuscripts, SceneDraft, Settings, EditorSettings, TabKey
 } from "../../types";

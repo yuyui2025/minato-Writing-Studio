@@ -34,7 +34,7 @@ async function storageSet(key: string, value: unknown): Promise<void> {
   } catch (e) { console.error(e); }
 }
 
-export function useStudioState(user: User) {
+export function useStudioState(_user: User) {
   const [loaded, setLoaded] = useState(false);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);

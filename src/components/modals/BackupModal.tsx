@@ -3,9 +3,9 @@ import { Scene, Settings, Manuscripts, Backup } from "../../types";
 
 type BackupModalProps = {
   backups: Backup[];
-  scenes: Scene[];
-  settings: Settings;
-  manuscripts: Manuscripts;
+  _scenes: Scene[];
+  _settings: Settings;
+  _manuscripts: Manuscripts;
   onRestore: (scenes: Scene[], manuscripts: Manuscripts) => void;
   onSaveBackup: (label: string | null) => void;
   onClose: () => void;
@@ -13,9 +13,9 @@ type BackupModalProps = {
 
 export function BackupModal({
   backups,
-  scenes,
-  settings,
-  manuscripts,
+  _scenes,
+  _settings,
+  _manuscripts,
   onRestore,
   onSaveBackup,
   onClose,
