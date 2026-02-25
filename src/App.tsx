@@ -105,7 +105,7 @@ function Studio({ user }: { user: User }) {
       {showExport && (
         <ExportModal
           selectedScene={selectedScene}
-          projectTitle={projectTitle}
+          _projectTitle={projectTitle}
           onExportScene={exportScene}
           onExportAll={exportAll}
           onClose={() => setShowExport(false)}
@@ -115,9 +115,9 @@ function Studio({ user }: { user: User }) {
       {showBackups && (
         <BackupModal
           backups={backups}
-          scenes={scenes}
-          settings={settings}
-          manuscripts={manuscripts}
+          _scenes={scenes}
+          _settings={settings}
+          _manuscripts={manuscripts}
           onRestore={(sc, ms) => {
             setScenes(sc);
             setManuscripts(ms);
