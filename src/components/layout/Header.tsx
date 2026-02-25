@@ -55,8 +55,11 @@ export const Header: React.FC<HeaderProps> = ({
         )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <div style={{ fontSize: 10, color: saveStatus === "saved" ? "#2a4060" : saveStatus === "saving" ? "#4a6fa5" : "#e05555" }}>
-          {saveStatus === "saving" ? "保存中…" : saveStatus === "error" ? "⚠ エラー" : lastSavedTime ? `保存: ${lastSavedTime.getHours()}:${String(lastSavedTime.getMinutes()).padStart(2,"0")}` : "✓"}
+        <div style={{ fontSize: 10, color: saveStatus === "saved" ? "#2a4060" : saveStatus === "saving" ? "#4a6fa5" : saveStatus === "offline" ? "#8a6b2d" : "#e05555" }}>
+          {saveStatus === "saving" ? "保存中…" : 
+           saveStatus === "offline" ? "☁ オフライン保存" :
+           saveStatus === "error" ? "⚠ エラー" : 
+           lastSavedTime ? `保存: ${lastSavedTime.getHours()}:${String(lastSavedTime.getMinutes()).padStart(2,"0")}` : "✓"}
         </div>
         <button onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
         <button onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
