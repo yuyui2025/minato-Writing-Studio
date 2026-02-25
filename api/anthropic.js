@@ -27,10 +27,6 @@ export default async function handler(req, res) {
     if (typeof msg.content !== "string" || msg.content.trim().length === 0) {
       return res.status(400).json({ error: "Invalid messages: content must be a non-empty string" });
     }
-    // Limit content length to 10000 chars per message as a sanity check
-    if (msg.content.length > 10000) {
-      return res.status(400).json({ error: "Invalid messages: content too long" });
-    }
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
