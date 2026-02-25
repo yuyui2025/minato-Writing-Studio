@@ -26,6 +26,7 @@ export type AiResults = {
   worldExpand: string;
 };
 
+export type AiErrors = Record<keyof AiResults, string>;
 export type AiLoading = Record<keyof AiResults, boolean>;
 
 export type Backup = {

@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { callAnthropic, AiError } from "../../utils/ai";
 
 type AiPanelProps = {
   label: string;
@@ -9,6 +10,8 @@ type AiPanelProps = {
   onResult: (value: string) => void;
   loading?: boolean;
   onLoading: (value: boolean) => void;
+  error?: string;
+  onError: (value: string) => void;
 };
 
 export function AiPanel({
@@ -20,6 +23,8 @@ export function AiPanel({
   onResult,
   loading = false,
   onLoading,
+  error = "",
+  onError,
 }: AiPanelProps) {
   const onAppendRef = useRef(onAppend);
   useEffect(() => {
@@ -29,21 +34,16 @@ export function AiPanel({
   const run = async () => {
     onLoading(true);
     onResult("");
+    onError("");
     try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.map((b: any) => b.text || "").join("") || "";
+      const text = await callAnthropic(prompt);
       onResult(text);
     } catch (e) {
-      onResult("エラーが発生しました");
+      if (e instanceof AiError) {
+        onError(e.message);
+      } else {
+        onError("不明なエラーが発生しました");
+      }
     }
     onLoading(false);
   };
@@ -56,7 +56,7 @@ export function AiPanel({
           disabled={loading}
           style={{
             padding: compact ? "4px 10px" : "6px 16px",
-            background: "rgba(74,111,165,0.1)",
+            background: loading ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
             border: "1px solid #2a4060",
             color: loading ? "#2a4060" : "#4a6fa5",
             cursor: loading ? "default" : "pointer",
@@ -66,7 +66,7 @@ export function AiPanel({
             letterSpacing: 1,
           }}
         >
-          {loading ? "生成中…" : `✦ ${label}`}
+          {loading ? "生成中…" : error ? "再試行" : `✦ ${label}`}
         </button>
         {result && !compact && (
           <button
@@ -89,6 +89,13 @@ export function AiPanel({
           </button>
         )}
       </div>
+
+      {error && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555", display: "flex", alignItems: "center", gap: 6 }}>
+          <span>⚠ {error}</span>
+        </div>
+      )}
+
       {result && (
         <div
           style={{

@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction } from "react";
 import { PolishSuggestion, AppliedState } from "../../types";
+import { callAnthropic, AiError } from "../../utils/ai";
 
 type PolishPanelProps = {
   manuscriptText: string;
@@ -8,6 +9,8 @@ type PolishPanelProps = {
   onResult: (value: string) => void;
   loading: boolean;
   onLoading: (value: boolean) => void;
+  error?: string;
+  onError: (value: string) => void;
   applied: AppliedState;
   onApplied: Dispatch<SetStateAction<AppliedState>>;
 };
@@ -19,6 +22,8 @@ export function PolishPanel({
   onResult,
   loading,
   onLoading,
+  error = "",
+  onError,
   applied,
   onApplied,
 }: PolishPanelProps) {
@@ -35,28 +40,18 @@ export function PolishPanel({
   const run = async () => {
     onLoading(true);
     onResult("");
+    onError("");
     onApplied({});
     try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [
-            {
-              role: "user",
-              content: `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(
-                -600
-              )}`,
-            },
-          ],
-        }),
-      });
-      const data = await res.json();
-      onResult(data.content?.map((b: any) => b.text || "").join("") || "");
-    } catch {
-      onResult("[]");
+      const prompt = `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}`;
+      const text = await callAnthropic(prompt);
+      onResult(text);
+    } catch (e) {
+      if (e instanceof AiError) {
+        onError(e.message);
+      } else {
+        onError("不明なエラーが発生しました");
+      }
     }
     onLoading(false);
   };
@@ -68,7 +63,7 @@ export function PolishPanel({
         disabled={loading}
         style={{
           padding: "6px 16px",
-          background: "rgba(74,111,165,0.1)",
+          background: loading ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
           border: "1px solid #2a4060",
           color: loading ? "#2a4060" : "#4a6fa5",
           cursor: loading ? "default" : "pointer",
@@ -78,8 +73,12 @@ export function PolishPanel({
           letterSpacing: 1,
         }}
       >
-        {loading ? "生成中…" : "✦ 文章を推敲"}
+        {loading ? "生成中…" : error ? "再試行" : "✦ 文章を推敲"}
       </button>
+
+      {error && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
+      )}
 
       {result && !suggestions && (
         <div style={{ marginTop: 8, fontSize: 11, color: "#3a5570" }}>パース失敗: {result.slice(0, 80)}</div>

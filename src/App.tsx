@@ -1,54 +1,19 @@
-import { useState, useEffect, useRef } from "react";
-import type { Dispatch, SetStateAction } from "react";
+import { useState, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
-import { HintPanel } from "./components/ai/HintPanel";
-import { PolishPanel } from "./components/ai/PolishPanel";
-import { AiPanel } from "./components/ai/AiPanel";
-import { VerticalEditor } from "./components/editor/VerticalEditor";
+import { AiAssistant } from "./components/ai/AiAssistant";
+import { Header } from "./components/layout/Header";
+import { Sidebar } from "./components/layout/Sidebar";
+import { WriteView } from "./components/views/WriteView";
+import { StructureView } from "./components/views/StructureView";
+import { SettingsView } from "./components/views/SettingsView";
+import { PrefsView } from "./components/views/PrefsView";
+import { useStudioState } from "./hooks/useStudioState";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
 import { ExportContentModal } from "./components/modals/ExportContentModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
-
-import type {
-  SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, Backup, HintItem, PolishSuggestion,
-  SceneDraft, EditorSettings, TabKey, SaveStatus
-} from "./types";
-
-import {
-  initialSettings, initialScenes, statusColors, statusLabels
-} from "./constants";
-
-
-async function storageGet<T = unknown>(key: string): Promise<T | null> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data } = await supabase
-      .from("minato_data")
-      .select("value")
-      .eq("user_id", user.id)
-      .eq("key", key)
-      .single();
-    return data ? data.value : null;
-  } catch { return null; }
-}
-
-async function storageSet(key: string, value: unknown): Promise<void> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("minato_data").upsert({
-      user_id: user.id,
-      key,
-      value,
-      updated_at: new Date().toISOString(),
-    }, { onConflict: "user_id,key" });
-  } catch (e) { console.error(e); }
-}
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -96,150 +61,23 @@ export default function App() {
 }
 
 function Studio({ user }: { user: User }) {
-  const [loaded, setLoaded] = useState(false);
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
-  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
-  const [tab, setTab] = useState<TabKey>("write");
-  const [settings, setSettings] = useState(initialSettings);
-  const [settingsTab, setSettingsTab] = useState<keyof Settings>("world");
-  const [scenes, setScenes] = useState(initialScenes);
-  const [selectedSceneId, setSelectedSceneId] = useState<number | null>(null);
-  const [manuscripts, setManuscripts] = useState<Manuscripts>({});
-  const [showSettings, setShowSettings] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [newScene, setNewScene] = useState<SceneDraft>({ chapter: "", title: "", synopsis: "" });
-  const [addingScene, setAddingScene] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
-  const [addingChapter, setAddingChapter] = useState(false);
-  const [projectTitle, setProjectTitle] = useState("港に届いた例外");
-  const [editingTitle, setEditingTitle] = useState(false);
-  const [showExport, setShowExport] = useState(false);
-  const [sceneSearch, setSceneSearch] = useState("");
-  const [backups, setBackups] = useState<Backup[]>([]);
-  const [showBackups, setShowBackups] = useState(false);
-  const [verticalPreview, setVerticalPreview] = useState(false);
-  const [editingSceneTitle, setEditingSceneTitle] = useState(false);
-  const [editingSceneSynopsis, setEditingSceneSynopsis] = useState(false);
-  const [sidebarFloat, setSidebarFloat] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<TabKey>("write");
-  const [editorSettings, setEditorSettings] = useState<EditorSettings>({ fontSize: 15, lineHeight: 2.2 });
-  const [aiFloat, setAiFloat] = useState(false);
-  const [aiWide, setAiWide] = useState(false);
-  const [aiResults, setAiResults] = useState<AiResults>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
-  const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
-  const [aiApplied, setAiApplied] = useState<AppliedState>({});
-  const [hintApplied, setHintApplied] = useState<AppliedState>({});
-  const backupLabelRef = useRef<HTMLInputElement>(null);
-
-  const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
-  const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
-  const wordCount = manuscriptText.replace(/\s/g, "").length;
-
-  useEffect(() => {
-    (async () => {
-      const [sc, st, ms, pt, bk, es] = await Promise.all([
-        storageGet<Scene[]>("minato:scenes"),
-        storageGet<Settings>("minato:settings"),
-        storageGet<Manuscripts>("minato:manuscripts"),
-        storageGet<string>("minato:title"),
-        storageGet<Backup[]>("minato:backups"),
-        storageGet<EditorSettings>("minato:editorSettings"),
-      ]);
-      if (sc) setScenes(sc);
-      if (st) setSettings(st);
-      if (ms) setManuscripts(ms);
-      if (pt) setProjectTitle(pt);
-      if (bk) setBackups(bk);
-      if (es) setEditorSettings(es);
-      setLoaded(true);
-    })();
-  }, []);
-
-  useEffect(() => {
-    if (!loaded) return;
-    storageSet("minato:editorSettings", editorSettings);
-  }, [editorSettings, loaded]);
-
-  const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
-    setSaveStatus("saving");
-    try {
-      const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms };
-      const updatedBackups = [newBackup, ...backups].slice(0, 5);
-      await Promise.all([
-        storageSet("minato:scenes", sc),
-        storageSet("minato:settings", st),
-        storageSet("minato:manuscripts", ms),
-        storageSet("minato:title", pt),
-        storageSet("minato:backups", updatedBackups),
-      ]);
-      setBackups(updatedBackups);
-      setSaveStatus("saved");
-      setLastSavedTime(new Date());
-    } catch { setSaveStatus("error"); }
-  };
-
-  useEffect(() => {
-    if (!loaded) return;
-    setSaveStatus("saving");
-    const sc = scenes, st = settings, ms = manuscripts, pt = projectTitle;
-    const t = setTimeout(async () => {
-      try {
-        await Promise.all([
-          storageSet("minato:scenes", sc),
-          storageSet("minato:settings", st),
-          storageSet("minato:manuscripts", ms),
-          storageSet("minato:title", pt),
-        ]);
-        setSaveStatus("saved");
-        setLastSavedTime(new Date());
-      } catch { setSaveStatus("error"); }
-    }, 900);
-    return () => clearTimeout(t);
-  }, [scenes, settings, manuscripts, projectTitle, loaded]);
-
-  const handleSceneSelect = (scene: Scene) => { setSelectedSceneId(scene.id); setTab("write"); };
-  const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
-  const handleStatusChange = (id: number, status: SceneStatus) => setScenes(scenes.map(s => s.id === id ? { ...s, status } : s));
-  const handleAddScene = () => {
-    const scene = { ...newScene, id: Date.now(), status: "empty" };
-    setScenes([...scenes, scene]);
-    setNewScene({ chapter: "", title: "", synopsis: "" });
-    setAddingScene(false);
-  };
-  const handleDeleteScene = (id: number) => setConfirmDelete(id);
-  const confirmDeleteExecute = () => {
-    const id = confirmDelete;
-    setScenes(prev => prev.filter(s => s.id !== id));
-    if (selectedSceneId === id) setSelectedSceneId(null);
-    setManuscripts(prev => { const n = { ...prev }; delete n[id]; return n; });
-    setConfirmDelete(null);
-  };
-
-  const [exportContent, setExportContent] = useState<string>("");
-  const [showExportContent, setShowExportContent] = useState<boolean>(false);
-
-  const downloadFile = (content: string) => {
-    setExportContent(content);
-    setShowExportContent(true);
-  };
-
-  const exportScene = (fmt: "md" | "txt") => {
-    if (!selectedScene) return;
-    const text = manuscripts[selectedScene.id] || "";
-    const content = fmt === "md"
-      ? `# ${selectedScene.chapter} — ${selectedScene.title}\n\n${selectedScene.synopsis ? `> ${selectedScene.synopsis}\n\n` : ""}${text}`
-      : `${selectedScene.chapter} — ${selectedScene.title}\n${"=".repeat(30)}\n${selectedScene.synopsis ? `${selectedScene.synopsis}\n\n` : ""}${text}`;
-    downloadFile(content);
-    setShowExport(false);
-  };
-
-  const exportAll = (fmt: "md" | "txt") => {
-    const content = fmt === "md"
-      ? `# ${projectTitle}\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
-      : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
-    downloadFile(content);
-    setShowExport(false);
-  };
+  const {
+    loaded, saveStatus, lastSavedTime, tab, setTab, settings, setSettings,
+    settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId, setSelectedSceneId,
+    manuscripts, setManuscripts, showSettings, setShowSettings, sidebarOpen, setSidebarOpen,
+    newScene, setNewScene, addingScene, setAddingScene, confirmDelete, setConfirmDelete,
+    addingChapter, setAddingChapter, projectTitle, setProjectTitle, editingTitle, setEditingTitle,
+    showExport, setShowExport, sceneSearch, setSceneSearch, backups, setBackups,
+    showBackups, setShowBackups, verticalPreview, setVerticalPreview,
+    editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
+    sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
+    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
+    aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent, setExportContent,
+    showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
+    handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
+    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
+    handleSaveBackup
+  } = useStudioState(user);
 
   if (!loaded) return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -285,540 +123,151 @@ function Studio({ user }: { user: User }) {
             setManuscripts(ms);
             setShowBackups(false);
           }}
-          onSaveBackup={(label) => {
-            const newBackup = {
-              timestamp: new Date().toISOString(),
-              label,
-              scenes,
-              manuscripts,
-            };
-            const updated = [newBackup, ...backups].slice(0, 5);
-            setBackups(updated);
-            storageSet("minato:backups", updated);
-          }}
+          onSaveBackup={handleSaveBackup}
           onClose={() => setShowBackups(false)}
         />
       )}
-      <header style={{ borderBottom: "1px solid #1e2d42", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(10,14,26,0.95)", position: "sticky", top: 0, zIndex: 100, height: 44 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          {/* アイコン */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
-            <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-              <rect x="4" y="4" width="20" height="20" rx="2" stroke="#1e3050" strokeWidth="1.5"/>
-              <line x1="8" y1="9" x2="20" y2="9" stroke="#2a4060" strokeWidth="1.2"/>
-              <line x1="8" y1="13" x2="20" y2="13" stroke="#2a4060" strokeWidth="1.2"/>
-              <line x1="8" y1="17" x2="16" y2="17" stroke="#1e3050" strokeWidth="1.2"/>
-              <circle cx="22" cy="22" r="5" fill="#0a0e1a" stroke="#4a6fa5" strokeWidth="1"/>
-              <line x1="20" y1="22" x2="24" y2="22" stroke="#4a6fa5" strokeWidth="1"/>
-              <line x1="22" y1="20" x2="22" y2="24" stroke="#4a6fa5" strokeWidth="1"/>
-            </svg>
-            <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textTransform: "lowercase", whiteSpace: "nowrap" }}>minato ws</div>
-          </div>
-          {/* タイトル */}
-          {editingTitle ? (
-            <input
-              autoFocus
-              value={projectTitle}
-              onChange={e => setProjectTitle(e.target.value)}
-              onBlur={() => setEditingTitle(false)}
-              onKeyDown={e => e.key === "Enter" && setEditingTitle(false)}
-              style={{ background: "transparent", border: "none", borderBottom: "1px solid #4a6fa5", color: "#e2eaf4", fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", outline: "none", letterSpacing: 1, width: 280 }}
-            />
-          ) : (
-            <div onClick={() => setEditingTitle(true)} style={{ fontSize: 15, fontWeight: 700, color: "#c8d8e8", letterSpacing: 1, cursor: "text", fontFamily: "'Noto Serif JP','Georgia',serif" }} title="クリックで編集">
-              {projectTitle}
-            </div>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ fontSize: 10, color: saveStatus === "saved" ? "#2a4060" : saveStatus === "saving" ? "#4a6fa5" : "#e05555" }}>
-            {saveStatus === "saving" ? "保存中…" : saveStatus === "error" ? "⚠ エラー" : lastSavedTime ? `保存: ${lastSavedTime.getHours()}:${String(lastSavedTime.getMinutes()).padStart(2,"0")}` : "✓"}
-          </div>
-          <button onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
-          <button onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
-          <button onClick={() => setShowExport(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
-          <button onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#2a3548", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>ログアウト</button>
-        </div>
-      </header>
+      <Header
+        projectTitle={projectTitle}
+        setProjectTitle={setProjectTitle}
+        editingTitle={editingTitle}
+        setEditingTitle={setEditingTitle}
+        saveStatus={saveStatus}
+        lastSavedTime={lastSavedTime}
+        scenes={scenes}
+        settings={settings}
+        manuscripts={manuscripts}
+        saveWithBackup={saveWithBackup}
+        setShowBackups={setShowBackups}
+        setShowExport={setShowExport}
+      />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         {/* フロートオーバーレイ背景 */}
         {sidebarOpen && sidebarFloat && (
           <div onClick={() => setSidebarOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.4)" }} />
         )}
-        <aside style={{
-          width: sidebarOpen ? 220 : 36,
-          borderRight: "1px solid #1e2d42",
-          background: "#080c16",
-          overflowY: sidebarOpen ? "auto" : "hidden",
-          flexShrink: sidebarFloat ? 0 : 0,
-          transition: "width 0.2s ease",
-          display: "flex", flexDirection: "column",
-          ...(sidebarOpen && sidebarFloat ? {
-            position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: 220, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
-          } : {}),
-        }}>
-          {sidebarOpen ? (
-            <>
-              {/* Sidebar header: tabs + close */}
-              <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
-                {[["write","執筆"],["structure","構成"],["world","世界観"],["prefs","環境"]].map(([key, label]) => (
-                  <button key={key} onClick={() => setSidebarTab(key)} style={{
-                    flex: 1, padding: "8px 0", background: "transparent", border: "none",
-                    borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
-                    color: sidebarTab === key ? "#7ab3e0" : "#2a4060",
-                    cursor: "pointer", fontSize: 10, fontFamily: "inherit", letterSpacing: 1,
-                  }}>{label}</button>
-                ))}
-                <button onClick={() => setSidebarFloat(!sidebarFloat)} style={{ padding: "8px 8px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: sidebarFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", flexShrink: 0 }} title={sidebarFloat ? "固定表示に切替" : "フロート表示に切替"}>{sidebarFloat ? "浮" : "固"}</button>
-                <button onClick={() => setSidebarOpen(false)} style={{ padding: "8px 10px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: "#2a4060", cursor: "pointer", fontSize: 11, fontFamily: "inherit", flexShrink: 0 }}>◀</button>
-              </div>
-
-              {/* Sidebar content: 執筆 = scene list */}
-              {sidebarTab === "write" && <>
-                <div style={{ padding: "8px 12px 4px" }}>
-                  <input
-                    placeholder="シーンを検索…"
-                    value={sceneSearch}
-                    onChange={e => setSceneSearch(e.target.value)}
-                    style={{ width: "100%", background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 4, fontSize: 11, fontFamily: "inherit", outline: "none", boxSizing: "border-box" }}
-                  />
-                </div>
-                <div style={{ padding: "4px 16px 4px", fontSize: 10, letterSpacing: 3, color: "#2a4060", textTransform: "uppercase" }}>Scene List</div>
-                {scenes.filter(s => !sceneSearch || (s.title || "無題").includes(sceneSearch) || (s.chapter || "").includes(sceneSearch)).map(scene => (
-                  <div key={scene.id} onClick={() => handleSceneSelect(scene)} style={{ padding: "10px 16px", cursor: "pointer", borderLeft: selectedSceneId === scene.id ? "2px solid #4a6fa5" : "2px solid transparent", background: selectedSceneId === scene.id ? "rgba(74,111,165,0.08)" : "transparent", borderBottom: "1px solid #0e1520" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: statusColors[scene.status], boxShadow: `0 0 6px ${statusColors[scene.status]}66` }} />
-                      <span style={{ fontSize: 10, color: "#3a5570" }}>{scene.chapter}</span>
-                    </div>
-                    <div style={{ fontSize: 12, color: "#8ab0cc", lineHeight: 1.4 }}>{scene.title ? scene.title : <span style={{ color: "#2a4060", fontStyle: "italic" }}>無題</span>}</div>
-                    {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 2 }}>{manuscripts[scene.id].replace(/\s/g, "").length}字</div>}
-                  </div>
-                ))}
-                <div style={{ padding: "12px 16px" }}>
-                  {!addingScene ? (
-                    <button onClick={() => setAddingScene(true)} style={{ width: "100%", padding: "7px", border: "1px dashed #1e2d42", background: "transparent", color: "#2a4060", cursor: "pointer", fontSize: 11, borderRadius: 4, fontFamily: "inherit" }}>＋ シーンを追加</button>
-                  ) : (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {[["chapter", "章名"], ["title", "タイトル"], ["synopsis", "概要"]].map(([key, ph]) => (
-                        <input key={key} placeholder={ph} value={newScene[key as keyof SceneDraft]} onChange={e => setNewScene({ ...newScene, [key]: e.target.value })} style={{ background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 3, fontSize: 11, fontFamily: "inherit", outline: "none" }} />
-                      ))}
-                      <div style={{ display: "flex", gap: 4 }}>
-                        <button onClick={handleAddScene} style={{ flex: 1, padding: "5px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追加</button>
-                        <button onClick={() => setAddingScene(false)} style={{ flex: 1, padding: "5px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>キャンセル</button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </>}
-
-              {/* Sidebar content: 構成 = chapter tree */}
-              {sidebarTab === "structure" && (() => {
-                const chapters = scenes.reduce((acc, scene) => {
-                  const ch = scene.chapter || "未分類";
-                  if (!acc[ch]) acc[ch] = [];
-                  acc[ch].push(scene);
-                  return acc;
-                }, {} as Record<string, Scene[]>);
-                return (
-                  <div style={{ padding: "10px 10px", display: "flex", flexDirection: "column", gap: 12 }}>
-                    {Object.entries(chapters).map(([chapter, chScenes]) => {
-                      const allDone = chScenes.every(s => s.status === "done");
-                      const anyDraft = chScenes.some(s => s.status === "draft");
-                      const chColor = allDone ? statusColors.done : anyDraft ? statusColors.draft : statusColors.empty;
-                      const isAddingHere = addingScene && newScene.chapter === chapter;
-                      return (
-                        <div key={chapter}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingBottom: 4, borderBottom: "1px solid #1a2535" }}>
-                            <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: chColor, boxShadow: `0 0 5px ${chColor}66` }} />
-                            <span style={{ fontSize: 11, color: "#c8d8e8", fontWeight: 600, flex: 1 }}>{chapter || "未分類"}</span>
-                            <button onClick={() => { setNewScene({ chapter, title: "", synopsis: "" }); setAddingScene(true); }} style={{ fontSize: 10, padding: "1px 6px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>＋</button>
-                          </div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingLeft: 10 }}>
-                            {chScenes.map(scene => (
-                              <div key={scene.id} onClick={() => handleSceneSelect(scene)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 4, cursor: "pointer", background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "transparent", border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "transparent" }}>
-                                <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: statusColors[scene.status] }} />
-                                <span style={{ fontSize: 11, color: "#8ab0cc", flex: 1 }}>{scene.title ? scene.title : <span style={{ color: "#2a4060", fontStyle: "italic" }}>無題</span>}</span>
-                              </div>
-                            ))}
-                            {isAddingHere && (
-                              <div style={{ padding: "6px 8px", background: "#0a0f1a", border: "1px dashed #2a4060", borderRadius: 4, display: "flex", flexDirection: "column", gap: 5 }}>
-                                <input autoFocus placeholder="タイトル" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => e.key === "Enter" && handleAddScene()} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#8ab0cc", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                                <div style={{ display: "flex", gap: 4 }}>
-                                  <button onClick={handleAddScene} style={{ flex: 1, padding: "3px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>追加</button>
-                                  <button onClick={() => setAddingScene(false)} style={{ flex: 1, padding: "3px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>×</button>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {addingChapter ? (
-                      <div style={{ background: "#0a0f1a", border: "1px dashed #2a4060", borderRadius: 5, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 5 }}>
-                        <input autoFocus placeholder="章名" value={newScene.chapter} onChange={e => setNewScene({ ...newScene, chapter: e.target.value })} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#c8d8e8", fontSize: 12, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                        <input placeholder="タイトル（省略可）" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => { if (e.key === "Enter") { handleAddScene(); setAddingChapter(false); }}} style={{ background: "transparent", border: "none", borderBottom: "1px solid #1a2535", color: "#8ab0cc", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                        <div style={{ display: "flex", gap: 4 }}>
-                          <button onClick={() => { handleAddScene(); setAddingChapter(false); }} style={{ flex: 1, padding: "3px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>追加</button>
-                          <button onClick={() => { setAddingChapter(false); setNewScene({ chapter: "", title: "", synopsis: "" }); }} style={{ flex: 1, padding: "3px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>×</button>
-                        </div>
-                      </div>
-                    ) : (
-                      <button onClick={() => { setNewScene({ chapter: "", title: "", synopsis: "" }); setAddingChapter(true); }} style={{ padding: "6px", border: "1px dashed #1e2d42", background: "transparent", color: "#2a4060", cursor: "pointer", fontSize: 10, borderRadius: 4, fontFamily: "inherit" }}>＋ 新しい章</button>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Sidebar content: 設定 */}
-              {sidebarTab === "world" && (
-                <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {[["world","世界観"],["characters","キャラクター"],["theme","テーマ"]].map(([key, label]) => (
-                    <div key={key}>
-                      <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 4 }}>{label}</div>
-                      <textarea value={settings[key as keyof Settings]} onChange={e => setSettings({ ...settings, [key]: e.target.value })} style={{ width: "100%", minHeight: 80, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "inherit", fontSize: 11, lineHeight: 1.8, padding: "6px 8px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }} />
-                    </div>
-                  ))}
-                </div>
-              )}
-              {sidebarTab === "prefs" && (
-                <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
-                  <div>
-                    <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>文字サイズ　<span style={{ color: "#8ab0cc" }}>{editorSettings.fontSize}px</span></div>
-                    <input type="range" min={12} max={24} value={editorSettings.fontSize} onChange={e => setEditorSettings(s => ({ ...s, fontSize: Number(e.target.value) }))} style={{ width: "100%" }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>行間　<span style={{ color: "#8ab0cc" }}>{editorSettings.lineHeight}</span></div>
-                    <input type="range" min={1.4} max={3.0} step={0.1} value={editorSettings.lineHeight} onChange={e => setEditorSettings(s => ({ ...s, lineHeight: Number(e.target.value) }))} style={{ width: "100%" }} />
-                  </div>
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
-              <button onClick={() => setSidebarOpen(true)} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
-              {[
-                { key: "write", label: "執筆" },
-                { key: "structure", label: "構成" },
-                { key: "settings", label: "世界観" },
-                { key: "prefs", label: "環境" },
-              ].map(({ key, label }) => (
-                <button key={key} onClick={() => setTab(key)} style={{
-                  padding: "14px 0", width: "100%", border: "none",
-                  borderBottom: "1px solid #0e1520",
-                  color: tab === key ? "#7ab3e0" : "#2a4060",
-                  cursor: "pointer", fontSize: 10, fontFamily: "inherit",
-                  writingMode: "vertical-rl", letterSpacing: 2,
-                  borderLeft: tab === key ? "2px solid #4a6fa5" : "2px solid transparent",
-                  background: tab === key ? "rgba(74,111,165,0.08)" : "transparent",
-                }}>{label}</button>
-              ))}
-            </div>
-          )}
-        </aside>
+        <Sidebar
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          sidebarFloat={sidebarFloat}
+          setSidebarFloat={setSidebarFloat}
+          sidebarTab={sidebarTab}
+          setSidebarTab={setSidebarTab}
+          tab={tab}
+          setTab={setTab}
+          scenes={scenes}
+          selectedSceneId={selectedSceneId}
+          manuscripts={manuscripts}
+          sceneSearch={sceneSearch}
+          setSceneSearch={setSceneSearch}
+          newScene={newScene}
+          setNewScene={setNewScene}
+          addingScene={addingScene}
+          setAddingScene={setAddingScene}
+          addingChapter={addingChapter}
+          setAddingChapter={setAddingChapter}
+          settings={settings}
+          setSettings={setSettings}
+          editorSettings={editorSettings}
+          setEditorSettings={setEditorSettings}
+          handleSceneSelect={handleSceneSelect}
+          handleAddScene={handleAddScene}
+        />
 
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {tab === "write" && (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px" }}>
-              {selectedScene ? (<>
-                <div style={{ position: "relative", marginBottom: 12 }}>
-                  <div style={{ paddingRight: 0 }}>
-                    <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: 4 }}>{selectedScene.chapter}</div>
-                    {editingSceneTitle ? (
-                      <input
-                        autoFocus
-                        value={selectedScene.title}
-                        onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, title: e.target.value } : s))}
-                        onBlur={() => setEditingSceneTitle(false)}
-                        onKeyDown={e => e.key === "Enter" && setEditingSceneTitle(false)}
-                        style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "#c8d8e8", background: "transparent", border: "none", borderBottom: "1px solid #4a6fa5", outline: "none", fontFamily: "'Noto Serif JP','Georgia',serif", width: "100%", letterSpacing: 1 }}
-                      />
-                    ) : (
-                      <h2 onClick={() => setEditingSceneTitle(true)} style={{ margin: 0, fontSize: 20, color: "#c8d8e8", fontWeight: 600, cursor: "text" }} title="クリックで編集">
-                        {selectedScene.title ? selectedScene.title : <span style={{ fontStyle: "italic", color: "#3a5570" }}>無題</span>}
-                      </h2>
-                    )}
-                    {editingSceneSynopsis ? (
-                      <input
-                        autoFocus
-                        value={selectedScene.synopsis || ""}
-                        onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, synopsis: e.target.value } : s))}
-                        onBlur={() => setEditingSceneSynopsis(false)}
-                        onKeyDown={e => e.key === "Enter" && setEditingSceneSynopsis(false)}
-                        placeholder="概要を入力…"
-                        style={{ marginTop: 4, fontSize: 12, color: "#8ab0cc", background: "transparent", border: "none", borderBottom: "1px solid #2a4060", outline: "none", fontFamily: "inherit", width: "100%", fontStyle: "italic" }}
-                      />
-                    ) : (
-                      <div onClick={() => setEditingSceneSynopsis(true)} style={{ marginTop: 4, fontSize: 12, color: selectedScene.synopsis ? "#3a5570" : "#1e2d42", fontStyle: "italic", cursor: "text", minHeight: 18 }}>
-                        {selectedScene.synopsis || "概要を追加…"}
-                      </div>
-                    )}
-                  </div>
-                  <div style={{ position: "absolute", top: 0, right: 0, display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                    {["empty", "draft", "done"].map(s => (
-                      <button key={s} onClick={() => handleStatusChange(selectedScene.id, s)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: selectedScene.status === s ? statusColors[s] : "#1e2d42", background: selectedScene.status === s ? `${statusColors[s]}22` : "transparent", color: selectedScene.status === s ? statusColors[s] : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>{statusLabels[s]}</button>
-                    ))}
-                    <button onClick={() => setVerticalPreview(!verticalPreview)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: verticalPreview ? "#4a6fa5" : "#1e2d42", background: verticalPreview ? "rgba(74,111,165,0.15)" : "transparent", color: verticalPreview ? "#7ab3e0" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>縦組</button>
-                    <button onClick={() => handleDeleteScene(selectedScene.id)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid #1e2d42", background: "transparent", color: "#3a2020", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>削除</button>
-                  </div>
-                </div>
-                {verticalPreview ? (
-                  <VerticalEditor
-                    key={selectedSceneId}
-                    initialText={manuscriptText}
-                    onChange={handleManuscriptChange}
-                    fontSize={editorSettings.fontSize}
-                    lineHeight={editorSettings.lineHeight}
-                  />
-                ) : (
-                  <textarea value={manuscriptText} onChange={e => handleManuscriptChange(e.target.value)} placeholder="ここに本文を書く…" style={{ flex: 1, minHeight: 400, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, padding: "16px 12px", resize: "none", outline: "none", borderRadius: 6, width: "100%", boxSizing: "border-box" }} />
-                )}
-                <div style={{ marginTop: 6, display: "flex", alignItems: "center", paddingRight: 90 }}>
-                  {(() => {
-                    const idx = scenes.findIndex(s => s.id === selectedSceneId);
-                    const prev = scenes[idx - 1];
-                    const next = scenes[idx + 1];
-                    return (<>
-                      <button onClick={() => prev && handleSceneSelect(prev)} disabled={!prev} style={{ padding: "4px 10px", background: "transparent", border: "1px solid", borderColor: prev ? "#1e2d42" : "#0e1520", color: prev ? "#3a5570" : "#1a2535", cursor: prev ? "pointer" : "default", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>← {prev ? (prev.title || "無題") : "—"}</button>
-                      <div style={{ flex: 1, textAlign: "center", fontSize: 11, color: "#2a4060" }}>{wordCount.toLocaleString()} 文字</div>
-                      <button onClick={() => next && handleSceneSelect(next)} disabled={!next} style={{ padding: "4px 10px", background: "transparent", border: "1px solid", borderColor: next ? "#1e2d42" : "#0e1520", color: next ? "#3a5570" : "#1a2535", cursor: next ? "pointer" : "default", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>{next ? (next.title || "無題") : "—"} →</button>
-                    </>);
-                  })()}
-                </div>
-              </>) : (
-                <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: "#1e2d42", fontSize: 14 }}>左のリストからシーンを選択してください</div>
-              )}
-            </div>
-          )}
-          {tab === "write" && selectedScene && (
-            <div style={{ borderTop: "1px solid #0e1520", padding: "8px 12px", display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <AiPanel
-                label="続きを提案"
-                compact
-                result={aiResults.continue || ""}
-                onResult={t => setAiResults(r => ({ ...r, continue: t }))}
-                onLoading={v => setAiLoading(l => ({ ...l, continue: v }))}
-                loading={aiLoading.continue}
-                prompt={`以下の小説のシーンの続きを200字程度で提案してください。世界観・文体を維持し、あくまで提案として。\n\n【世界観】${settings.world}\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || ""}\n【本文末尾】${manuscriptText.slice(-200)}`}
-                onAppend={text => handleManuscriptChange(manuscriptText + "\n" + text)}
-              />
-              <AiPanel
-                label="概要を自動生成"
-                compact
-                result={aiResults.synopsis || ""}
-                onResult={t => setAiResults(r => ({ ...r, synopsis: t }))}
-                onLoading={v => setAiLoading(l => ({ ...l, synopsis: v }))}
-                loading={aiLoading.synopsis}
-                prompt={`以下の本文を読んで、シーンの概要を50字以内で生成してください。一文のみ返してください。\n\n${manuscriptText}`}
-                onAppend={text => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, synopsis: text.trim() } : s))}
-              />
-            </div>
+            <WriteView
+              selectedScene={selectedScene}
+              scenes={scenes}
+              setScenes={setScenes}
+              selectedSceneId={selectedSceneId}
+              editingSceneTitle={editingSceneTitle}
+              setEditingSceneTitle={setEditingSceneTitle}
+              editingSceneSynopsis={editingSceneSynopsis}
+              setEditingSceneSynopsis={setEditingSceneSynopsis}
+              handleStatusChange={handleStatusChange}
+              verticalPreview={verticalPreview}
+              setVerticalPreview={setVerticalPreview}
+              handleDeleteScene={handleDeleteScene}
+              manuscriptText={manuscriptText}
+              handleManuscriptChange={handleManuscriptChange}
+              editorSettings={editorSettings}
+              handleSceneSelect={handleSceneSelect}
+              wordCount={wordCount}
+              aiResults={aiResults}
+              setAiResults={setAiResults}
+              aiErrors={aiErrors}
+              setAiErrors={setAiErrors}
+              aiLoading={aiLoading}
+              setAiLoading={setAiLoading}
+              settings={settings}
+            />
           )}
 
-          {tab === "structure" && (() => {
-            // Group scenes by chapter for tree view
-            const chapters = scenes.reduce((acc, scene) => {
-              const ch = scene.chapter || "未分類";
-              if (!acc[ch]) acc[ch] = [];
-              acc[ch].push(scene);
-              return acc;
-            }, {} as Record<string, Scene[]>);
-            const totalChars = Object.values(manuscripts).reduce((a, t) => a + t.replace(/\s/g, "").length, 0);
-
-            return (
-              <div style={{ padding: "20px 16px", overflowY: "auto" }}>
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {Object.entries(chapters).map(([chapter, chScenes]) => {
-                    const chChars = chScenes.reduce((a, s) => a + (manuscripts[s.id] || "").replace(/\s/g, "").length, 0);
-                    const allDone = chScenes.every(s => s.status === "done");
-                    const anyDraft = chScenes.some(s => s.status === "draft");
-                    const chColor = allDone ? statusColors.done : anyDraft ? statusColors.draft : statusColors.empty;
-                    const isAddingHere = addingScene && newScene.chapter === chapter;
-                    return (
-                      <div key={chapter}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #1a2535" }}>
-                          <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: chColor, boxShadow: `0 0 7px ${chColor}66` }} />
-                          <span style={{ fontSize: 13, color: "#c8d8e8", fontWeight: 600, flex: 1 }}>{chapter}</span>
-                          {chChars > 0 && <span style={{ fontSize: 10, color: "#2a4060" }}>{chChars.toLocaleString()}字</span>}
-                          <button onClick={() => { setNewScene({ chapter, title: "", synopsis: "" }); setAddingScene(true); }} style={{ fontSize: 11, padding: "2px 8px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>＋</button>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 16 }}>
-                          {chScenes.map((scene, i) => (
-                            <div key={scene.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 6 }}>
-                                <div style={{ width: 1, height: 6, background: i === 0 ? "transparent" : "#1a2535" }} />
-                                <div style={{ width: 12, height: 1, background: "#1a2535" }} />
-                              </div>
-                              <div onClick={() => handleSceneSelect(scene)} style={{ flex: 1, background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "#0a0f1a", border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "#1a2535", borderRadius: 5, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, marginTop: 4, background: statusColors[scene.status], boxShadow: `0 0 5px ${statusColors[scene.status]}66` }} />
-                                <div style={{ flex: 1 }}>
-                                  <div style={{ fontSize: 12, color: "#8ab0cc", marginBottom: 2 }}>{scene.title ? scene.title : <span style={{ fontStyle: "italic", color: "#2a4060" }}>無題</span>}</div>
-                                  {scene.synopsis && <div style={{ fontSize: 11, color: "#2a4060", fontStyle: "italic" }}>{scene.synopsis}</div>}
-                                  {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 3 }}>{manuscripts[scene.id].replace(/\s/g, "").length.toLocaleString()}字</div>}
-                                </div>
-                                <span style={{ fontSize: 9, color: statusColors[scene.status], flexShrink: 0, marginTop: 2 }}>{statusLabels[scene.status]}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {isAddingHere && (
-                            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 6 }}>
-                                <div style={{ width: 1, height: 6, background: "#1a2535" }} />
-                                <div style={{ width: 12, height: 1, background: "#1a2535" }} />
-                              </div>
-                              <div style={{ flex: 1, background: "#0a0f1a", border: "1px dashed #2a4060", borderRadius: 5, padding: "8px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-                                <input autoFocus placeholder="タイトル" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => e.key === "Enter" && handleAddScene()} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#8ab0cc", fontSize: 12, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                                <input placeholder="概要（省略可）" value={newScene.synopsis} onChange={e => setNewScene({ ...newScene, synopsis: e.target.value })} style={{ background: "transparent", border: "none", borderBottom: "1px solid #1a2535", color: "#3a5570", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                                <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-                                  <button onClick={handleAddScene} style={{ padding: "3px 10px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追加</button>
-                                  <button onClick={() => setAddingScene(false)} style={{ padding: "3px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>キャンセル</button>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {/* New chapter form */}
-                  {addingChapter ? (
-                    <div style={{ background: "#0a0f1a", border: "1px dashed #2a4060", borderRadius: 6, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 6 }}>
-                      <div style={{ fontSize: 10, color: "#3a5570", marginBottom: 2 }}>新しい章</div>
-                      <input autoFocus placeholder="章名" value={newScene.chapter} onChange={e => setNewScene({ ...newScene, chapter: e.target.value })} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#c8d8e8", fontSize: 13, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                      <input placeholder="タイトル" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => e.key === "Enter" && handleAddScene()} style={{ background: "transparent", border: "none", borderBottom: "1px solid #1a2535", color: "#8ab0cc", fontSize: 12, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                      <input placeholder="概要（省略可）" value={newScene.synopsis} onChange={e => setNewScene({ ...newScene, synopsis: e.target.value })} style={{ background: "transparent", border: "none", borderBottom: "1px solid #1a2535", color: "#3a5570", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
-                      <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
-                        <button onClick={() => { handleAddScene(); setAddingChapter(false); }} style={{ padding: "3px 10px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追加</button>
-                        <button onClick={() => { setAddingChapter(false); setNewScene({ chapter: "", title: "", synopsis: "" }); }} style={{ padding: "3px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>キャンセル</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <button onClick={() => { setNewScene({ chapter: "", title: "", synopsis: "" }); setAddingChapter(true); }} style={{ padding: "8px", border: "1px dashed #1e2d42", background: "transparent", color: "#2a4060", cursor: "pointer", fontSize: 11, borderRadius: 5, fontFamily: "inherit" }}>＋ 新しい章を追加</button>
-                  )}
-                </div>
-                <div style={{ marginTop: 24, padding: "12px 16px", background: "#0c1220", borderRadius: 6, border: "1px solid #1a2535", display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span style={{ fontSize: 11, color: "#3a5570" }}>総文字数</span>
-                  <span style={{ fontSize: 24, color: "#7ab3e0", fontWeight: 300 }}>{totalChars.toLocaleString()}</span>
-                  <span style={{ fontSize: 12, color: "#3a5570" }}>文字</span>
-                </div>
-              </div>
-            );
-          })()}
+          {tab === "structure" && (
+            <StructureView
+              scenes={scenes}
+              manuscripts={manuscripts}
+              addingScene={addingScene}
+              setAddingScene={setAddingScene}
+              newScene={newScene}
+              setNewScene={setNewScene}
+              handleAddScene={handleAddScene}
+              addingChapter={addingChapter}
+              setAddingChapter={setAddingChapter}
+              handleSceneSelect={handleSceneSelect}
+              selectedSceneId={selectedSceneId}
+            />
+          )}
 
           {tab === "settings" && (
-            <div style={{ padding: "24px 32px", overflowY: "auto" }}>
-              <h2 style={{ margin: "0 0 16px", fontSize: 16, color: "#7ab3e0", fontWeight: 400, letterSpacing: 2 }}>世界観メモ</h2>
-              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-                {[["world", "世界観"], ["characters", "キャラクター"], ["theme", "テーマ"]].map(([key, label]) => (
-                  <button key={key} onClick={() => setSettingsTab(key)} style={{ padding: "6px 16px", borderRadius: 4, border: "1px solid", borderColor: settingsTab === key ? "#4a6fa5" : "#1e2d42", background: settingsTab === key ? "rgba(74,111,165,0.15)" : "transparent", color: settingsTab === key ? "#7ab3e0" : "#3a5570", cursor: "pointer", fontSize: 12, fontFamily: "inherit" }}>{label}</button>
-                ))}
-              </div>
-              <textarea value={settings[settingsTab]} onChange={e => setSettings({ ...settings, [settingsTab]: e.target.value })} style={{ width: "100%", minHeight: 280, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: 13, lineHeight: 2, padding: "20px 24px", resize: "vertical", outline: "none", borderRadius: 6, boxSizing: "border-box" }} />
-              <AiPanel
-                label="AIで意味を拡張"
-                result={aiResults.worldExpand || ""}
-                onResult={t => setAiResults(r => ({ ...r, worldExpand: t }))}
-                onLoading={v => setAiLoading(l => ({ ...l, worldExpand: v }))}
-                loading={aiLoading.worldExpand}
-                prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${settingsTab === "world" ? "世界観" : settingsTab === "characters" ? "キャラクター" : "テーマ"}】\n${settings[settingsTab]}`}
-                onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
-              />
-            </div>
+            <SettingsView
+              settings={settings}
+              setSettings={setSettings}
+              settingsTab={settingsTab}
+              setSettingsTab={setSettingsTab}
+              aiResults={aiResults}
+              setAiResults={setAiResults}
+              aiErrors={aiErrors}
+              setAiErrors={setAiErrors}
+              aiLoading={aiLoading}
+              setAiLoading={setAiLoading}
+            />
           )}
           {tab === "prefs" && (
-            <div style={{ padding: "24px 32px", overflowY: "auto" }}>
-              <h2 style={{ margin: "0 0 24px", fontSize: 16, color: "#7ab3e0", fontWeight: 400, letterSpacing: 2 }}>環境設定</h2>
-              <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 360 }}>
-                <div>
-                  <div style={{ fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 }}>文字サイズ　<span style={{ color: "#c8d8e8", fontSize: 14 }}>{editorSettings.fontSize}px</span></div>
-                  <input type="range" min={12} max={24} value={editorSettings.fontSize} onChange={e => setEditorSettings(s => ({ ...s, fontSize: Number(e.target.value) }))} style={{ width: "100%" }} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#2a4060", marginTop: 4 }}><span>12px</span><span>24px</span></div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 }}>行間　<span style={{ color: "#c8d8e8", fontSize: 14 }}>{editorSettings.lineHeight}</span></div>
-                  <input type="range" min={1.4} max={3.0} step={0.1} value={editorSettings.lineHeight} onChange={e => setEditorSettings(s => ({ ...s, lineHeight: Number(e.target.value) }))} style={{ width: "100%" }} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#2a4060", marginTop: 4 }}><span>狭い 1.4</span><span>広い 3.0</span></div>
-                </div>
-                <div style={{ padding: "12px 16px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 6 }}>
-                  <div style={{ fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, color: "#8ab0cc", fontFamily: "'Noto Serif JP','Georgia',serif" }}>プレビュー：夜明け前の霧の中、自律貨物船が静かに接岸した。</div>
-                </div>
-              </div>
-            </div>
+            <PrefsView
+              editorSettings={editorSettings}
+              setEditorSettings={setEditorSettings}
+            />
           )}
         </main>
       </div>
 
       {/* AI Assistant overlay */}
-      {tab === "write" && selectedScene && (
-        <>
-          {showSettings && aiFloat && (
-            <div onClick={() => setShowSettings(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200 }} />
-          )}
-          <div style={{
-            position: "fixed", top: 44, right: 0, bottom: 0, zIndex: 201,
-            width: showSettings ? (aiWide ? 420 : 300) : 0,
-            background: "#080c16", borderLeft: showSettings ? "1px solid #1e2d42" : "none",
-            overflow: "hidden", transition: "width 0.2s ease",
-            display: "flex", flexDirection: "column",
-            ...(aiFloat && showSettings ? { boxShadow: "-4px 0 20px rgba(0,0,0,0.6)" } : {}),
-          }}>
-            {showSettings && (
-              <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-                {/* パネルヘッダー */}
-                <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #1e2d42", gap: 6, flexShrink: 0 }}>
-                  <div style={{ fontSize: 10, letterSpacing: 3, color: "#4a6fa5", flex: 1 }}>AI アシスト</div>
-                  <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={aiFloat ? "固定表示に切替" : "フロート表示に切替"}>{aiFloat ? "浮" : "固"}</button>
-                  <button onClick={() => setAiWide(!aiWide)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiWide ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={aiWide ? "幅を狭く" : "幅を広く"}>{aiWide ? "◂" : "▸"}</button>
-                  <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
-                </div>
-                <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-                  <PolishPanel
-                    manuscriptText={manuscriptText}
-                    result={aiResults.polish}
-                    onResult={t => setAiResults(r => ({ ...r, polish: t }))}
-                    loading={aiLoading.polish}
-                    onLoading={v => setAiLoading(l => ({ ...l, polish: v }))}
-                    applied={aiApplied}
-                    onApplied={setAiApplied}
-                    onApply={(original, replacement) => {
-                      const idx = manuscriptText.indexOf(original);
-                      if (idx === -1) return;
-                      const next = manuscriptText.slice(0, idx) + replacement + manuscriptText.slice(idx + original.length);
-                      handleManuscriptChange(next);
-                    }}
-                  />
-                  <HintPanel
-                    result={aiResults.hint}
-                    onResult={t => setAiResults(r => ({ ...r, hint: t }))}
-                    loading={aiLoading.hint}
-                    onLoading={v => setAiLoading(l => ({ ...l, hint: v }))}
-                    applied={hintApplied}
-                    onApplied={setHintApplied}
-                    manuscriptText={manuscriptText}
-                    onInsert={handleManuscriptChange}
-                    prompt={`以下の世界観・設定と現在のシーンを踏まえて、このシーンをより良くするヒントを3点挙げてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || "なし"}\n【本文末尾】${manuscriptText.slice(-300)}`}
-                  />
-                  <AiPanel
-                    label="矛盾チェック"
-                    result={aiResults.check}
-                    onResult={t => setAiResults(r => ({ ...r, check: t }))}
-                    onLoading={v => setAiLoading(l => ({ ...l, check: v }))}
-                    loading={aiLoading.check}
-                    prompt={`以下の世界観設定と本文を照らし合わせて、設定との矛盾や違和感があれば指摘してください。なければ「矛盾なし」と答えてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n\n【本文】${manuscriptText.slice(-800)}`}
-                    onAppend={() => {}}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <button onClick={() => setShowSettings(!showSettings)} style={{
-            position: "fixed", bottom: 24, right: 16, zIndex: 202,
-            padding: "8px 14px", background: "#0e1520", border: "1px solid #2a4060",
-            color: "#4a6fa5", cursor: "pointer", borderRadius: 20,
-            fontSize: 11, fontFamily: "inherit", letterSpacing: 1,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.4)",
-          }}>✦ AI</button>
-        </>
+      {tab === "write" && (
+        <AiAssistant
+          showSettings={showSettings}
+          setShowSettings={setShowSettings}
+          aiFloat={aiFloat}
+          setAiFloat={setAiFloat}
+          aiWide={aiWide}
+          setAiWide={setAiWide}
+          aiResults={aiResults}
+          setAiResults={setAiResults}
+          aiErrors={aiErrors}
+          setAiErrors={setAiErrors}
+          aiLoading={aiLoading}
+          setAiLoading={setAiLoading}
+          aiApplied={aiApplied}
+          setAiApplied={setAiApplied}
+          hintApplied={hintApplied}
+          setHintApplied={setHintApplied}
+          manuscriptText={manuscriptText}
+          handleManuscriptChange={handleManuscriptChange}
+          settings={settings}
+          selectedScene={selectedScene}
+        />
       )}
     </div>
   );
