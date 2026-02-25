@@ -10,7 +10,7 @@ type ExportModalProps = {
 
 export function ExportModal({
   selectedScene,
-  projectTitle,
+  _projectTitle,
   onExportScene,
   onExportAll,
   onClose,

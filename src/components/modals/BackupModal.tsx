@@ -13,9 +13,9 @@ type BackupModalProps = {
 
 export function BackupModal({
   backups,
-  scenes,
-  settings,
-  manuscripts,
+  _scenes,
+  _settings,
+  _manuscripts,
   onRestore,
   onSaveBackup,
   onClose,
