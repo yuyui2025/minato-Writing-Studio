@@ -27,7 +27,7 @@ interface SidebarProps {
   settings: Settings;
   setSettings: (v: Settings) => void;
   editorSettings: EditorSettings;
-  setEditorSettings: (v: React.Dispatch<React.SetStateAction<EditorSettings>>) => void;
+  setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
   handleSceneSelect: (s: Scene) => void;
   handleAddScene: () => void;
 }

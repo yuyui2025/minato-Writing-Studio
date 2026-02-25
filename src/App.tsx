@@ -71,11 +71,12 @@ function Studio({ user }: { user: User }) {
     showBackups, setShowBackups, verticalPreview, setVerticalPreview,
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
-    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiLoading, setAiLoading,
+    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
     aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent, setExportContent,
     showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
-    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll
+    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
+    handleSaveBackup
   } = useStudioState(user);
 
   if (!loaded) return (
@@ -196,6 +197,8 @@ function Studio({ user }: { user: User }) {
               wordCount={wordCount}
               aiResults={aiResults}
               setAiResults={setAiResults}
+              aiErrors={aiErrors}
+              setAiErrors={setAiErrors}
               aiLoading={aiLoading}
               setAiLoading={setAiLoading}
               settings={settings}
@@ -226,6 +229,8 @@ function Studio({ user }: { user: User }) {
               setSettingsTab={setSettingsTab}
               aiResults={aiResults}
               setAiResults={setAiResults}
+              aiErrors={aiErrors}
+              setAiErrors={setAiErrors}
               aiLoading={aiLoading}
               setAiLoading={setAiLoading}
             />
@@ -250,6 +255,8 @@ function Studio({ user }: { user: User }) {
           setAiWide={setAiWide}
           aiResults={aiResults}
           setAiResults={setAiResults}
+          aiErrors={aiErrors}
+          setAiErrors={setAiErrors}
           aiLoading={aiLoading}
           setAiLoading={setAiLoading}
           aiApplied={aiApplied}

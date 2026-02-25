@@ -3,7 +3,7 @@ import { VerticalEditor } from "../editor/VerticalEditor";
 import { AiPanel } from "../ai/AiPanel";
 import { statusColors, statusLabels } from "../../constants";
 import type {
-  Scene, EditorSettings, AiResults, AiLoading, Settings, SceneStatus
+  Scene, EditorSettings, AiResults, AiLoading, Settings, SceneStatus, AiErrors
 } from "../../types";
 
 interface WriteViewProps {
@@ -26,6 +26,8 @@ interface WriteViewProps {
   wordCount: number;
   aiResults: AiResults;
   setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
+  aiErrors: AiErrors;
+  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
   aiLoading: AiLoading;
   setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
   settings: Settings;
@@ -38,7 +40,8 @@ export const WriteView: React.FC<WriteViewProps> = ({
   handleStatusChange, verticalPreview, setVerticalPreview,
   handleDeleteScene, manuscriptText, handleManuscriptChange,
   editorSettings, handleSceneSelect, wordCount,
-  aiResults, setAiResults, aiLoading, setAiLoading, settings
+  aiResults, setAiResults, aiErrors, setAiErrors,
+  aiLoading, setAiLoading, settings
 }) => {
   if (!selectedScene) {
     return (
@@ -123,14 +126,10 @@ export const WriteView: React.FC<WriteViewProps> = ({
           onResult={t => setAiResults(r => ({ ...r, continue: t }))}
           onLoading={v => setAiLoading(l => ({ ...l, continue: v }))}
           loading={aiLoading.continue}
-          prompt={`以下の小説のシーンの続きを200字程度で提案してください。世界観・文体を維持し、あくまで提案として。
-
-【世界観】${settings.world}
-【シーン】${selectedScene.chapter} / ${selectedScene.title}
-【概要】${selectedScene.synopsis || ""}
-【本文末尾】${manuscriptText.slice(-200)}`}
-          onAppend={text => handleManuscriptChange(manuscriptText + "
-" + text)}
+          error={aiErrors.continue}
+          onError={t => setAiErrors(e => ({ ...e, continue: t }))}
+          prompt={`以下の小説のシーンの続きを200字程度で提案してください。世界観・文体を維持し、あくまで提案として。\n\n【世界観】${settings.world}\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || ""}\n【本文末尾】${manuscriptText.slice(-200)}`}
+          onAppend={text => handleManuscriptChange(manuscriptText + "\n" + text)}
         />
         <AiPanel
           label="概要を自動生成"
@@ -139,9 +138,9 @@ export const WriteView: React.FC<WriteViewProps> = ({
           onResult={t => setAiResults(r => ({ ...r, synopsis: t }))}
           onLoading={v => setAiLoading(l => ({ ...l, synopsis: v }))}
           loading={aiLoading.synopsis}
-          prompt={`以下の本文を読んで、シーンの概要を50字以内で生成してください。一文のみ返してください。
-
-${manuscriptText}`}
+          error={aiErrors.synopsis}
+          onError={t => setAiErrors(e => ({ ...e, synopsis: t }))}
+          prompt={`以下の本文を読んで、シーンの概要を50字以内で生成してください。一文のみ返してください。\n\n${manuscriptText}`}
           onAppend={text => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, synopsis: text.trim() } : s))}
         />
       </div>

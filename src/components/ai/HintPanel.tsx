@@ -1,5 +1,6 @@
 import { Dispatch, SetStateAction } from "react";
 import { HintItem, AppliedState } from "../../types";
+import { callAnthropic, AiError } from "../../utils/ai";
 
 type HintPanelProps = {
   prompt: string;
@@ -7,6 +8,8 @@ type HintPanelProps = {
   onResult: (value: string) => void;
   loading: boolean;
   onLoading: (value: boolean) => void;
+  error?: string;
+  onError: (value: string) => void;
   applied: AppliedState;
   onApplied: Dispatch<SetStateAction<AppliedState>>;
   manuscriptText: string;
@@ -19,6 +22,8 @@ export function HintPanel({
   onResult,
   loading,
   onLoading,
+  error = "",
+  onError,
   applied,
   onApplied,
   manuscriptText,
@@ -37,28 +42,18 @@ export function HintPanel({
   const run = async () => {
     onLoading(true);
     onResult("");
+    onError("");
     onApplied({});
     try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [
-            {
-              role: "user",
-              content:
-                prompt +
-                "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]",
-            },
-          ],
-        }),
-      });
-      const data = await res.json();
-      onResult(data.content?.map((b: any) => b.text || "").join("") || "");
-    } catch {
-      onResult("[]");
+      const finalPrompt = prompt + "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]";
+      const text = await callAnthropic(finalPrompt);
+      onResult(text);
+    } catch (e) {
+      if (e instanceof AiError) {
+        onError(e.message);
+      } else {
+        onError("不明なエラーが発生しました");
+      }
     }
     onLoading(false);
   };
@@ -83,7 +78,7 @@ export function HintPanel({
         disabled={loading}
         style={{
           padding: "6px 16px",
-          background: "rgba(74,111,165,0.1)",
+          background: loading ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
           border: "1px solid #2a4060",
           color: loading ? "#2a4060" : "#4a6fa5",
           cursor: loading ? "default" : "pointer",
@@ -93,8 +88,12 @@ export function HintPanel({
           letterSpacing: 1,
         }}
       >
-        {loading ? "生成中…" : "✦ 執筆ヒント"}
+        {loading ? "生成中…" : error ? "再試行" : "✦ 執筆ヒント"}
       </button>
+
+      {error && (
+        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
+      )}
 
       {result && !hints && (
         <div style={{ marginTop: 8, fontSize: 11, color: "#3a5570" }}>{result.slice(0, 120)}</div>

@@ -1,6 +1,6 @@
 import React from "react";
 import { AiPanel } from "../ai/AiPanel";
-import type { Settings, AiResults, AiLoading } from "../../types";
+import type { Settings, AiResults, AiLoading, AiErrors } from "../../types";
 
 interface SettingsViewProps {
   settings: Settings;
@@ -9,13 +9,16 @@ interface SettingsViewProps {
   setSettingsTab: (v: keyof Settings) => void;
   aiResults: AiResults;
   setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
+  aiErrors: AiErrors;
+  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
   aiLoading: AiLoading;
   setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
   settings, setSettings, settingsTab, setSettingsTab,
-  aiResults, setAiResults, aiLoading, setAiLoading
+  aiResults, setAiResults, aiErrors, setAiErrors,
+  aiLoading, setAiLoading
 }) => {
   return (
     <div style={{ padding: "24px 32px", overflowY: "auto" }}>
@@ -34,14 +37,10 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         onResult={t => setAiResults(r => ({ ...r, worldExpand: t }))}
         onLoading={v => setAiLoading(l => ({ ...l, worldExpand: v }))}
         loading={aiLoading.worldExpand}
-        prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。
-
-【${settingsTab === "world" ? "世界観" : settingsTab === "characters" ? "キャラクター" : "テーマ"}】
-${settings[settingsTab]}`}
-        onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "
-
----AI拡張---
-" + text }))}
+        error={aiErrors.worldExpand}
+        onError={t => setAiErrors(e => ({ ...e, worldExpand: t }))}
+        prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${settingsTab === "world" ? "世界観" : settingsTab === "characters" ? "キャラクター" : "テーマ"}】\n${settings[settingsTab]}`}
+        onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
       />
     </div>
   );

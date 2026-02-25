@@ -4,7 +4,7 @@ import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
 import type {
   Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading
+  AiResults, AiLoading, AiErrors
 } from "../../types";
 
 interface AiAssistantProps {
@@ -16,6 +16,8 @@ interface AiAssistantProps {
   setAiWide: (v: boolean) => void;
   aiResults: AiResults;
   setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
+  aiErrors: AiErrors;
+  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
   aiLoading: AiLoading;
   setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
   aiApplied: AppliedState;
@@ -31,6 +33,7 @@ interface AiAssistantProps {
 export const AiAssistant: React.FC<AiAssistantProps> = ({
   showSettings, setShowSettings, aiFloat, setAiFloat,
   aiWide, setAiWide, aiResults, setAiResults,
+  aiErrors, setAiErrors,
   aiLoading, setAiLoading, aiApplied, setAiApplied,
   hintApplied, setHintApplied, manuscriptText,
   handleManuscriptChange, settings, selectedScene
@@ -66,6 +69,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                 onResult={t => setAiResults(r => ({ ...r, polish: t }))}
                 loading={aiLoading.polish}
                 onLoading={v => setAiLoading(l => ({ ...l, polish: v }))}
+                error={aiErrors.polish}
+                onError={t => setAiErrors(e => ({ ...e, polish: t }))}
                 applied={aiApplied}
                 onApplied={setAiApplied}
                 onApply={(original, replacement) => {
@@ -80,19 +85,13 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                 onResult={t => setAiResults(r => ({ ...r, hint: t }))}
                 loading={aiLoading.hint}
                 onLoading={v => setAiLoading(l => ({ ...l, hint: v }))}
+                error={aiErrors.hint}
+                onError={t => setAiErrors(e => ({ ...e, hint: t }))}
                 applied={hintApplied}
                 onApplied={setHintApplied}
                 manuscriptText={manuscriptText}
                 onInsert={handleManuscriptChange}
-                prompt={`以下の世界観・設定と現在のシーンを踏まえて、このシーンをより良くするヒントを3点挙げてください。
-
-【世界観】${settings.world}
-【キャラクター】${settings.characters}
-【テーマ】${settings.theme}
-
-【シーン】${selectedScene.chapter} / ${selectedScene.title}
-【概要】${selectedScene.synopsis || "なし"}
-【本文末尾】${manuscriptText.slice(-300)}`}
+                prompt={`以下の世界観・設定と現在のシーンを踏まえて、このシーンをより良くするヒントを3点挙げてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || "なし"}\n【本文末尾】${manuscriptText.slice(-300)}`}
               />
               <AiPanel
                 label="矛盾チェック"
@@ -100,12 +99,9 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                 onResult={t => setAiResults(r => ({ ...r, check: t }))}
                 onLoading={v => setAiLoading(l => ({ ...l, check: v }))}
                 loading={aiLoading.check}
-                prompt={`以下の世界観設定と本文を照らし合わせて、設定との矛盾や違和感があれば指摘してください。なければ「矛盾なし」と答えてください。
-
-【世界観】${settings.world}
-【キャラクター】${settings.characters}
-
-【本文】${manuscriptText.slice(-800)}`}
+                error={aiErrors.check}
+                onError={t => setAiErrors(e => ({ ...e, check: t }))}
+                prompt={`以下の世界観設定と本文を照らし合わせて、設定との矛盾や違和感があれば指摘してください。なければ「矛盾なし」と答えてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n\n【本文】${manuscriptText.slice(-800)}`}
                 onAppend={() => {}}
               />
             </div>

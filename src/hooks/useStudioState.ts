@@ -3,7 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, Backup, SceneDraft, EditorSettings, TabKey, SaveStatus
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SaveStatus
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 
@@ -65,6 +65,7 @@ export function useStudioState(user: User) {
   const [aiFloat, setAiFloat] = useState(false);
   const [aiWide, setAiWide] = useState(false);
   const [aiResults, setAiResults] = useState<AiResults>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
+  const [aiErrors, setAiErrors] = useState<AiErrors>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
@@ -141,7 +142,7 @@ export function useStudioState(user: User) {
   const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
   const handleStatusChange = (id: number, status: SceneStatus) => setScenes(scenes.map(s => s.id === id ? { ...s, status } : s));
   const handleAddScene = () => {
-    const scene = { ...newScene, id: Date.now(), status: "empty" };
+    const scene: Scene = { ...newScene, id: Date.now(), status: "empty" };
     setScenes([...scenes, scene]);
     setNewScene({ chapter: "", title: "", synopsis: "" });
     setAddingScene(false);
@@ -165,42 +166,16 @@ export function useStudioState(user: User) {
     if (!selectedScene) return;
     const text = manuscripts[selectedScene.id] || "";
     const content = fmt === "md"
-      ? `# ${selectedScene.chapter} — ${selectedScene.title}
-
-${selectedScene.synopsis ? `> ${selectedScene.synopsis}
-
-` : ""}${text}`
-      : `${selectedScene.chapter} — ${selectedScene.title}
-${"=".repeat(30)}
-${selectedScene.synopsis ? `${selectedScene.synopsis}
-
-` : ""}${text}`;
+      ? `# ${selectedScene.chapter} — ${selectedScene.title}\n\n${selectedScene.synopsis ? `> ${selectedScene.synopsis}\n\n` : ""}${text}`
+      : `${selectedScene.chapter} — ${selectedScene.title}\n${"=".repeat(30)}\n${selectedScene.synopsis ? `${selectedScene.synopsis}\n\n` : ""}${text}`;
     downloadFile(content);
     setShowExport(false);
   };
 
   const exportAll = (fmt: "md" | "txt") => {
     const content = fmt === "md"
-      ? `# ${projectTitle}
-
-` + scenes.map(s => `## ${s.chapter} — ${s.title}
-
-${s.synopsis ? `> ${s.synopsis}
-
-` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("
-
----
-
-")
-      : scenes.map(s => `${s.chapter} — ${s.title}
-${"=".repeat(30)}
-${s.synopsis ? `${s.synopsis}
-
-` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("
-
-" + "─".repeat(40) + "
-
-");
+      ? `# ${projectTitle}\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
+      : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
     downloadFile(content);
     setShowExport(false);
   };
@@ -227,7 +202,7 @@ ${s.synopsis ? `${s.synopsis}
     showBackups, setShowBackups, verticalPreview, setVerticalPreview,
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
-    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiLoading, setAiLoading,
+    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
     aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent, setExportContent,
     showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
