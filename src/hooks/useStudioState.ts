@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
@@ -108,6 +108,8 @@ export function useStudioState(_user: User) {
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
   const [exportContent, setExportContent] = useState<string>("");
   const [showExportContent, setShowExportContent] = useState<boolean>(false);
+  const previousIsOnlineRef = useRef(navigator.onLine);
+  const syncAllRef = useRef<() => Promise<void>>(async () => {});
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
@@ -172,6 +174,10 @@ export function useStudioState(_user: User) {
   }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, loaded]);
 
   useEffect(() => {
+    syncAllRef.current = syncAll;
+  }, [syncAll]);
+
+  useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
@@ -179,8 +185,13 @@ export function useStudioState(_user: User) {
 
   // Force sync when coming back online
   useEffect(() => {
-    if (isOnline && loaded) syncAll();
-  }, [isOnline, loaded, syncAll]);
+    if (!loaded) return;
+    const wasOnline = previousIsOnlineRef.current;
+    if (!wasOnline && isOnline) {
+      syncAllRef.current();
+    }
+    previousIsOnlineRef.current = isOnline;
+  }, [isOnline, loaded]);
 
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
