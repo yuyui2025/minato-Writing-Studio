@@ -3,88 +3,24 @@ import type { Dispatch, SetStateAction } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "./supabase";
 
-type SceneStatus = "done" | "draft" | "empty";
+import { HintPanel } from "./components/ai/HintPanel";
+import { PolishPanel } from "./components/ai/PolishPanel";
+import { AiPanel } from "./components/ai/AiPanel";
+import { VerticalEditor } from "./components/editor/VerticalEditor";
+import { BackupModal } from "./components/modals/BackupModal";
+import { ExportModal } from "./components/modals/ExportModal";
+import { ExportContentModal } from "./components/modals/ExportContentModal";
+import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 
-type Scene = {
-  id: number;
-  chapter: string;
-  title: string;
-  status: SceneStatus;
-  synopsis: string;
-};
+import type {
+  SceneStatus, Scene, Settings, Manuscripts, AppliedState,
+  AiResults, AiLoading, Backup, HintItem, PolishSuggestion,
+  SceneDraft, EditorSettings, TabKey, SaveStatus
+} from "./types";
 
-type Settings = {
-  world: string;
-  characters: string;
-  theme: string;
-};
-
-type Manuscripts = Record<number, string>;
-type AppliedState = Record<number, boolean | "replace" | "insert">;
-
-type AiResults = {
-  polish: string;
-  hint: string;
-  check: string;
-  continue: string;
-  synopsis: string;
-  worldExpand: string;
-};
-
-type AiLoading = Record<keyof AiResults, boolean>;
-
-type Backup = {
-  timestamp: string;
-  label: string | null;
-  scenes: Scene[];
-  manuscripts: Manuscripts;
-};
-
-type HintItem = { hint: string; reason: string; keyword?: string };
-type PolishSuggestion = { original: string; suggestion: string; reason: string };
-
-type SceneDraft = Pick<Scene, "chapter" | "title" | "synopsis">;
-type EditorSettings = { fontSize: number; lineHeight: number };
-type TabKey = "write" | "structure" | "settings" | "prefs";
-type SaveStatus = "saving" | "saved" | "error";
-
-const initialSettings: Settings = {
-  world: `【時代】21世紀末〜22世紀初頭。人口約6,000万人の近未来日本。
-【社会】AI主導のロゴス統治。行動評価スコア（ロゴス・スコア）により福祉・信用が配分。
-【都市】サブスク型生活。完全デジタル行政。競争圧力は弱まり「維持型社会」へ。
-【地方】準離島扱いの海沿い集落。物流は週数回の自律船・ドローン。監視は薄い。余白と実験の空間。`,
-  characters: `【主人公】
-・元都市テック系。中央社会からドロップアウト。
-・スコアは平均以下ではないが高くもない「目立たない層」。
-・どこか醒めている。好奇心はあるが表に出さない。
-・退屈に耐えきれず「受け取るだけの仕事」を引き受ける。
-
-【アンドロイド】
-・美少女型。白い素体。最小限の装飾。青白い内部発光。灰色の瞳。
-・行政AI認証タグなし。ローカルOS。自律学習制限が外れている可能性。
-・未登録個体（例外存在）。
-・起動直後はロゴス的（無機質）。海辺で徐々に非効率な行動を学習。`,
-  theme: `【テーマ】
-・ロゴス（理性）とパトス（情動）の対立
-・管理社会の中の例外
-・人口減少社会の余白
-・労働なき時代の存在意義
-・「粋」とは何か — システムへの洗練された逸脱
-
-【トーン】
-・静かな近未来。派手な崩壊はない。世界は縮んでいるだけ。
-・青（テック）と橙（夕日）の対比。
-・夜明け前の霧の港が象徴的な風景。`,
-};
-
-const initialScenes: Scene[] = [
-  { id: 1, chapter: "第一章", title: "夜明け前の接岸", status: "draft", synopsis: "主人公が夜明け前の港で自律貨物船を待つ。軍用規格の木箱が届く。" },
-  { id: 2, chapter: "第一章", title: "箱の中身", status: "empty", synopsis: "" },
-  { id: 3, chapter: "第二章", title: "起動", status: "empty", synopsis: "" },
-];
-
-const statusColors: Record<SceneStatus, string> = { done: "#4ade80", draft: "#facc15", empty: "#334155" };
-const statusLabels: Record<SceneStatus, string> = { done: "完成", draft: "執筆中", empty: "未着手" };
+import {
+  initialSettings, initialScenes, statusColors, statusLabels
+} from "./constants";
 
 
 async function storageGet<T = unknown>(key: string): Promise<T | null> {
@@ -112,294 +48,6 @@ async function storageSet(key: string, value: unknown): Promise<void> {
       updated_at: new Date().toISOString(),
     }, { onConflict: "user_id,key" });
   } catch (e) { console.error(e); }
-}
-
-function HintPanel({ prompt, result, onResult, loading, onLoading, applied, onApplied, manuscriptText, onInsert }: {
-  prompt: string;
-  result: string;
-  onResult: (value: string) => void;
-  loading: boolean;
-  onLoading: (value: boolean) => void;
-  applied: AppliedState;
-  onApplied: Dispatch<SetStateAction<AppliedState>>;
-  manuscriptText: string;
-  onInsert: (value: string) => void;
-}) {
-  const hints = (() => {
-    if (!result) return null;
-    try {
-      const clean = result.replace(/```json|```/g, "").trim();
-      return JSON.parse(clean) as HintItem[];
-    } catch { return null; }
-  })();
-
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    onApplied({});
-    try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt + "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]" }],
-        }),
-      });
-      const data = await res.json();
-      onResult(data.content?.map(b => b.text || "").join("") || "");
-    } catch { onResult("[]"); }
-    onLoading(false);
-  };
-
-  const handleApply = (h: HintItem, i: number) => {
-    const comment = `\n※[ヒント: ${h.hint}]`;
-    const idx = h.keyword ? manuscriptText.indexOf(h.keyword) : -1;
-    if (idx !== -1) {
-      const insertAt = idx + h.keyword.length;
-      const next = manuscriptText.slice(0, insertAt) + comment + manuscriptText.slice(insertAt);
-      onInsert(next);
-    } else {
-      onInsert(manuscriptText + comment);
-    }
-    onApplied(a => ({ ...a, [i]: true }));
-  };
-
-  return (
-    <div>
-      <button onClick={run} disabled={loading} style={{
-        padding: "6px 16px", background: "rgba(74,111,165,0.1)", border: "1px solid #2a4060",
-        color: loading ? "#2a4060" : "#4a6fa5", cursor: loading ? "default" : "pointer",
-        borderRadius: 4, fontSize: 12, fontFamily: "inherit", letterSpacing: 1,
-      }}>{loading ? "生成中…" : "✦ 執筆ヒント"}</button>
-
-      {result && !hints && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#3a5570" }}>{result.slice(0, 120)}</div>
-      )}
-
-      {hints && hints.map((h, i) => (
-        <div key={i} style={{ marginTop: 10, padding: "10px 12px", background: "#070a14", border: `1px solid ${applied[i] ? "#1a3020" : "#1a2535"}`, borderRadius: 4, opacity: applied[i] ? 0.4 : 1, transition: "opacity 0.3s" }}>
-          <div style={{ fontSize: 10, color: "#3a5570", marginBottom: 4 }}>{h.reason}</div>
-          <div style={{ fontSize: 12, color: "#8ab0cc", lineHeight: 1.9 }}>{h.hint}</div>
-          {h.keyword && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 4 }}>関連: 「{h.keyword}」</div>}
-          <div style={{ marginTop: 8 }}>
-            {!applied[i] ? (
-              <button onClick={() => handleApply(h, i)} style={{
-                padding: "3px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060",
-                color: "#5ab090", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit",
-              }}>参考にした</button>
-            ) : (
-              <button disabled style={{ padding: "3px 10px", background: "rgba(42,128,96,0.08)", border: "1px solid #1a3020", color: "#4ade80", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>✓ 済</button>
-            )}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function PolishPanel({ manuscriptText, onApply, result, onResult, loading, onLoading, applied, onApplied }: {
-  manuscriptText: string;
-  onApply: (original: string, suggestion: string) => void;
-  result: string;
-  onResult: (value: string) => void;
-  loading: boolean;
-  onLoading: (value: boolean) => void;
-  applied: AppliedState;
-  onApplied: Dispatch<SetStateAction<AppliedState>>;
-}) {
-
-  const suggestions = (() => {
-    if (!result) return null;
-    try {
-      const clean = result.replace(/```json|```/g, "").trim();
-      return JSON.parse(clean) as PolishSuggestion[];
-    } catch { return null; }
-  })();
-
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    onApplied({});
-    try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}` }],
-        }),
-      });
-      const data = await res.json();
-      onResult(data.content?.map(b => b.text || "").join("") || "");
-    } catch { onResult("[]"); }
-    onLoading(false);
-  };
-
-  return (
-    <div>
-      <button onClick={run} disabled={loading} style={{
-        padding: "6px 16px", background: "rgba(74,111,165,0.1)", border: "1px solid #2a4060",
-        color: loading ? "#2a4060" : "#4a6fa5", cursor: loading ? "default" : "pointer",
-        borderRadius: 4, fontSize: 12, fontFamily: "inherit", letterSpacing: 1,
-      }}>{loading ? "生成中…" : "✦ 文章を推敲"}</button>
-
-      {result && !suggestions && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#3a5570" }}>パース失敗: {result.slice(0, 80)}</div>
-      )}
-
-      {suggestions && suggestions.map((s, i) => (
-        <div key={i} style={{ marginTop: 10, padding: "10px 12px", background: "#070a14", border: `1px solid ${applied[i] ? "#1a3020" : "#1a2535"}`, borderRadius: 4, opacity: applied[i] ? 0.4 : 1, transition: "opacity 0.3s" }}>
-          <div style={{ fontSize: 10, color: "#3a5570", marginBottom: 4 }}>{s.reason}</div>
-          <div style={{ fontSize: 12, color: "#e05555", lineHeight: 1.8, textDecoration: "line-through", opacity: 0.7 }}>{s.original}</div>
-          <div style={{ fontSize: 12, color: "#8ab0cc", lineHeight: 1.8, marginTop: 2 }}>→ {s.suggestion}</div>
-          {!applied[i] ? (
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button onClick={() => { onApply(s.original, s.suggestion); onApplied(a => ({ ...a, [i]: "replace" })); }} style={{
-                padding: "3px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060",
-                color: "#5ab090", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit",
-              }}>適用</button>
-              <button onClick={() => { onApply(s.original, s.original + "\n＊" + s.suggestion); onApplied(a => ({ ...a, [i]: "insert" })); }} style={{
-                padding: "3px 10px", background: "transparent", border: "1px solid #1e2d42",
-                color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit",
-              }}>直後に挿入</button>
-            </div>
-          ) : (
-            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button disabled style={{ padding: "3px 10px", background: "rgba(42,128,96,0.08)", border: "1px solid #1a3020", color: "#4ade80", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>✓ 済（{applied[i] === "replace" ? "適用" : "挿入"}）</button>
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function AiPanel({ label, prompt, onAppend, compact = false, result = "", onResult, loading = false, onLoading }: {
-  label: string;
-  prompt: string;
-  onAppend: (text: string) => void;
-  compact?: boolean;
-  result?: string;
-  onResult: (value: string) => void;
-  loading?: boolean;
-  onLoading: (value: boolean) => void;
-}) {
-  const onAppendRef = useRef(onAppend);
-  useEffect(() => { onAppendRef.current = onAppend; });
-
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    try {
-      const res = await fetch("/api/anthropic/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1000,
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-      const data = await res.json();
-      const text = data.content?.map(b => b.text || "").join("") || "";
-      onResult(text);
-    } catch(e) {
-      onResult("エラーが発生しました");
-    }
-    onLoading(false);
-  };
-
-  return (
-    <div style={{ marginTop: compact ? 0 : 12 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <button onClick={run} disabled={loading} style={{
-          padding: compact ? "4px 10px" : "6px 16px",
-          background: "rgba(74,111,165,0.1)", border: "1px solid #2a4060",
-          color: loading ? "#2a4060" : "#4a6fa5", cursor: loading ? "default" : "pointer",
-          borderRadius: 4, fontSize: compact ? 11 : 12, fontFamily: "inherit", letterSpacing: 1,
-        }}>{loading ? "生成中…" : `✦ ${label}`}</button>
-        {result && !compact && (
-          <button onClick={() => { onAppendRef.current(result); onResult(""); }} style={{
-            padding: "4px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060",
-            color: "#5ab090", cursor: "pointer", borderRadius: 4, fontSize: 11, fontFamily: "inherit",
-          }}>追記</button>
-        )}
-      </div>
-      {result && (
-        <div style={{ marginTop: 8, padding: "10px 12px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 4, fontSize: 12, color: "#8ab0cc", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>
-          {result}
-          {compact && (
-            <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
-              <button onClick={() => { onAppendRef.current(result); onResult(""); }} style={{ padding: "3px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060", color: "#5ab090", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追記</button>
-              <button onClick={() => onResult("")} style={{ padding: "3px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>閉じる</button>
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }: {
-  initialText: string;
-  onChange: (text: string) => void;
-  fontSize?: number;
-  lineHeight?: number;
-}) {
-  const onChangeRef = useRef(onChange);
-  useEffect(() => { onChangeRef.current = onChange; });
-
-  useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      if (e.data?.type === "vertical-input") onChangeRef.current(e.data.text);
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, []);
-
-  const srcDocRef = useRef(null);
-  if (!srcDocRef.current) {
-    const escaped = initialText
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;")
-      .replace(/\n/g, "<br>");
-    const parentOrigin = window.location.origin;
-    srcDocRef.current = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><style>
-* { margin:0; padding:0; box-sizing:border-box; }
-html, body { height:100%; background:#070a14; overflow-x:auto; overflow-y:hidden; }
-body { display:flex; align-items:stretch; padding:20px; }
-#editor {
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
-  font-family: 'Noto Serif JP', Georgia, serif;
-  font-size: ${fontSize}px; line-height: ${lineHeight}; color: #c8d8e8;
-  letter-spacing: 0.1em; white-space: pre-wrap;
-  min-height: calc(100% - 0px); min-width: max-content;
-  outline: none; caret-color: #7ab3e0;
-}
-</style></head>
-<body><div id="editor" contenteditable="true">${escaped}</div>
-<script>
-  const editor = document.getElementById('editor');
-  editor.addEventListener('input', () => {
-    window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '${parentOrigin}');
-  });
-</script></body></html>`;
-  }
-
-  return (
-    <iframe
-      srcDoc={srcDocRef.current}
-      style={{ flex: 1, border: "1px solid #1a2535", borderRadius: 6, width: "100%", minHeight: 400 }}
-    />
-  );
 }
 
 export default function App() {
@@ -602,113 +250,54 @@ function Studio({ user }: { user: User }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", display: "flex", flexDirection: "column" }}>
       {/* Delete confirm modal */}
-      {confirmDelete && (() => {
-        const scene = scenes.find(s => s.id === confirmDelete);
-        return (
-          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ background: "#0e1520", border: "1px solid #2a3f58", borderRadius: 8, padding: "28px 32px", maxWidth: 320, width: "90%", textAlign: "center" }}>
-              <div style={{ fontSize: 13, color: "#7ab3e0", marginBottom: 8 }}>削除の確認</div>
-              <div style={{ fontSize: 15, color: "#c8d8e8", marginBottom: 6 }}>「{scene?.title}」</div>
-              <div style={{ fontSize: 12, color: "#3a5570", marginBottom: 24 }}>この操作は取り消せません。</div>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <button onClick={() => setConfirmDelete(null)} style={{ padding: "7px 20px", background: "transparent", border: "1px solid #1e2d42", color: "#4a6fa5", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>キャンセル</button>
-                <button onClick={confirmDeleteExecute} style={{ padding: "7px 20px", background: "rgba(180,40,40,0.2)", border: "1px solid #7a2020", color: "#e08080", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>削除する</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {confirmDelete && (
+        <DeleteConfirmModal
+          scene={scenes.find((s) => s.id === confirmDelete)}
+          onConfirm={confirmDeleteExecute}
+          onCancel={() => setConfirmDelete(null)}
+        />
+      )}
       {showExportContent && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#0e1520", border: "1px solid #2a3f58", borderRadius: 8, padding: "24px 28px", width: "80%", maxWidth: 600, maxHeight: "80vh", display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 13, color: "#7ab3e0", marginBottom: 12 }}>出力テキスト　<span style={{ fontSize: 11, color: "#3a5570" }}>— コピーして使用してください</span></div>
-            <textarea
-              readOnly
-              value={exportContent}
-              style={{ flex: 1, minHeight: 300, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "inherit", fontSize: 12, lineHeight: 1.8, padding: "10px", resize: "none", outline: "none", borderRadius: 4 }}
-              onClick={e => (e.target as HTMLTextAreaElement).select()}
-            />
-            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-              <button onClick={() => { navigator.clipboard.writeText(exportContent); }} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>クリップボードにコピー</button>
-              <button onClick={() => setShowExportContent(false)} style={{ padding: "8px 16px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>閉じる</button>
-            </div>
-          </div>
-        </div>
+        <ExportContentModal
+          content={exportContent}
+          onClose={() => setShowExportContent(false)}
+        />
       )}
       {/* Export modal */}
       {showExport && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#0e1520", border: "1px solid #2a3f58", borderRadius: 8, padding: "28px 32px", maxWidth: 340, width: "90%" }}>
-            <div style={{ fontSize: 13, color: "#7ab3e0", marginBottom: 20, textAlign: "center" }}>出力</div>
-            {selectedScene && (
-              <>
-                <div style={{ fontSize: 11, color: "#3a5570", marginBottom: 10 }}>選択中のシーン：「{selectedScene.title}」</div>
-                <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-                  <button onClick={() => exportScene("md")} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>.md</button>
-                  <button onClick={() => exportScene("txt")} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>.txt</button>
-                </div>
-              </>
-            )}
-            <div style={{ fontSize: 11, color: "#3a5570", marginBottom: 10 }}>全シーンまとめて</div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
-              <button onClick={() => exportAll("md")} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.1)", border: "1px solid #2a4060", color: "#5a8aaa", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>.md</button>
-              <button onClick={() => exportAll("txt")} style={{ flex: 1, padding: "8px", background: "rgba(74,111,165,0.1)", border: "1px solid #2a4060", color: "#5a8aaa", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>.txt</button>
-            </div>
-            <button onClick={() => setShowExport(false)} style={{ width: "100%", padding: "7px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>キャンセル</button>
-          </div>
-        </div>
+        <ExportModal
+          selectedScene={selectedScene}
+          projectTitle={projectTitle}
+          onExportScene={exportScene}
+          onExportAll={exportAll}
+          onClose={() => setShowExport(false)}
+        />
       )}
       {/* Backup modal */}
       {showBackups && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div style={{ background: "#0e1520", border: "1px solid #2a3f58", borderRadius: 8, padding: "24px 28px", maxWidth: 400, width: "90%" }}>
-            <div style={{ fontSize: 13, color: "#7ab3e0", marginBottom: 16, textAlign: "center" }}>バージョン履歴</div>
-            {/* 手動バックアップ作成 */}
-            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-              <input
-                ref={backupLabelRef}
-                placeholder="バージョン名（省略可）"
-                style={{ flex: 1, background: "#070a14", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 10px", borderRadius: 4, fontSize: 12, fontFamily: "inherit", outline: "none" }}
-              />
-              <button onClick={() => {
-                const label = backupLabelRef.current?.value || null;
-                const newBackup = { timestamp: new Date().toISOString(), label, scenes, manuscripts };
-                const updated = [newBackup, ...backups].slice(0, 5);
-                setBackups(updated);
-                storageSet("minato:backups", updated);
-                if (backupLabelRef.current) backupLabelRef.current.value = "";
-              }} style={{ padding: "5px 14px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>記録</button>
-            </div>
-            {backups.length === 0 ? (
-              <div style={{ fontSize: 12, color: "#3a5570", textAlign: "center", marginBottom: 20 }}>まだバックアップがありません</div>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-                {backups.map((bk, i) => {
-                  const d = new Date(bk.timestamp);
-                  const timeLabel = `${d.getMonth()+1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2,"0")}`;
-                  const charCount = Object.values(bk.manuscripts || {}).reduce((a, t) => a + t.replace(/\s/g,"").length, 0);
-                  return (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 5 }}>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, color: "#8ab0cc" }}>
-                          {bk.label ? <span style={{ color: "#c8d8e8", marginRight: 6 }}>{bk.label}</span> : null}
-                          <span style={{ color: "#3a5570" }}>{timeLabel}</span>
-                        </div>
-                        <div style={{ fontSize: 10, color: "#2a4060", marginTop: 2 }}>{bk.scenes?.length || 0} シーン・{charCount.toLocaleString()} 文字</div>
-                      </div>
-                      <button onClick={() => {
-                        setScenes(bk.scenes || []);
-                        setManuscripts(bk.manuscripts || {});
-                        setShowBackups(false);
-                      }} style={{ padding: "4px 12px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>復元</button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-            <button onClick={() => setShowBackups(false)} style={{ width: "100%", padding: "7px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 4, fontSize: 12, fontFamily: "inherit" }}>閉じる</button>
-          </div>
-        </div>
+        <BackupModal
+          backups={backups}
+          scenes={scenes}
+          settings={settings}
+          manuscripts={manuscripts}
+          onRestore={(sc, ms) => {
+            setScenes(sc);
+            setManuscripts(ms);
+            setShowBackups(false);
+          }}
+          onSaveBackup={(label) => {
+            const newBackup = {
+              timestamp: new Date().toISOString(),
+              label,
+              scenes,
+              manuscripts,
+            };
+            const updated = [newBackup, ...backups].slice(0, 5);
+            setBackups(updated);
+            storageSet("minato:backups", updated);
+          }}
+          onClose={() => setShowBackups(false)}
+        />
       )}
       <header style={{ borderBottom: "1px solid #1e2d42", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(10,14,26,0.95)", position: "sticky", top: 0, zIndex: 100, height: 44 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
