@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
@@ -111,9 +111,18 @@ export function useStudioState(_user: User) {
   const previousIsOnlineRef = useRef(navigator.onLine);
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
 
-  const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
-  const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
-  const wordCount = manuscriptText.replace(/\s/g, "").length;
+  const selectedScene = useMemo(
+    () => scenes.find(s => s.id === selectedSceneId) ?? null,
+    [scenes, selectedSceneId]
+  );
+  const manuscriptText = useMemo(
+    () => (selectedSceneId ? (manuscripts[selectedSceneId] ?? "") : ""),
+    [manuscripts, selectedSceneId]
+  );
+  const wordCount = useMemo(
+    () => manuscriptText.replace(/\s/g, "").length,
+    [manuscriptText]
+  );
 
   // Track online status
   useEffect(() => {
