@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
@@ -7,35 +7,72 @@ import type {
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 
+interface StoredData<T> {
+  value: T;
+  updated_at: string;
+}
+
 async function storageGet<T = unknown>(key: string): Promise<T | null> {
+  // 1. Get from LocalStorage
+  const localRaw = localStorage.getItem(key);
+  const localData: StoredData<T> | null = localRaw ? JSON.parse(localRaw) : null;
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data } = await supabase
+    if (!user) return localData?.value || null;
+
+    // 2. Get from Supabase
+    const { data, error } = await supabase
       .from("minato_data")
-      .select("value")
+      .select("value, updated_at")
       .eq("user_id", user.id)
       .eq("key", key)
       .single();
-    return data ? data.value : null;
-  } catch { return null; }
+
+    if (error || !data) return localData?.value || null;
+
+    const remoteData: StoredData<T> = { value: data.value, updated_at: data.updated_at };
+
+    // 3. Compare timestamps
+    if (!localData || new Date(remoteData.updated_at) > new Date(localData.updated_at)) {
+      // Remote is newer or local is missing
+      localStorage.setItem(key, JSON.stringify(remoteData));
+      return remoteData.value;
+    }
+    return localData.value;
+  } catch {
+    return localData?.value || null;
+  }
 }
 
-async function storageSet(key: string, value: unknown): Promise<void> {
+async function storageSet(key: string, value: unknown): Promise<boolean> {
+  const updatedAt = new Date().toISOString();
+  const data = { value, updated_at: updatedAt };
+  
+  // Always save to localStorage first
+  localStorage.setItem(key, JSON.stringify(data));
+
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("minato_data").upsert({
+    if (!user) return false;
+
+    const { error } = await supabase.from("minato_data").upsert({
       user_id: user.id,
       key,
       value,
-      updated_at: new Date().toISOString(),
+      updated_at: updatedAt,
     }, { onConflict: "user_id,key" });
-  } catch (e) { console.error(e); }
+
+    return !error;
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
 }
 
 export function useStudioState(_user: User) {
   const [loaded, setLoaded] = useState(false);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
   const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
   const [tab, setTab] = useState<TabKey>("write");
@@ -76,8 +113,21 @@ export function useStudioState(_user: User) {
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
   const wordCount = manuscriptText.replace(/\s/g, "").length;
 
+  // Track online status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
   useEffect(() => {
     (async () => {
+      setLoaded(false); // Reload data when user changes
       const [sc, st, ms, pt, bk, es] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
@@ -94,49 +144,67 @@ export function useStudioState(_user: User) {
       if (es) setEditorSettings(es);
       setLoaded(true);
     })();
-  }, []);
+  }, [_user?.id]); // Re-run when user logs in/out
+
+  const syncAll = useCallback(async () => {
+    if (!loaded) return;
+    setSaveStatus("saving");
+    try {
+      const results = await Promise.all([
+        storageSet("minato:scenes", scenes),
+        storageSet("minato:settings", settings),
+        storageSet("minato:manuscripts", manuscripts),
+        storageSet("minato:title", projectTitle),
+        storageSet("minato:editorSettings", editorSettings),
+        storageSet("minato:backups", backups),
+      ]);
+      
+      const allSuccess = results.every(r => r);
+      if (allSuccess) {
+        setSaveStatus("saved");
+        setLastSavedTime(new Date());
+      } else {
+        setSaveStatus(navigator.onLine ? "error" : "offline");
+      }
+    } catch {
+      setSaveStatus("error");
+    }
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, loaded]);
 
   useEffect(() => {
     if (!loaded) return;
-    storageSet("minato:editorSettings", editorSettings);
-  }, [editorSettings, loaded]);
+    const t = setTimeout(syncAll, 1000);
+    return () => clearTimeout(t);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, loaded, syncAll]);
+
+  // Force sync when coming back online
+  useEffect(() => {
+    if (isOnline && loaded) syncAll();
+  }, [isOnline, loaded, syncAll]);
 
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
     try {
       const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms };
       const updatedBackups = [newBackup, ...backups].slice(0, 5);
-      await Promise.all([
+      setBackups(updatedBackups);
+      
+      const success = await Promise.all([
         storageSet("minato:scenes", sc),
         storageSet("minato:settings", st),
         storageSet("minato:manuscripts", ms),
         storageSet("minato:title", pt),
         storageSet("minato:backups", updatedBackups),
       ]);
-      setBackups(updatedBackups);
-      setSaveStatus("saved");
-      setLastSavedTime(new Date());
-    } catch { setSaveStatus("error"); }
-  };
 
-  useEffect(() => {
-    if (!loaded) return;
-    setSaveStatus("saving");
-    const sc = scenes, st = settings, ms = manuscripts, pt = projectTitle;
-    const t = setTimeout(async () => {
-      try {
-        await Promise.all([
-          storageSet("minato:scenes", sc),
-          storageSet("minato:settings", st),
-          storageSet("minato:manuscripts", ms),
-          storageSet("minato:title", pt),
-        ]);
+      if (success.every(r => r)) {
         setSaveStatus("saved");
         setLastSavedTime(new Date());
-      } catch { setSaveStatus("error"); }
-    }, 900);
-    return () => clearTimeout(t);
-  }, [scenes, settings, manuscripts, projectTitle, loaded]);
+      } else {
+        setSaveStatus(navigator.onLine ? "error" : "offline");
+      }
+    } catch { setSaveStatus("error"); }
+  };
 
   const handleSceneSelect = (scene: Scene) => { setSelectedSceneId(scene.id); setTab("write"); };
   const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
