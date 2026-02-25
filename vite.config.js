@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.ico"],
       manifest: {
         name: "minato Writing Studio",
         short_name: "minato ws",

@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { expect, test } from "vitest";
 import "@testing-library/jest-dom";
-import App from "./App";
+import App from "../App";
 
 test("renders app title", async () => {
   render(<App />);
