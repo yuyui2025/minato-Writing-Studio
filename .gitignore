@@ -2,3 +2,9 @@ node_modules/
 dist/
 .env
 *.local
+
+# Gemini / AI Agents
+.gemini/            # ツールが生成するローカルキャッシュやインデックス
+.gemini_history     # プロンプトの実行履歴（機密情報が含まれる可能性あり）
+gemini.config.json  # ローカル固有の設定にする場合
+.geminiignore
