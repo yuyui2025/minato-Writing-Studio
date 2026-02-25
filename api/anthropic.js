@@ -33,13 +33,19 @@ export default async function handler(req, res) {
     }
   }
 
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) {
+    console.error("Missing ANTHROPIC_API_KEY environment variable");
+    return res.status(500).json({ error: "Server configuration error: Missing API Key" });
+  }
+
   try {
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "anthropic-version": "2023-06-01",
-        "x-api-key": process.env.ANTHROPIC_API_KEY ?? "",
+        "x-api-key": apiKey,
       },
       body: JSON.stringify({ model, max_tokens, messages }),
     });
