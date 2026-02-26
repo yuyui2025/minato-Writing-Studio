@@ -80,7 +80,7 @@ function Studio({ user }: { user: User }) {
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
-    handleSaveBackup
+    handleSaveBackup, aiHistory, addAiHistory, clearAiHistory, autoBackups,
   } = useStudioState(user);
 
   if (!loaded) return (
@@ -113,6 +113,7 @@ function Studio({ user }: { user: User }) {
       {showBackups && (
         <BackupModal
           backups={backups}
+          autoBackups={autoBackups}
           _scenes={scenes}
           _settings={settings}
           _manuscripts={manuscripts}
@@ -171,6 +172,9 @@ function Studio({ user }: { user: User }) {
           setEditorSettings={setEditorSettings}
           handleSceneSelect={handleSceneSelect}
           handleAddScene={handleAddScene}
+          aiHistory={aiHistory}
+          onInsertHistory={(content) => handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + content)}
+          onClearHistory={clearAiHistory}
         />
 
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
@@ -200,6 +204,7 @@ function Studio({ user }: { user: User }) {
               aiLoading={aiLoading}
               setAiLoading={setAiLoading}
               settings={settings}
+              addAiHistory={addAiHistory}
             />
           )}
 
@@ -267,6 +272,7 @@ function Studio({ user }: { user: User }) {
           handleManuscriptChange={handleManuscriptChange}
           settings={settings}
           selectedScene={selectedScene}
+          addAiHistory={addAiHistory}
         />
         </ErrorBoundary>
       )}

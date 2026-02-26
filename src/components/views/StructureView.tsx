@@ -48,6 +48,7 @@ export const StructureView: React.FC<StructureViewProps> = ({
 
   const handleDragOverScene = (e: React.DragEvent, sceneId: number) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = "move";
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
@@ -64,6 +65,7 @@ export const StructureView: React.FC<StructureViewProps> = ({
 
   const handleDropOnScene = (e: React.DragEvent, targetId: number, targetChapter: string) => {
     e.preventDefault();
+    e.stopPropagation();
     if (!draggingId || draggingId === targetId) {
       setDropTarget(null);
       return;
