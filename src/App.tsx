@@ -79,7 +79,7 @@ function Studio({ user }: { user: User }) {
     aiApplied, setAiApplied, hintApplied, setHintApplied,
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
-    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
+    handleDeleteScene, handleMoveScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
     handleSaveBackup
   } = useStudioState(user);
 
