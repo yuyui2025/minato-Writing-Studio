@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "Bash(git:*)",
+      "Bash(powershell:*)",
+      "Bash(cmd:*)",
+      "Bash(python:*)"
     ]
   }
 }
