@@ -106,8 +106,6 @@ export function useStudioState(_user: User) {
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
-  const [exportContent, setExportContent] = useState<string>("");
-  const [showExportContent, setShowExportContent] = useState<boolean>(false);
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
@@ -225,9 +223,16 @@ export function useStudioState(_user: User) {
     setConfirmDelete(null);
   };
 
-  const downloadFile = (content: string) => {
-    setExportContent(content);
-    setShowExportContent(true);
+  const downloadFile = (content: string, filename: string) => {
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const exportScene = (fmt: "md" | "txt") => {
@@ -236,7 +241,7 @@ export function useStudioState(_user: User) {
     const content = fmt === "md"
       ? `# ${selectedScene.chapter} — ${selectedScene.title}\n\n${selectedScene.synopsis ? `> ${selectedScene.synopsis}\n\n` : ""}${text}`
       : `${selectedScene.chapter} — ${selectedScene.title}\n${"=".repeat(30)}\n${selectedScene.synopsis ? `${selectedScene.synopsis}\n\n` : ""}${text}`;
-    downloadFile(content);
+    downloadFile(content, `${selectedScene.title}.${fmt}`);
     setShowExport(false);
   };
 
@@ -244,7 +249,7 @@ export function useStudioState(_user: User) {
     const content = fmt === "md"
       ? `# ${projectTitle}\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
       : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
-    downloadFile(content);
+    downloadFile(content, `${projectTitle}.${fmt}`);
     setShowExport(false);
   };
 
@@ -271,8 +276,8 @@ export function useStudioState(_user: User) {
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
     aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
-    aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent, setExportContent,
-    showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
+    aiApplied, setAiApplied, hintApplied, setHintApplied,
+    selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
     handleSaveBackup

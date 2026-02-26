@@ -12,7 +12,6 @@ import { PrefsView } from "./components/views/PrefsView";
 import { useStudioState } from "./hooks/useStudioState";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
-import { ExportContentModal } from "./components/modals/ExportContentModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 
 export default function App() {
@@ -72,8 +71,8 @@ function Studio({ user }: { user: User }) {
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
     aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
-    aiApplied, setAiApplied, hintApplied, setHintApplied, exportContent,
-    showExportContent, setShowExportContent, selectedScene, manuscriptText, wordCount,
+    aiApplied, setAiApplied, hintApplied, setHintApplied,
+    selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
     handleSaveBackup
@@ -93,12 +92,6 @@ function Studio({ user }: { user: User }) {
           scene={scenes.find((s) => s.id === confirmDelete)}
           onConfirm={confirmDeleteExecute}
           onCancel={() => setConfirmDelete(null)}
-        />
-      )}
-      {showExportContent && (
-        <ExportContentModal
-          content={exportContent}
-          onClose={() => setShowExportContent(false)}
         />
       )}
       {/* Export modal */}
