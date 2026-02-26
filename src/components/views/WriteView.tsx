@@ -52,7 +52,7 @@ export const WriteView: React.FC<WriteViewProps> = ({
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px" }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px", overflowY: "auto" }}>
       <div style={{ position: "relative", marginBottom: 12 }}>
         <div style={{ paddingRight: 0 }}>
           <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: 4 }}>{selectedScene.chapter}</div>
@@ -103,7 +103,7 @@ export const WriteView: React.FC<WriteViewProps> = ({
           lineHeight={editorSettings.lineHeight}
         />
       ) : (
-        <textarea value={manuscriptText} onChange={e => handleManuscriptChange(e.target.value)} placeholder="ここに本文を書く…" style={{ flex: 1, minHeight: 400, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, padding: "16px 12px", resize: "none", outline: "none", borderRadius: 6, width: "100%", boxSizing: "border-box" }} />
+        <textarea value={manuscriptText} onChange={e => handleManuscriptChange(e.target.value)} placeholder="ここに本文を書く…" style={{ flexGrow: 1, flexShrink: 0, minHeight: 400, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, padding: "16px 12px", resize: "none", outline: "none", borderRadius: 6, width: "100%", boxSizing: "border-box" }} />
       )}
       <div style={{ marginTop: 6, display: "flex", alignItems: "center", paddingRight: 90 }}>
         {(() => {

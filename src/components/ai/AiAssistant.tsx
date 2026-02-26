@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
+import { callAnthropic, AiError } from "../../utils/ai";
 import type {
   Scene, Settings, AppliedState,
   AiResults, AiLoading, AiErrors
@@ -38,6 +39,27 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
   hintApplied, setHintApplied, manuscriptText,
   handleManuscriptChange, settings, selectedScene
 }) => {
+  const [freeText, setFreeText] = useState("");
+
+  const runFreeInstruct = async () => {
+    if (!freeText.trim()) return;
+    setAiLoading(l => ({ ...l, freeInstruct: true }));
+    setAiResults(r => ({ ...r, freeInstruct: "" }));
+    setAiErrors(e => ({ ...e, freeInstruct: "" }));
+    const context = `【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene ? `${selectedScene.chapter} / ${selectedScene.title}` : "未選択"}\n【本文末尾】${manuscriptText.slice(-300)}\n\n【指示】${freeText}`;
+    try {
+      const text = await callAnthropic(context);
+      setAiResults(r => ({ ...r, freeInstruct: text }));
+    } catch (e) {
+      if (e instanceof AiError) {
+        setAiErrors(er => ({ ...er, freeInstruct: e.message }));
+      } else {
+        setAiErrors(er => ({ ...er, freeInstruct: "不明なエラーが発生しました" }));
+      }
+    }
+    setAiLoading(l => ({ ...l, freeInstruct: false }));
+  };
+
   if (!selectedScene) return null;
 
   return (
@@ -63,6 +85,64 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
             <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* 自由指示パネル */}
+              <div style={{ borderBottom: "1px solid #1a2535", paddingBottom: 16 }}>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>✦ 自由指示</div>
+                <textarea
+                  value={freeText}
+                  onChange={e => setFreeText(e.target.value)}
+                  placeholder="AIへの指示を自由に入力…"
+                  rows={3}
+                  style={{
+                    width: "100%", boxSizing: "border-box",
+                    background: "#070a14", border: "1px solid #1a2535",
+                    color: "#8ab0cc", fontSize: 11, fontFamily: "inherit",
+                    borderRadius: 4, padding: "8px 10px", resize: "vertical",
+                    outline: "none", lineHeight: 1.7,
+                  }}
+                />
+                <div style={{ marginTop: 6, display: "flex", gap: 6, alignItems: "center" }}>
+                  <button
+                    onClick={runFreeInstruct}
+                    disabled={aiLoading.freeInstruct || !freeText.trim()}
+                    style={{
+                      padding: "4px 12px",
+                      background: aiLoading.freeInstruct ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
+                      border: "1px solid #2a4060",
+                      color: aiLoading.freeInstruct || !freeText.trim() ? "#2a4060" : "#4a6fa5",
+                      cursor: aiLoading.freeInstruct || !freeText.trim() ? "default" : "pointer",
+                      borderRadius: 4, fontSize: 11, fontFamily: "inherit", letterSpacing: 1,
+                    }}
+                  >
+                    {aiLoading.freeInstruct ? "生成中…" : aiErrors.freeInstruct ? "再試行" : "実行"}
+                  </button>
+                  {aiResults.freeInstruct && (
+                    <button
+                      onClick={() => setAiResults(r => ({ ...r, freeInstruct: "" }))}
+                      style={{ padding: "4px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 4, fontSize: 11, fontFamily: "inherit" }}
+                    >
+                      クリア
+                    </button>
+                  )}
+                </div>
+                {aiErrors.freeInstruct && (
+                  <div style={{ marginTop: 6, fontSize: 11, color: "#e05555" }}>⚠ {aiErrors.freeInstruct}</div>
+                )}
+                {aiResults.freeInstruct && (
+                  <div style={{ marginTop: 8, padding: "10px 12px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 4, fontSize: 12, color: "#8ab0cc", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>
+                    {aiResults.freeInstruct}
+                    <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
+                      <button
+                        onClick={() => { handleManuscriptChange(manuscriptText + "\n" + aiResults.freeInstruct); setAiResults(r => ({ ...r, freeInstruct: "" })); }}
+                        style={{ padding: "3px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060", color: "#5ab090", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}
+                      >
+                        追記
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <PolishPanel
                 manuscriptText={manuscriptText}
                 result={aiResults.polish}

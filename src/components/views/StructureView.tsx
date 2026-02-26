@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import { statusColors, statusLabels } from "../../constants";
 import type { Scene, Manuscripts, SceneDraft } from "../../types";
 
 interface StructureViewProps {
   scenes: Scene[];
+  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
   manuscripts: Manuscripts;
   addingScene: boolean;
   setAddingScene: (v: boolean) => void;
@@ -17,10 +18,14 @@ interface StructureViewProps {
 }
 
 export const StructureView: React.FC<StructureViewProps> = ({
-  scenes, manuscripts, addingScene, setAddingScene,
+  scenes, setScenes, manuscripts, addingScene, setAddingScene,
   newScene, setNewScene, handleAddScene, addingChapter,
   setAddingChapter, handleSceneSelect, selectedSceneId
 }) => {
+  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: number; position: "before" | "after" } | null>(null);
+  const [dropChapter, setDropChapter] = useState<string | null>(null);
+
   // Group scenes by chapter for tree view
   const chapters = scenes.reduce((acc, scene) => {
     const ch = scene.chapter || "未分類";
@@ -29,6 +34,73 @@ export const StructureView: React.FC<StructureViewProps> = ({
     return acc;
   }, {} as Record<string, Scene[]>);
   const totalChars = Object.values(manuscripts).reduce((a, t) => a + t.replace(/\s/g, "").length, 0);
+
+  const handleDragStart = (e: React.DragEvent, sceneId: number) => {
+    setDraggingId(sceneId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
+    setDropTarget(null);
+    setDropChapter(null);
+  };
+
+  const handleDragOverScene = (e: React.DragEvent, sceneId: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    setDropTarget({ id: sceneId, position });
+    setDropChapter(null);
+  };
+
+  const handleDragOverChapter = (e: React.DragEvent, chapter: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setDropChapter(chapter);
+    setDropTarget(null);
+  };
+
+  const handleDropOnScene = (e: React.DragEvent, targetId: number, targetChapter: string) => {
+    e.preventDefault();
+    if (!draggingId || draggingId === targetId) {
+      setDropTarget(null);
+      return;
+    }
+    const position = dropTarget?.position ?? "after";
+    const draggedScene = scenes.find(s => s.id === draggingId);
+    if (!draggedScene) return;
+    const rest = scenes.filter(s => s.id !== draggingId);
+    const targetIdx = rest.findIndex(s => s.id === targetId);
+    const insertIdx = position === "before" ? targetIdx : targetIdx + 1;
+    setScenes([
+      ...rest.slice(0, insertIdx),
+      { ...draggedScene, chapter: targetChapter },
+      ...rest.slice(insertIdx),
+    ]);
+    setDraggingId(null);
+    setDropTarget(null);
+  };
+
+  const handleDropOnChapter = (e: React.DragEvent, chapter: string) => {
+    e.preventDefault();
+    if (!draggingId) return;
+    const draggedScene = scenes.find(s => s.id === draggingId);
+    if (!draggedScene) return;
+    const rest = scenes.filter(s => s.id !== draggingId);
+    const chapterIndices = rest.map((s, i) => ({ s, i })).filter(({ s }) => s.chapter === chapter);
+    const insertIdx = chapterIndices.length > 0
+      ? chapterIndices[chapterIndices.length - 1].i + 1
+      : rest.length;
+    setScenes([
+      ...rest.slice(0, insertIdx),
+      { ...draggedScene, chapter },
+      ...rest.slice(insertIdx),
+    ]);
+    setDraggingId(null);
+    setDropChapter(null);
+  };
 
   return (
     <div style={{ padding: "20px 16px", overflowY: "auto" }}>
@@ -39,32 +111,77 @@ export const StructureView: React.FC<StructureViewProps> = ({
           const anyDraft = chScenes.some(s => s.status === "draft");
           const chColor = allDone ? statusColors.done : anyDraft ? statusColors.draft : statusColors.empty;
           const isAddingHere = addingScene && newScene.chapter === chapter;
+          const isChapterDropTarget = dropChapter === chapter;
           return (
-            <div key={chapter}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, paddingBottom: 6, borderBottom: "1px solid #1a2535" }}>
+            <div
+              key={chapter}
+              onDragOver={e => handleDragOverChapter(e, chapter)}
+              onDrop={e => handleDropOnChapter(e, chapter)}
+            >
+              <div style={{
+                display: "flex", alignItems: "center", gap: 8, marginBottom: 6, paddingBottom: 6,
+                borderBottom: `1px solid ${isChapterDropTarget ? "#4a6fa5" : "#1a2535"}`,
+                background: isChapterDropTarget ? "rgba(74,111,165,0.06)" : "transparent",
+                borderRadius: isChapterDropTarget ? 3 : 0,
+                transition: "background 0.1s",
+              }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, background: chColor, boxShadow: `0 0 7px ${chColor}66` }} />
                 <span style={{ fontSize: 13, color: "#c8d8e8", fontWeight: 600, flex: 1 }}>{chapter}</span>
                 {chChars > 0 && <span style={{ fontSize: 10, color: "#2a4060" }}>{chChars.toLocaleString()}字</span>}
                 <button onClick={() => { setNewScene({ chapter, title: "", synopsis: "" }); setAddingScene(true); }} style={{ fontSize: 11, padding: "2px 8px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>＋</button>
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingLeft: 16 }}>
-                {chScenes.map((scene, i) => (
-                  <div key={scene.id} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 6 }}>
-                      <div style={{ width: 1, height: 6, background: i === 0 ? "transparent" : "#1a2535" }} />
-                      <div style={{ width: 12, height: 1, background: "#1a2535" }} />
-                    </div>
-                    <div onClick={() => handleSceneSelect(scene)} style={{ flex: 1, background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "#0a0f1a", border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "#1a2535", borderRadius: 5, padding: "8px 12px", cursor: "pointer", display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, marginTop: 4, background: statusColors[scene.status], boxShadow: `0 0 5px ${statusColors[scene.status]}66` }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, color: "#8ab0cc", marginBottom: 2 }}>{scene.title ? scene.title : <span style={{ fontStyle: "italic", color: "#2a4060" }}>無題</span>}</div>
-                        {scene.synopsis && <div style={{ fontSize: 11, color: "#2a4060", fontStyle: "italic" }}>{scene.synopsis}</div>}
-                        {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 3 }}>{manuscripts[scene.id].replace(/\s/g, "").length.toLocaleString()}字</div>}
+                {chScenes.map((scene, i) => {
+                  const isDropBefore = dropTarget?.id === scene.id && dropTarget.position === "before";
+                  const isDropAfter = dropTarget?.id === scene.id && dropTarget.position === "after";
+                  const isDragging = draggingId === scene.id;
+                  return (
+                    <div key={scene.id}>
+                      {isDropBefore && (
+                        <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginBottom: 2, marginLeft: 20 }} />
+                      )}
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 6 }}>
+                          <div style={{ width: 1, height: 6, background: i === 0 ? "transparent" : "#1a2535" }} />
+                          <div style={{ width: 12, height: 1, background: "#1a2535" }} />
+                        </div>
+                        <div
+                          draggable
+                          onDragStart={e => handleDragStart(e, scene.id)}
+                          onDragEnd={handleDragEnd}
+                          onDragOver={e => handleDragOverScene(e, scene.id)}
+                          onDrop={e => handleDropOnScene(e, scene.id, scene.chapter)}
+                          onClick={() => handleSceneSelect(scene)}
+                          style={{
+                            flex: 1,
+                            background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "#0a0f1a",
+                            border: "1px solid",
+                            borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "#1a2535",
+                            borderRadius: 5,
+                            padding: "8px 12px",
+                            cursor: "grab",
+                            display: "flex", alignItems: "flex-start", gap: 8,
+                            opacity: isDragging ? 0.4 : 1,
+                            transition: "opacity 0.15s",
+                            userSelect: "none",
+                          }}
+                        >
+                          <span style={{ fontSize: 10, color: "#2a4060", flexShrink: 0, marginTop: 3, cursor: "grab" }}>⠿</span>
+                          <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, marginTop: 4, background: statusColors[scene.status], boxShadow: `0 0 5px ${statusColors[scene.status]}66` }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: 12, color: "#8ab0cc", marginBottom: 2 }}>{scene.title ? scene.title : <span style={{ fontStyle: "italic", color: "#2a4060" }}>無題</span>}</div>
+                            {scene.synopsis && <div style={{ fontSize: 11, color: "#2a4060", fontStyle: "italic" }}>{scene.synopsis}</div>}
+                            {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 3 }}>{manuscripts[scene.id].replace(/\s/g, "").length.toLocaleString()}字</div>}
+                          </div>
+                          <span style={{ fontSize: 9, color: statusColors[scene.status], flexShrink: 0, marginTop: 2 }}>{statusLabels[scene.status]}</span>
+                        </div>
                       </div>
-                      <span style={{ fontSize: 9, color: statusColors[scene.status], flexShrink: 0, marginTop: 2 }}>{statusLabels[scene.status]}</span>
+                      {isDropAfter && (
+                        <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginTop: 2, marginLeft: 20 }} />
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {isAddingHere && (
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0, paddingTop: 6 }}>

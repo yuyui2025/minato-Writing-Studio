@@ -24,6 +24,7 @@ export type AiResults = {
   continue: string;
   synopsis: string;
   worldExpand: string;
+  freeInstruct: string;
 };
 
 export type AiErrors = Record<keyof AiResults, string>;
