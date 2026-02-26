@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
@@ -38,7 +38,14 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
   hintApplied, setHintApplied, manuscriptText,
   handleManuscriptChange, settings, selectedScene
 }) => {
+  const [customInstruction, setCustomInstruction] = useState("");
+  const [customResult, setCustomResult] = useState("");
+  const [customLoading, setCustomLoading] = useState(false);
+  const [customError, setCustomError] = useState("");
+
   if (!selectedScene) return null;
+
+  const customPrompt = `以下の小説シーンと世界観をもとに、次の指示を実行してください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【本文】${manuscriptText.slice(-600)}\n\n【指示】${customInstruction}`;
 
   return (
     <>
@@ -104,6 +111,26 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                 prompt={`以下の世界観設定と本文を照らし合わせて、設定との矛盾や違和感があれば指摘してください。なければ「矛盾なし」と答えてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n\n【本文】${manuscriptText.slice(-800)}`}
                 onAppend={() => {}}
               />
+              <div style={{ borderTop: "1px solid #1a2535", paddingTop: 14 }}>
+                <div style={{ fontSize: 10, color: "#3a5570", letterSpacing: 2, marginBottom: 8 }}>自由指示</div>
+                <textarea
+                  value={customInstruction}
+                  onChange={e => setCustomInstruction(e.target.value)}
+                  placeholder="AIへの指示を自由に入力…（例：このシーンをより緊迫感のある文体に書き直して）"
+                  style={{ width: "100%", minHeight: 72, background: "#070a14", border: "1px solid #1a2535", color: "#c8d8e8", fontFamily: "inherit", fontSize: 11, lineHeight: 1.7, padding: "8px 10px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }}
+                />
+                <AiPanel
+                  label="実行"
+                  prompt={customPrompt}
+                  result={customResult}
+                  onResult={setCustomResult}
+                  loading={customLoading}
+                  onLoading={setCustomLoading}
+                  error={customError}
+                  onError={setCustomError}
+                  onAppend={text => handleManuscriptChange(manuscriptText + "\n" + text)}
+                />
+              </div>
             </div>
           </div>
         )}

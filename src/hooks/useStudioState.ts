@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
@@ -106,6 +106,8 @@ export function useStudioState(_user: User) {
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
+  // バックアップが信頼できるソース（localStorage/Supabase）から読み込まれたか追跡
+  const backupsConfirmed = useRef(false);
 
   const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
   const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
@@ -138,7 +140,7 @@ export function useStudioState(_user: User) {
       if (st) setSettings(st);
       if (ms) setManuscripts(ms);
       if (pt) setProjectTitle(pt);
-      if (bk) setBackups(bk);
+      if (bk) { setBackups(bk); backupsConfirmed.current = true; }
       if (es) setEditorSettings(es);
       setLoaded(true);
     })();
@@ -154,9 +156,10 @@ export function useStudioState(_user: User) {
         storageSet("minato:manuscripts", manuscripts),
         storageSet("minato:title", projectTitle),
         storageSet("minato:editorSettings", editorSettings),
-        storageSet("minato:backups", backups),
+        // バックアップはsaveWithBackup/handleSaveBackupで明示的に管理する
+        // ここで同期すると、オフライン初期ロード時の空配列でSupabaseを上書きしてしまうため
       ]);
-      
+
       const allSuccess = results.every(r => r);
       if (allSuccess) {
         setSaveStatus("saved");
@@ -167,7 +170,7 @@ export function useStudioState(_user: User) {
     } catch {
       setSaveStatus("error");
     }
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, loaded]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, loaded]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -180,13 +183,28 @@ export function useStudioState(_user: User) {
     if (isOnline && loaded) syncAll();
   }, [isOnline, loaded, syncAll]);
 
+  // オフラインで作成したバックアップをオンライン復帰時に同期
+  useEffect(() => {
+    if (isOnline && loaded && backupsConfirmed.current && backups.length > 0) {
+      storageSet("minato:backups", backups);
+    }
+  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
     try {
+      // オフライン初期ロードで backups が未確認の場合、最新を取得してから追記
+      let baseBackups = backups;
+      if (!backupsConfirmed.current) {
+        const fetched = await storageGet<Backup[]>("minato:backups");
+        if (fetched) { baseBackups = fetched; setBackups(fetched); }
+        backupsConfirmed.current = true;
+      }
+
       const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms };
-      const updatedBackups = [newBackup, ...backups].slice(0, 5);
+      const updatedBackups = [newBackup, ...baseBackups].slice(0, 5);
       setBackups(updatedBackups);
-      
+
       const success = await Promise.all([
         storageSet("minato:scenes", sc),
         storageSet("minato:settings", st),
@@ -253,14 +271,15 @@ export function useStudioState(_user: User) {
     setShowExport(false);
   };
 
-  const handleSaveBackup = (label: string | null) => {
-    const newBackup = {
-      timestamp: new Date().toISOString(),
-      label,
-      scenes,
-      manuscripts,
-    };
-    const updated = [newBackup, ...backups].slice(0, 5);
+  const handleSaveBackup = async (label: string | null) => {
+    let baseBackups = backups;
+    if (!backupsConfirmed.current) {
+      const fetched = await storageGet<Backup[]>("minato:backups");
+      if (fetched) { baseBackups = fetched; setBackups(fetched); }
+      backupsConfirmed.current = true;
+    }
+    const newBackup = { timestamp: new Date().toISOString(), label, scenes, manuscripts };
+    const updated = [newBackup, ...baseBackups].slice(0, 5);
     setBackups(updated);
     storageSet("minato:backups", updated);
   };

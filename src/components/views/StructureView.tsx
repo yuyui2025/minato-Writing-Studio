@@ -4,6 +4,7 @@ import type { Scene, Manuscripts, SceneDraft } from "../../types";
 
 interface StructureViewProps {
   scenes: Scene[];
+  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
   manuscripts: Manuscripts;
   addingScene: boolean;
   setAddingScene: (v: boolean) => void;
@@ -17,10 +18,18 @@ interface StructureViewProps {
 }
 
 export const StructureView: React.FC<StructureViewProps> = ({
-  scenes, manuscripts, addingScene, setAddingScene,
+  scenes, setScenes, manuscripts, addingScene, setAddingScene,
   newScene, setNewScene, handleAddScene, addingChapter,
   setAddingChapter, handleSceneSelect, selectedSceneId
 }) => {
+  const moveScene = (id: number, direction: -1 | 1) => {
+    const idx = scenes.findIndex(s => s.id === id);
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= scenes.length) return;
+    const next = [...scenes];
+    [next[idx], next[newIdx]] = [next[newIdx], next[idx]];
+    setScenes(next);
+  };
   // Group scenes by chapter for tree view
   const chapters = scenes.reduce((acc, scene) => {
     const ch = scene.chapter || "未分類";
@@ -62,6 +71,12 @@ export const StructureView: React.FC<StructureViewProps> = ({
                         {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 3 }}>{manuscripts[scene.id].replace(/\s/g, "").length.toLocaleString()}字</div>}
                       </div>
                       <span style={{ fontSize: 9, color: statusColors[scene.status], flexShrink: 0, marginTop: 2 }}>{statusLabels[scene.status]}</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2, flexShrink: 0, paddingTop: 2 }}>
+                      {(() => { const globalIdx = scenes.findIndex(s => s.id === scene.id); return (<>
+                        <button onClick={() => moveScene(scene.id, -1)} disabled={globalIdx === 0} style={{ padding: "2px 5px", background: "transparent", border: "1px solid #1a2535", color: globalIdx === 0 ? "#1a2535" : "#2a4060", cursor: globalIdx === 0 ? "default" : "pointer", borderRadius: 2, fontSize: 9, lineHeight: 1, fontFamily: "inherit" }}>▲</button>
+                        <button onClick={() => moveScene(scene.id, 1)} disabled={globalIdx === scenes.length - 1} style={{ padding: "2px 5px", background: "transparent", border: "1px solid #1a2535", color: globalIdx === scenes.length - 1 ? "#1a2535" : "#2a4060", cursor: globalIdx === scenes.length - 1 ? "default" : "pointer", borderRadius: 2, fontSize: 9, lineHeight: 1, fontFamily: "inherit" }}>▼</button>
+                      </>); })()}
                     </div>
                   </div>
                 ))}

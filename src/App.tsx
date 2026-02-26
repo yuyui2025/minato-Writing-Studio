@@ -201,6 +201,7 @@ function Studio({ user }: { user: User }) {
           {tab === "structure" && (
             <StructureView
               scenes={scenes}
+              setScenes={setScenes}
               manuscripts={manuscripts}
               addingScene={addingScene}
               setAddingScene={setAddingScene}
