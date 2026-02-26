@@ -12,14 +12,19 @@ interface StoredData<T> {
   updated_at: string;
 }
 
-async function storageGet<T = unknown>(key: string): Promise<T | null> {
+interface StorageGetResult<T> {
+  value: T | null;
+  fetchedFromRemote: boolean;
+}
+
+async function storageGet<T = unknown>(key: string): Promise<StorageGetResult<T>> {
   // 1. Get from LocalStorage
   const localRaw = localStorage.getItem(key);
   const localData: StoredData<T> | null = localRaw ? JSON.parse(localRaw) : null;
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return localData?.value || null;
+    if (!user) return { value: localData?.value || null, fetchedFromRemote: false };
 
     // 2. Get from Supabase
     const { data, error } = await supabase
@@ -29,7 +34,7 @@ async function storageGet<T = unknown>(key: string): Promise<T | null> {
       .eq("key", key)
       .single();
 
-    if (error || !data) return localData?.value || null;
+    if (error || !data) return { value: localData?.value || null, fetchedFromRemote: false };
 
     const remoteData: StoredData<T> = { value: data.value, updated_at: data.updated_at };
 
@@ -37,11 +42,11 @@ async function storageGet<T = unknown>(key: string): Promise<T | null> {
     if (!localData || new Date(remoteData.updated_at) > new Date(localData.updated_at)) {
       // Remote is newer or local is missing
       localStorage.setItem(key, JSON.stringify(remoteData));
-      return remoteData.value;
+      return { value: remoteData.value, fetchedFromRemote: true };
     }
-    return localData.value;
+    return { value: localData.value, fetchedFromRemote: true };
   } catch {
-    return localData?.value || null;
+    return { value: localData?.value || null, fetchedFromRemote: false };
   }
 }
 
@@ -147,23 +152,16 @@ export function useStudioState(_user: User) {
       storageGet<Backup[]>("minato:backups"),
       storageGet<EditorSettings>("minato:editorSettings"),
     ]);
-    if (sc) setScenes(sc);
-    if (st) setSettings(st);
-    if (ms) setManuscripts(ms);
-    if (pt) setProjectTitle(pt);
-    if (bk) setBackups(bk);
-    if (es) setEditorSettings(es);
+    if (sc.value) setScenes(sc.value);
+    if (st.value) setSettings(st.value);
+    if (ms.value) setManuscripts(ms.value);
+    if (pt.value) setProjectTitle(pt.value);
+    if (bk.value) setBackups(bk.value);
+    if (es.value) setEditorSettings(es.value);
     setLoaded(true);
 
-    // Check if we actually hit remote
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user && navigator.onLine) {
-        lastFetchedFromRemoteRef.current = true;
-      }
-    } catch {
-      lastFetchedFromRemoteRef.current = false;
-    }
+    const hadRemoteRead = [sc, st, ms, pt, bk, es].some(result => result.fetchedFromRemote);
+    lastFetchedFromRemoteRef.current = hadRemoteRead;
   }, []);
 
   useEffect(() => {
