@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
@@ -108,10 +109,23 @@ export function useStudioState(_user: User) {
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
   // バックアップが信頼できるソース（localStorage/Supabase）から読み込まれたか追跡
   const backupsConfirmed = useRef(false);
+  const [exportContent, setExportContent] = useState<string>("");
+  const [showExportContent, setShowExportContent] = useState<boolean>(false);
+  const previousIsOnlineRef = useRef(navigator.onLine);
+  const syncAllRef = useRef<() => Promise<void>>(async () => {});
 
-  const selectedScene = scenes.find(s => s.id === selectedSceneId) || null;
-  const manuscriptText = selectedSceneId ? (manuscripts[selectedSceneId] || "") : "";
-  const wordCount = manuscriptText.replace(/\s/g, "").length;
+  const selectedScene = useMemo(
+    () => scenes.find(s => s.id === selectedSceneId) ?? null,
+    [scenes, selectedSceneId]
+  );
+  const manuscriptText = useMemo(
+    () => (selectedSceneId ? (manuscripts[selectedSceneId] ?? "") : ""),
+    [manuscripts, selectedSceneId]
+  );
+  const wordCount = useMemo(
+    () => manuscriptText.replace(/\s/g, "").length,
+    [manuscriptText]
+  );
 
   // Track online status
   useEffect(() => {
@@ -173,6 +187,10 @@ export function useStudioState(_user: User) {
   }, [scenes, settings, manuscripts, projectTitle, editorSettings, loaded]);
 
   useEffect(() => {
+    syncAllRef.current = syncAll;
+  }, [syncAll]);
+
+  useEffect(() => {
     if (!loaded) return;
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
@@ -180,8 +198,13 @@ export function useStudioState(_user: User) {
 
   // Force sync when coming back online
   useEffect(() => {
-    if (isOnline && loaded) syncAll();
-  }, [isOnline, loaded, syncAll]);
+    if (!loaded) return;
+    const wasOnline = previousIsOnlineRef.current;
+    if (!wasOnline && isOnline) {
+      syncAllRef.current();
+    }
+    previousIsOnlineRef.current = isOnline;
+  }, [isOnline, loaded]);
 
   // オフラインで作成したバックアップをオンライン復帰時に同期
   useEffect(() => {
