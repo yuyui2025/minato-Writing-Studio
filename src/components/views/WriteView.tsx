@@ -52,8 +52,8 @@ export const WriteView: React.FC<WriteViewProps> = ({
   }
 
   return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px" }}>
-      <div style={{ position: "relative", marginBottom: 12 }}>
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "16px 12px", overflowY: "auto", boxSizing: "border-box" }}>
+      <div style={{ position: "relative", marginBottom: 12, flexShrink: 0 }}>
         <div style={{ paddingRight: 0 }}>
           <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: 4 }}>{selectedScene.chapter}</div>
           {editingSceneTitle ? (

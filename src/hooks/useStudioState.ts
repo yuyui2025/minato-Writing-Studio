@@ -110,6 +110,7 @@ export function useStudioState(_user: User) {
   const [showExportContent, setShowExportContent] = useState<boolean>(false);
   const previousIsOnlineRef = useRef(navigator.onLine);
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
+  const lastFetchedFromRemoteRef = useRef<boolean>(false);
 
   const selectedScene = useMemo(
     () => scenes.find(s => s.id === selectedSceneId) ?? null,
@@ -136,29 +137,46 @@ export function useStudioState(_user: User) {
     };
   }, []);
 
+  const loadAll = useCallback(async () => {
+    setLoaded(false);
+    const [sc, st, ms, pt, bk, es] = await Promise.all([
+      storageGet<Scene[]>("minato:scenes"),
+      storageGet<Settings>("minato:settings"),
+      storageGet<Manuscripts>("minato:manuscripts"),
+      storageGet<string>("minato:title"),
+      storageGet<Backup[]>("minato:backups"),
+      storageGet<EditorSettings>("minato:editorSettings"),
+    ]);
+    if (sc) setScenes(sc);
+    if (st) setSettings(st);
+    if (ms) setManuscripts(ms);
+    if (pt) setProjectTitle(pt);
+    if (bk) setBackups(bk);
+    if (es) setEditorSettings(es);
+    setLoaded(true);
+
+    // Check if we actually hit remote
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && navigator.onLine) {
+        lastFetchedFromRemoteRef.current = true;
+      }
+    } catch {
+      lastFetchedFromRemoteRef.current = false;
+    }
+  }, []);
+
   useEffect(() => {
-    (async () => {
-      setLoaded(false); // Reload data when user changes
-      const [sc, st, ms, pt, bk, es] = await Promise.all([
-        storageGet<Scene[]>("minato:scenes"),
-        storageGet<Settings>("minato:settings"),
-        storageGet<Manuscripts>("minato:manuscripts"),
-        storageGet<string>("minato:title"),
-        storageGet<Backup[]>("minato:backups"),
-        storageGet<EditorSettings>("minato:editorSettings"),
-      ]);
-      if (sc) setScenes(sc);
-      if (st) setSettings(st);
-      if (ms) setManuscripts(ms);
-      if (pt) setProjectTitle(pt);
-      if (bk) setBackups(bk);
-      if (es) setEditorSettings(es);
-      setLoaded(true);
-    })();
-  }, [_user?.id]); // Re-run when user logs in/out
+    loadAll();
+  }, [loadAll, _user?.id]); // Re-run when user logs in/out
 
   const syncAll = useCallback(async () => {
     if (!loaded) return;
+    // Don't overwrite if we haven't successfully fetched from remote yet and we are online
+    if (isOnline && !lastFetchedFromRemoteRef.current) {
+      await loadAll();
+      return;
+    }
     setSaveStatus("saving");
     try {
       const results = await Promise.all([
@@ -245,6 +263,17 @@ export function useStudioState(_user: User) {
     setConfirmDelete(null);
   };
 
+  const handleMoveScene = (id: number, direction: "up" | "down") => {
+    const idx = scenes.findIndex(s => s.id === id);
+    if (idx === -1) return;
+    const nextIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (nextIdx < 0 || nextIdx >= scenes.length) return;
+
+    const newScenes = [...scenes];
+    [newScenes[idx], newScenes[nextIdx]] = [newScenes[nextIdx], newScenes[idx]];
+    setScenes(newScenes);
+  };
+
   const downloadFile = (content: string, filename: string) => {
     const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -301,7 +330,7 @@ export function useStudioState(_user: User) {
     aiApplied, setAiApplied, hintApplied, setHintApplied,
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
-    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
+    handleDeleteScene, handleMoveScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
     handleSaveBackup
   };
 }

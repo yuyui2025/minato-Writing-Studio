@@ -1,4 +1,4 @@
-import { useMemo, Dispatch, SetStateAction } from "react";
+import { useMemo, Dispatch, SetStateAction, useState } from "react";
 import { PolishSuggestion, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -27,6 +27,7 @@ export function PolishPanel({
   applied,
   onApplied,
 }: PolishPanelProps) {
+  const [instruction, setInstruction] = useState("");
   const suggestions = useMemo(() => {
     if (!result) return null;
     try {
@@ -43,7 +44,7 @@ export function PolishPanel({
     onError("");
     onApplied({});
     try {
-      const prompt = `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}`;
+      const prompt = `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}${instruction ? `\n\n追加の指示: ${instruction}` : ""}`;
       const text = await callAnthropic(prompt);
       onResult(text);
     } catch (e) {
@@ -58,9 +59,25 @@ export function PolishPanel({
 
   return (
     <div>
-      <button
-        onClick={run}
-        disabled={loading}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
+        <input
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          placeholder="推敲の指示（例：語尾を優しく）"
+          style={{
+            flex: "1 1 100%",
+            padding: "4px 8px",
+            background: "#0a0f1a",
+            border: "1px solid #1a2535",
+            borderRadius: 4,
+            color: "#c8d8e8",
+            fontSize: 11,
+            outline: "none",
+          }}
+        />
+        <button
+          onClick={run}
+          disabled={loading}
         style={{
           padding: "6px 16px",
           background: loading ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
@@ -72,12 +89,12 @@ export function PolishPanel({
           fontFamily: "inherit",
           letterSpacing: 1,
         }}
-      >
-        {loading ? "生成中…" : error ? "再試行" : "✦ 文章を推敲"}
-      </button>
-
-      {error && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
+              >
+                {loading ? "生成中…" : error ? "再試行" : "✦ 文章を推敲"}
+              </button>
+            </div>
+      
+            {error && (        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
       )}
 
       {result && !suggestions && (

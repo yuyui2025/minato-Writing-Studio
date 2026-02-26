@@ -215,6 +215,7 @@ function Studio({ user }: { user: User }) {
               addingChapter={addingChapter}
               setAddingChapter={setAddingChapter}
               handleSceneSelect={handleSceneSelect}
+              handleMoveScene={handleMoveScene}
               selectedSceneId={selectedSceneId}
             />
           )}

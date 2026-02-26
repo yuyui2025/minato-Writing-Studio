@@ -1,4 +1,4 @@
-import { useMemo, Dispatch, SetStateAction } from "react";
+import { useMemo, Dispatch, SetStateAction, useState } from "react";
 import { HintItem, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -29,6 +29,7 @@ export function HintPanel({
   manuscriptText,
   onInsert,
 }: HintPanelProps) {
+  const [instruction, setInstruction] = useState("");
   const hints = useMemo(() => {
     if (!result) return null;
     try {
@@ -45,7 +46,9 @@ export function HintPanel({
     onError("");
     onApplied({});
     try {
-      const finalPrompt = prompt + "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]";
+      const finalPrompt = prompt + 
+        (instruction ? `\n\n追加の指示: ${instruction}` : "") +
+        "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]";
       const text = await callAnthropic(finalPrompt);
       onResult(text);
     } catch (e) {
@@ -73,9 +76,25 @@ export function HintPanel({
 
   return (
     <div>
-      <button
-        onClick={run}
-        disabled={loading}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", marginBottom: 8 }}>
+        <input
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          placeholder="ヒントの指示（例：アクション多め）"
+          style={{
+            flex: "1 1 100%",
+            padding: "4px 8px",
+            background: "#0a0f1a",
+            border: "1px solid #1a2535",
+            borderRadius: 4,
+            color: "#c8d8e8",
+            fontSize: 11,
+            outline: "none",
+          }}
+        />
+        <button
+          onClick={run}
+          disabled={loading}
         style={{
           padding: "6px 16px",
           background: loading ? "rgba(74,111,165,0.05)" : "rgba(74,111,165,0.1)",
@@ -87,12 +106,12 @@ export function HintPanel({
           fontFamily: "inherit",
           letterSpacing: 1,
         }}
-      >
-        {loading ? "生成中…" : error ? "再試行" : "✦ 執筆ヒント"}
-      </button>
-
-      {error && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
+              >
+                {loading ? "生成中…" : error ? "再試行" : "✦ 執筆ヒント"}
+              </button>
+            </div>
+      
+            {error && (        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
       )}
 
       {result && !hints && (

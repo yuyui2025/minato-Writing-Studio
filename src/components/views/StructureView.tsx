@@ -13,13 +13,14 @@ interface StructureViewProps {
   addingChapter: boolean;
   setAddingChapter: (v: boolean) => void;
   handleSceneSelect: (s: Scene) => void;
+  handleMoveScene: (id: number, direction: "up" | "down") => void;
   selectedSceneId: number | null;
 }
 
 export const StructureView: React.FC<StructureViewProps> = ({
   scenes, manuscripts, addingScene, setAddingScene,
   newScene, setNewScene, handleAddScene, addingChapter,
-  setAddingChapter, handleSceneSelect, selectedSceneId
+  setAddingChapter, handleSceneSelect, handleMoveScene, selectedSceneId
 }) => {
   // Group scenes by chapter for tree view
   const chapters = scenes.reduce((acc, scene) => {
@@ -60,6 +61,16 @@ export const StructureView: React.FC<StructureViewProps> = ({
                         <div style={{ fontSize: 12, color: "#8ab0cc", marginBottom: 2 }}>{scene.title ? scene.title : <span style={{ fontStyle: "italic", color: "#2a4060" }}>無題</span>}</div>
                         {scene.synopsis && <div style={{ fontSize: 11, color: "#2a4060", fontStyle: "italic" }}>{scene.synopsis}</div>}
                         {manuscripts[scene.id] && <div style={{ fontSize: 10, color: "#2a4060", marginTop: 3 }}>{manuscripts[scene.id].replace(/\s/g, "").length.toLocaleString()}字</div>}
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2, marginRight: 4 }}>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleMoveScene(scene.id, "up"); }}
+                          style={{ padding: "0 4px", background: "transparent", border: "1px solid #1a2535", color: "#3a5570", cursor: "pointer", fontSize: 10, borderRadius: 2 }}
+                        >↑</button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleMoveScene(scene.id, "down"); }}
+                          style={{ padding: "0 4px", background: "transparent", border: "1px solid #1a2535", color: "#3a5570", cursor: "pointer", fontSize: 10, borderRadius: 2 }}
+                        >↓</button>
                       </div>
                       <span style={{ fontSize: 9, color: statusColors[scene.status], flexShrink: 0, marginTop: 2 }}>{statusLabels[scene.status]}</span>
                     </div>

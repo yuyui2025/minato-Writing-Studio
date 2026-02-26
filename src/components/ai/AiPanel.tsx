@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { callAnthropic, AiError } from "../../utils/ai";
 
 type AiPanelProps = {
@@ -26,6 +26,7 @@ export function AiPanel({
   error = "",
   onError,
 }: AiPanelProps) {
+  const [instruction, setInstruction] = useState("");
   const onAppendRef = useRef(onAppend);
   useEffect(() => {
     onAppendRef.current = onAppend;
@@ -36,7 +37,10 @@ export function AiPanel({
     onResult("");
     onError("");
     try {
-      const text = await callAnthropic(prompt);
+      const fullPrompt = instruction 
+        ? `${prompt}\n\n追加の指示: ${instruction}`
+        : prompt;
+      const text = await callAnthropic(fullPrompt);
       onResult(text);
     } catch (e) {
       if (e instanceof AiError) {
@@ -50,7 +54,23 @@ export function AiPanel({
 
   return (
     <div style={{ marginTop: compact ? 0 : 12 }}>
-      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+        <input
+          value={instruction}
+          onChange={(e) => setInstruction(e.target.value)}
+          placeholder="AIへの追加指示（任意）"
+          style={{
+            flex: compact ? "1 1 120px" : "1 1 100%",
+            padding: "4px 8px",
+            background: "#0a0f1a",
+            border: "1px solid #1a2535",
+            borderRadius: 4,
+            color: "#c8d8e8",
+            fontSize: 11,
+            outline: "none",
+            marginBottom: compact ? 0 : 4,
+          }}
+        />
         <button
           onClick={run}
           disabled={loading}
