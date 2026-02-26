@@ -1,7 +1,7 @@
 import React from "react";
 import { statusColors } from "../../constants";
 import type {
-  Scene, Manuscripts, SceneDraft, Settings, EditorSettings, TabKey
+  Scene, Manuscripts, SceneDraft, Settings, EditorSettings, SidebarTabKey, TabKey, AiHistoryItem
 } from "../../types";
 
 interface SidebarProps {
@@ -9,8 +9,8 @@ interface SidebarProps {
   setSidebarOpen: (v: boolean) => void;
   sidebarFloat: boolean;
   setSidebarFloat: (v: boolean) => void;
-  sidebarTab: TabKey;
-  setSidebarTab: (v: TabKey) => void;
+  sidebarTab: SidebarTabKey;
+  setSidebarTab: (v: SidebarTabKey) => void;
   tab: TabKey;
   setTab: (v: TabKey) => void;
   scenes: Scene[];
@@ -30,6 +30,9 @@ interface SidebarProps {
   setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
   handleSceneSelect: (s: Scene) => void;
   handleAddScene: () => void;
+  aiHistory: AiHistoryItem[];
+  onInsertHistory: (content: string) => void;
+  onClearHistory: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -38,7 +41,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   manuscripts, sceneSearch, setSceneSearch, newScene, setNewScene,
   addingScene, setAddingScene, addingChapter, setAddingChapter,
   settings, setSettings, editorSettings, setEditorSettings,
-  handleSceneSelect, handleAddScene
+  handleSceneSelect, handleAddScene,
+  aiHistory, onInsertHistory, onClearHistory,
 }) => {
   return (
     <aside style={{
@@ -57,8 +61,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <>
           {/* Sidebar header: tabs + close */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
-            {[["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"]].map(([key, label]) => (
-              <button key={key} onClick={() => setSidebarTab(key as TabKey)} style={{
+            {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
+              <button key={key} onClick={() => setSidebarTab(key)} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
                 color: sidebarTab === key ? "#7ab3e0" : "#2a4060",
@@ -186,6 +190,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>行間　<span style={{ color: "#8ab0cc" }}>{editorSettings.lineHeight}</span></div>
                 <input type="range" min={1.4} max={3.0} step={0.1} value={editorSettings.lineHeight} onChange={e => setEditorSettings(s => ({ ...s, lineHeight: Number(e.target.value) }))} style={{ width: "100%" }} />
               </div>
+            </div>
+          )}
+
+          {/* AI履歴タブ */}
+          {sidebarTab === "ai" && (
+            <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+                <span style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", flex: 1 }}>AI 履歴</span>
+                {aiHistory.length > 0 && (
+                  <button onClick={onClearHistory} style={{ fontSize: 9, padding: "2px 7px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>全クリア</button>
+                )}
+              </div>
+              {aiHistory.length === 0 ? (
+                <div style={{ fontSize: 11, color: "#2a4060", textAlign: "center", padding: "20px 0" }}>まだ履歴がありません</div>
+              ) : (
+                aiHistory.map(item => {
+                  const d = new Date(item.timestamp);
+                  const timeLabel = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+                  return (
+                    <div key={item.id} style={{ padding: "8px 10px", background: "#0a0f1a", border: "1px solid #1a2535", borderRadius: 4 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
+                        <span style={{ fontSize: 9, color: "#4a6fa5", letterSpacing: 1 }}>{item.label}</span>
+                        <span style={{ fontSize: 9, color: "#2a4060", marginLeft: "auto" }}>{timeLabel}</span>
+                      </div>
+                      {item.sceneTitle && (
+                        <div style={{ fontSize: 9, color: "#2a4060", marginBottom: 3, fontStyle: "italic" }}>{item.sceneTitle}</div>
+                      )}
+                      <div style={{ fontSize: 11, color: "#8ab0cc", lineHeight: 1.6, marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" } as React.CSSProperties}>
+                        {item.content}
+                      </div>
+                      <button
+                        onClick={() => onInsertHistory(item.content)}
+                        style={{ fontSize: 10, padding: "2px 10px", background: "rgba(42,128,96,0.12)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                      >
+                        追記
+                      </button>
+                    </div>
+                  );
+                })
+              )}
             </div>
           )}
         </>

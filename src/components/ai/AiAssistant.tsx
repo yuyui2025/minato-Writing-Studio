@@ -29,6 +29,7 @@ interface AiAssistantProps {
   handleManuscriptChange: (text: string) => void;
   settings: Settings;
   selectedScene: Scene | null;
+  addAiHistory: (label: string, content: string, sceneTitle?: string) => void;
 }
 
 export const AiAssistant: React.FC<AiAssistantProps> = ({
@@ -37,7 +38,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
   aiErrors, setAiErrors,
   aiLoading, setAiLoading, aiApplied, setAiApplied,
   hintApplied, setHintApplied, manuscriptText,
-  handleManuscriptChange, settings, selectedScene
+  handleManuscriptChange, settings, selectedScene, addAiHistory
 }) => {
   const [freeText, setFreeText] = useState("");
 
@@ -50,6 +51,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
     try {
       const text = await callAnthropic(context);
       setAiResults(r => ({ ...r, freeInstruct: text }));
+      if (text) addAiHistory("自由指示", text, selectedScene?.title);
     } catch (e) {
       if (e instanceof AiError) {
         setAiErrors(er => ({ ...er, freeInstruct: e.message }));
@@ -133,7 +135,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                     {aiResults.freeInstruct}
                     <div style={{ marginTop: 8, display: "flex", gap: 6 }}>
                       <button
-                        onClick={() => { handleManuscriptChange(manuscriptText + "\n" + aiResults.freeInstruct); setAiResults(r => ({ ...r, freeInstruct: "" })); }}
+                        onClick={() => { handleManuscriptChange(manuscriptText + "\n" + aiResults.freeInstruct); }}
                         style={{ padding: "3px 10px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a8060", color: "#5ab090", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}
                       >
                         追記
@@ -176,7 +178,7 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               <AiPanel
                 label="矛盾チェック"
                 result={aiResults.check}
-                onResult={t => setAiResults(r => ({ ...r, check: t }))}
+                onResult={t => { setAiResults(r => ({ ...r, check: t })); if (t) addAiHistory("矛盾チェック", t, selectedScene.title); }}
                 onLoading={v => setAiLoading(l => ({ ...l, check: v }))}
                 loading={aiLoading.check}
                 error={aiErrors.check}

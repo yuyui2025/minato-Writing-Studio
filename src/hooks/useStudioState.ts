@@ -3,7 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SaveStatus
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 
@@ -97,7 +97,7 @@ export function useStudioState(_user: User) {
   const [editingSceneTitle, setEditingSceneTitle] = useState(false);
   const [editingSceneSynopsis, setEditingSceneSynopsis] = useState(false);
   const [sidebarFloat, setSidebarFloat] = useState(true);
-  const [sidebarTab, setSidebarTab] = useState<TabKey>("write");
+  const [sidebarTab, setSidebarTab] = useState<SidebarTabKey>("write");
   const [editorSettings, setEditorSettings] = useState<EditorSettings>({ fontSize: 15, lineHeight: 2.2 });
   const [aiFloat, setAiFloat] = useState(false);
   const [aiWide, setAiWide] = useState(false);
@@ -106,10 +106,13 @@ export function useStudioState(_user: User) {
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, freeInstruct: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
+  const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([]);
+  const [autoBackups, setAutoBackups] = useState<Backup[]>([]);
   const [exportContent, setExportContent] = useState<string>("");
   const [showExportContent, setShowExportContent] = useState<boolean>(false);
   const previousIsOnlineRef = useRef(navigator.onLine);
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
+  const latestStateRef = useRef({ scenes: initialScenes, manuscripts: {} as Manuscripts });
 
   const selectedScene = useMemo(
     () => scenes.find(s => s.id === selectedSceneId) ?? null,
@@ -139,13 +142,15 @@ export function useStudioState(_user: User) {
   useEffect(() => {
     (async () => {
       setLoaded(false); // Reload data when user changes
-      const [sc, st, ms, pt, bk, es] = await Promise.all([
+      const [sc, st, ms, pt, bk, es, ah, ab] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
         storageGet<Manuscripts>("minato:manuscripts"),
         storageGet<string>("minato:title"),
         storageGet<Backup[]>("minato:backups"),
         storageGet<EditorSettings>("minato:editorSettings"),
+        storageGet<AiHistoryItem[]>("minato:aiHistory"),
+        storageGet<Backup[]>("minato:autoBackups"),
       ]);
       if (sc) setScenes(sc);
       if (st) setSettings(st);
@@ -153,6 +158,8 @@ export function useStudioState(_user: User) {
       if (pt) setProjectTitle(pt);
       if (bk) setBackups(bk);
       if (es) setEditorSettings(es);
+      if (ah) setAiHistory(ah);
+      if (ab) setAutoBackups(ab);
       setLoaded(true);
     })();
   }, [_user?.id]); // Re-run when user logs in/out
@@ -168,8 +175,10 @@ export function useStudioState(_user: User) {
         storageSet("minato:title", projectTitle),
         storageSet("minato:editorSettings", editorSettings),
         storageSet("minato:backups", backups),
+        storageSet("minato:aiHistory", aiHistory),
+        storageSet("minato:autoBackups", autoBackups),
       ]);
-      
+
       const allSuccess = results.every(r => r);
       if (allSuccess) {
         setSaveStatus("saved");
@@ -180,7 +189,7 @@ export function useStudioState(_user: User) {
     } catch {
       setSaveStatus("error");
     }
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, loaded]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, aiHistory, autoBackups, loaded]);
 
   useEffect(() => {
     syncAllRef.current = syncAll;
@@ -190,7 +199,7 @@ export function useStudioState(_user: User) {
     if (!loaded) return;
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, loaded, syncAll]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, loaded, syncAll]);
 
   // Force sync when coming back online
   useEffect(() => {
@@ -225,6 +234,28 @@ export function useStudioState(_user: User) {
       }
     } catch { setSaveStatus("error"); }
   };
+
+  // Keep latestStateRef current for use in the auto-backup timer
+  useEffect(() => { latestStateRef.current = { scenes, manuscripts }; }, [scenes, manuscripts]);
+
+  const addAiHistory = useCallback((label: string, content: string, sceneTitle?: string) => {
+    if (!content.trim()) return;
+    const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle };
+    setAiHistory(prev => [item, ...prev].slice(0, 30));
+  }, []);
+
+  const clearAiHistory = useCallback(() => { setAiHistory([]); storageSet("minato:aiHistory", []); }, []);
+
+  // Auto-backup every 10 minutes
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setInterval(() => {
+      const { scenes: sc, manuscripts: ms } = latestStateRef.current;
+      const newAutoBackup: Backup = { timestamp: new Date().toISOString(), label: null, scenes: sc, manuscripts: ms };
+      setAutoBackups(prev => [newAutoBackup, ...prev].slice(0, 5));
+    }, 10 * 60 * 1000);
+    return () => clearInterval(timer);
+  }, [loaded]);
 
   const handleSceneSelect = (scene: Scene) => { setSelectedSceneId(scene.id); setTab("write"); };
   const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
@@ -299,6 +330,7 @@ export function useStudioState(_user: User) {
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
     aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
     aiApplied, setAiApplied, hintApplied, setHintApplied,
+    aiHistory, addAiHistory, clearAiHistory, autoBackups,
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
