@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from "react";
+import { useMemo, Dispatch, SetStateAction } from "react";
 import { HintItem, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -29,7 +29,7 @@ export function HintPanel({
   manuscriptText,
   onInsert,
 }: HintPanelProps) {
-  const hints = (() => {
+  const hints = useMemo(() => {
     if (!result) return null;
     try {
       const clean = result.replace(/```json|```/g, "").trim();
@@ -37,7 +37,7 @@ export function HintPanel({
     } catch {
       return null;
     }
-  })();
+  }, [result]);
 
   const run = async () => {
     onLoading(true);
@@ -61,7 +61,7 @@ export function HintPanel({
   const handleApply = (h: HintItem, i: number) => {
     const comment = `\n※[ヒント: ${h.hint}]`;
     const idx = h.keyword ? manuscriptText.indexOf(h.keyword) : -1;
-    if (idx !== -1) {
+    if (idx !== -1 && h.keyword) {
       const insertAt = idx + h.keyword.length;
       const next = manuscriptText.slice(0, insertAt) + comment + manuscriptText.slice(insertAt);
       onInsert(next);

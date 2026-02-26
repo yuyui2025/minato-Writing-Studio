@@ -44,7 +44,7 @@ export default tseslint.config(
       "react/react-in-jsx-scope": "off",
       "no-irregular-whitespace": "off",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
-      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-explicit-any": "warn",
     },
   }
 );

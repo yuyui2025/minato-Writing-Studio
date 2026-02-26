@@ -13,6 +13,7 @@ import { useStudioState } from "./hooks/useStudioState";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -56,7 +57,11 @@ export default function App() {
     </div>
   );
 
-  return <Studio user={user} />;
+  return (
+    <ErrorBoundary>
+      <Studio user={user} />
+    </ErrorBoundary>
+  );
 }
 
 function Studio({ user }: { user: User }) {
@@ -239,6 +244,7 @@ function Studio({ user }: { user: User }) {
 
       {/* AI Assistant overlay */}
       {tab === "write" && (
+        <ErrorBoundary fallback={<div style={{ position: "fixed", right: 16, bottom: 16, padding: "8px 16px", background: "#0a0e1a", border: "1px solid #2a4060", color: "#e05555", fontSize: 11, borderRadius: 4 }}>AIアシスタントでエラーが発生しました</div>}>
         <AiAssistant
           showSettings={showSettings}
           setShowSettings={setShowSettings}
@@ -261,6 +267,7 @@ function Studio({ user }: { user: User }) {
           settings={settings}
           selectedScene={selectedScene}
         />
+        </ErrorBoundary>
       )}
     </div>
   );

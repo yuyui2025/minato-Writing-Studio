@@ -1,4 +1,4 @@
-import { Dispatch, SetStateAction } from "react";
+import { useMemo, Dispatch, SetStateAction } from "react";
 import { PolishSuggestion, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -27,7 +27,7 @@ export function PolishPanel({
   applied,
   onApplied,
 }: PolishPanelProps) {
-  const suggestions = (() => {
+  const suggestions = useMemo(() => {
     if (!result) return null;
     try {
       const clean = result.replace(/```json|```/g, "").trim();
@@ -35,7 +35,7 @@ export function PolishPanel({
     } catch {
       return null;
     }
-  })();
+  }, [result]);
 
   const run = async () => {
     onLoading(true);

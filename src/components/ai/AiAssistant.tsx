@@ -21,9 +21,9 @@ interface AiAssistantProps {
   aiLoading: AiLoading;
   setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
   aiApplied: AppliedState;
-  setAiApplied: (v: AppliedState) => void;
+  setAiApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
   hintApplied: AppliedState;
-  setHintApplied: (v: AppliedState) => void;
+  setHintApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
   manuscriptText: string;
   handleManuscriptChange: (text: string) => void;
   settings: Settings;
