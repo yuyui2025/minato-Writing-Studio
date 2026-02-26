@@ -188,7 +188,7 @@ export function useStudioState(_user: User) {
     if (isOnline && loaded && backupsConfirmed.current && backups.length > 0) {
       storageSet("minato:backups", backups);
     }
-  }, [isOnline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOnline, loaded, backups]);
 
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
