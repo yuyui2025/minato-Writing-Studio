@@ -35,6 +35,8 @@ export type Backup = {
   label: string | null;
   scenes: Scene[];
   manuscripts: Manuscripts;
+  settings: Settings;
+  projectTitle: string;
 };
 
 export type HintItem = { hint: string; reason: string; keyword?: string };

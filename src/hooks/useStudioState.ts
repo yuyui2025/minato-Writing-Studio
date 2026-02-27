@@ -214,7 +214,7 @@ export function useStudioState(_user: User) {
   const saveWithBackup = async (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label: string | null = null) => {
     setSaveStatus("saving");
     try {
-      const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms };
+      const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms, settings: st, projectTitle: pt };
       const updatedBackups = [newBackup, ...backups].slice(0, 5);
       setBackups(updatedBackups);
       
@@ -251,11 +251,11 @@ export function useStudioState(_user: User) {
     if (!loaded) return;
     const timer = setInterval(() => {
       const { scenes: sc, manuscripts: ms } = latestStateRef.current;
-      const newAutoBackup: Backup = { timestamp: new Date().toISOString(), label: null, scenes: sc, manuscripts: ms };
+      const newAutoBackup: Backup = { timestamp: new Date().toISOString(), label: null, scenes: sc, manuscripts: ms, settings, projectTitle };
       setAutoBackups(prev => [newAutoBackup, ...prev].slice(0, 5));
     }, 10 * 60 * 1000);
     return () => clearInterval(timer);
-  }, [loaded]);
+  }, [loaded, settings, projectTitle]);
 
   const handleSceneSelect = (scene: Scene) => { setSelectedSceneId(scene.id); setTab("write"); };
   const handleManuscriptChange = (text: string) => setManuscripts(prev => ({ ...prev, [selectedSceneId as number]: text }));
@@ -315,6 +315,8 @@ export function useStudioState(_user: User) {
       label,
       scenes,
       manuscripts,
+      settings,
+      projectTitle,
     };
     const updated = [newBackup, ...backups].slice(0, 5);
     setBackups(updated);

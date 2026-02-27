@@ -117,9 +117,11 @@ function Studio({ user }: { user: User }) {
           _scenes={scenes}
           _settings={settings}
           _manuscripts={manuscripts}
-          onRestore={(sc, ms) => {
+          onRestore={(sc, ms, restoredSettings, restoredTitle) => {
             setScenes(sc);
             setManuscripts(ms);
+            if (restoredSettings) setSettings(restoredSettings);
+            if (restoredTitle) setProjectTitle(restoredTitle);
             setShowBackups(false);
           }}
           onSaveBackup={handleSaveBackup}

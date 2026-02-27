@@ -7,7 +7,7 @@ type BackupModalProps = {
   _scenes: Scene[];
   _settings: Settings;
   _manuscripts: Manuscripts;
-  onRestore: (scenes: Scene[], manuscripts: Manuscripts) => void;
+  onRestore: (scenes: Scene[], manuscripts: Manuscripts, settings?: Settings, projectTitle?: string) => void;
   onSaveBackup: (label: string | null) => void;
   onClose: () => void;
 };
@@ -134,7 +134,7 @@ export function BackupModal({
                     </div>
                   </div>
                   <button
-                    onClick={() => onRestore(bk.scenes || [], bk.manuscripts || {})}
+                    onClick={() => onRestore(bk.scenes || [], bk.manuscripts || {}, bk.settings, bk.projectTitle)}
                     style={{
                       padding: "4px 12px",
                       background: "rgba(74,111,165,0.15)",
