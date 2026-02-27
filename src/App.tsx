@@ -143,8 +143,8 @@ function Studio({ user }: { user: User }) {
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         {/* フロートオーバーレイ背景 */}
-        {sidebarOpen && sidebarFloat && (
-          <div onClick={() => setSidebarOpen(false)} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.4)" }} />
+        {((sidebarOpen && sidebarFloat) || (showSettings && aiFloat && tab === "write")) && (
+          <div onClick={() => { setSidebarOpen(false); setShowSettings(false); }} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.4)" }} />
         )}
         <Sidebar
           sidebarOpen={sidebarOpen}
@@ -245,37 +245,80 @@ function Studio({ user }: { user: User }) {
               setEditorSettings={setEditorSettings}
             />
           )}
+          {tab === "ai" && (
+            <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid #1e2d42", paddingBottom: "12px" }}>
+                <h2 style={{ fontSize: "18px", color: "#7ab3e0", margin: 0, letterSpacing: "2px" }}>AI 履歴</h2>
+                <div style={{ marginLeft: "auto", display: "flex", gap: "12px" }}>
+                  {aiHistory.length > 0 && (
+                    <button onClick={clearAiHistory} style={{ fontSize: "11px", padding: "4px 12px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", borderRadius: "4px", cursor: "pointer", fontFamily: "inherit" }}>履歴をすべて消去</button>
+                  )}
+                </div>
+              </div>
+              {aiHistory.length === 0 ? (
+                <div style={{ textAlign: "center", padding: "60px 0", color: "#2a4060", fontSize: "14px" }}>まだ履歴がありません</div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                  {aiHistory.map(item => {
+                    const d = new Date(item.timestamp);
+                    const timeLabel = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+                    return (
+                      <div key={item.id} style={{ padding: "20px", background: "#0a0f1a", border: "1px solid #1a2535", borderRadius: "8px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+                          <span style={{ fontSize: "12px", color: "#4a6fa5", fontWeight: "bold", background: "rgba(74,111,165,0.1)", padding: "2px 8px", borderRadius: "4px" }}>{item.label}</span>
+                          <span style={{ fontSize: "11px", color: "#2a4060" }}>{timeLabel}</span>
+                          {item.sceneTitle && (
+                            <span style={{ fontSize: "11px", color: "#3a5570", fontStyle: "italic", marginLeft: "auto" }}>{item.sceneTitle}</span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: "14px", color: "#8ab0cc", lineHeight: "1.8", whiteSpace: "pre-wrap", marginBottom: "16px", maxHeight: "400px", overflowY: "auto", padding: "12px", background: "#070a14", borderRadius: "4px" }}>
+                          {item.content}
+                        </div>
+                        <button
+                          onClick={() => handleManuscriptChange(manuscriptText + (manuscriptText ? "\n\n" : "") + item.content)}
+                          style={{ fontSize: "12px", padding: "6px 16px", background: "rgba(42,128,96,0.15)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: "4px", cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          現在のシーンに追記する
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </main>
+
+        {/* AI Assistant */}
+        {tab === "write" && (
+          <ErrorBoundary fallback={<div style={{ position: "fixed", right: 16, bottom: 16, padding: "8px 16px", background: "#0a0e1a", border: "1px solid #2a4060", color: "#e05555", fontSize: 11, borderRadius: 4 }}>AIアシスタントでエラーが発生しました</div>}>
+            <AiAssistant
+              showSettings={showSettings}
+              setShowSettings={setShowSettings}
+              aiFloat={aiFloat}
+              setAiFloat={setAiFloat}
+              aiWide={aiWide}
+              setAiWide={setAiWide}
+              aiResults={aiResults}
+              setAiResults={setAiResults}
+              aiErrors={aiErrors}
+              setAiErrors={setAiErrors}
+              aiLoading={aiLoading}
+              setAiLoading={setAiLoading}
+              aiApplied={aiApplied}
+              setAiApplied={setAiApplied}
+              hintApplied={hintApplied}
+              setHintApplied={setHintApplied}
+              manuscriptText={manuscriptText}
+              handleManuscriptChange={handleManuscriptChange}
+              settings={settings}
+              selectedScene={selectedScene}
+              addAiHistory={addAiHistory}
+            />
+          </ErrorBoundary>
+        )}
       </div>
 
-      {/* AI Assistant overlay */}
-      {tab === "write" && (
-        <ErrorBoundary fallback={<div style={{ position: "fixed", right: 16, bottom: 16, padding: "8px 16px", background: "#0a0e1a", border: "1px solid #2a4060", color: "#e05555", fontSize: 11, borderRadius: 4 }}>AIアシスタントでエラーが発生しました</div>}>
-        <AiAssistant
-          showSettings={showSettings}
-          setShowSettings={setShowSettings}
-          aiFloat={aiFloat}
-          setAiFloat={setAiFloat}
-          aiWide={aiWide}
-          setAiWide={setAiWide}
-          aiResults={aiResults}
-          setAiResults={setAiResults}
-          aiErrors={aiErrors}
-          setAiErrors={setAiErrors}
-          aiLoading={aiLoading}
-          setAiLoading={setAiLoading}
-          aiApplied={aiApplied}
-          setAiApplied={setAiApplied}
-          hintApplied={hintApplied}
-          setHintApplied={setHintApplied}
-          manuscriptText={manuscriptText}
-          handleManuscriptChange={handleManuscriptChange}
-          settings={settings}
-          selectedScene={selectedScene}
-          addAiHistory={addAiHistory}
-        />
-        </ErrorBoundary>
-      )}
     </div>
   );
 }
