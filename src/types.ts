@@ -26,6 +26,14 @@ export type AiResults = {
   worldExpand: string;
 };
 
+export type AiHistoryItem = {
+  id: string;
+  type: keyof AiResults;
+  label: string;
+  content: string;
+  timestamp: string;
+};
+
 export type AiErrors = Record<keyof AiResults, string>;
 export type AiLoading = Record<keyof AiResults, boolean>;
 

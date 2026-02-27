@@ -28,6 +28,7 @@ interface AiAssistantProps {
   handleManuscriptChange: (text: string) => void;
   settings: Settings;
   selectedScene: Scene | null;
+  addAiHistory: (type: keyof AiResults, label: string, content: string) => void;
 }
 
 export const AiAssistant: React.FC<AiAssistantProps> = ({
@@ -36,7 +37,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
   aiErrors, setAiErrors,
   aiLoading, setAiLoading, aiApplied, setAiApplied,
   hintApplied, setHintApplied, manuscriptText,
-  handleManuscriptChange, settings, selectedScene
+  handleManuscriptChange, settings, selectedScene,
+  addAiHistory
 }) => {
   if (!selectedScene) return null;
 
@@ -66,7 +68,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               <PolishPanel
                 manuscriptText={manuscriptText}
                 result={aiResults.polish}
-                onResult={t => setAiResults(r => ({ ...r, polish: t }))}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, polish: t }));
+                  if (t) addAiHistory("polish", "推敲", t);
+                }}
                 loading={aiLoading.polish}
                 onLoading={v => setAiLoading(l => ({ ...l, polish: v }))}
                 error={aiErrors.polish}
@@ -82,7 +87,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               />
               <HintPanel
                 result={aiResults.hint}
-                onResult={t => setAiResults(r => ({ ...r, hint: t }))}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, hint: t }));
+                  if (t) addAiHistory("hint", "ヒント", t);
+                }}
                 loading={aiLoading.hint}
                 onLoading={v => setAiLoading(l => ({ ...l, hint: v }))}
                 error={aiErrors.hint}
@@ -96,7 +104,10 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               <AiPanel
                 label="矛盾チェック"
                 result={aiResults.check}
-                onResult={t => setAiResults(r => ({ ...r, check: t }))}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, check: t }));
+                  if (t) addAiHistory("check", "矛盾チェック", t);
+                }}
                 onLoading={v => setAiLoading(l => ({ ...l, check: v }))}
                 loading={aiLoading.check}
                 error={aiErrors.check}

@@ -3,7 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { supabase } from "../supabase";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SaveStatus
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SaveStatus, AiHistoryItem
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 
@@ -102,12 +102,14 @@ export function useStudioState(_user: User) {
   const [aiFloat, setAiFloat] = useState(false);
   const [aiWide, setAiWide] = useState(false);
   const [aiResults, setAiResults] = useState<AiResults>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
+  const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([]);
   const [aiErrors, setAiErrors] = useState<AiErrors>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "" });
   const [aiLoading, setAiLoading] = useState<AiLoading>({ polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false });
   const [aiApplied, setAiApplied] = useState<AppliedState>({});
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
   const [exportContent, setExportContent] = useState<string>("");
   const [showExportContent, setShowExportContent] = useState<boolean>(false);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
   const previousIsOnlineRef = useRef(navigator.onLine);
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
 
@@ -139,13 +141,14 @@ export function useStudioState(_user: User) {
   useEffect(() => {
     (async () => {
       setLoaded(false); // Reload data when user changes
-      const [sc, st, ms, pt, bk, es] = await Promise.all([
+      const [sc, st, ms, pt, bk, es, ah] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
         storageGet<Manuscripts>("minato:manuscripts"),
         storageGet<string>("minato:title"),
         storageGet<Backup[]>("minato:backups"),
         storageGet<EditorSettings>("minato:editorSettings"),
+        storageGet<AiHistoryItem[]>("minato:aiHistory"),
       ]);
       if (sc) setScenes(sc);
       if (st) setSettings(st);
@@ -153,6 +156,7 @@ export function useStudioState(_user: User) {
       if (pt) setProjectTitle(pt);
       if (bk) setBackups(bk);
       if (es) setEditorSettings(es);
+      if (ah) setAiHistory(ah);
       setLoaded(true);
     })();
   }, [_user?.id]); // Re-run when user logs in/out
@@ -168,6 +172,7 @@ export function useStudioState(_user: User) {
         storageSet("minato:title", projectTitle),
         storageSet("minato:editorSettings", editorSettings),
         storageSet("minato:backups", backups),
+        storageSet("minato:aiHistory", aiHistory),
       ]);
       
       const allSuccess = results.every(r => r);
@@ -180,7 +185,7 @@ export function useStudioState(_user: User) {
     } catch {
       setSaveStatus("error");
     }
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, loaded]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, aiHistory, loaded]);
 
   useEffect(() => {
     syncAllRef.current = syncAll;
@@ -190,7 +195,7 @@ export function useStudioState(_user: User) {
     if (!loaded) return;
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, loaded, syncAll]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, loaded, syncAll]);
 
   // Force sync when coming back online
   useEffect(() => {
@@ -215,6 +220,7 @@ export function useStudioState(_user: User) {
         storageSet("minato:manuscripts", ms),
         storageSet("minato:title", pt),
         storageSet("minato:backups", updatedBackups),
+        storageSet("minato:aiHistory", aiHistory),
       ]);
 
       if (success.every(r => r)) {
@@ -246,7 +252,8 @@ export function useStudioState(_user: User) {
   };
 
   const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    // Add UTF-8 BOM for Windows compatibility
+    const blob = new Blob(["\ufeff", content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -255,6 +262,9 @@ export function useStudioState(_user: User) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    
+    setExportStatus(`${filename} を出力しました`);
+    setTimeout(() => setExportStatus(null), 3000);
   };
 
   const exportScene = (fmt: "md" | "txt") => {
@@ -287,6 +297,17 @@ export function useStudioState(_user: User) {
     storageSet("minato:backups", updated);
   };
 
+  const addAiHistory = (type: keyof AiResults, label: string, content: string) => {
+    const item: AiHistoryItem = {
+      id: Date.now().toString(),
+      type,
+      label,
+      content,
+      timestamp: new Date().toISOString(),
+    };
+    setAiHistory(prev => [item, ...prev].slice(0, 50)); // Keep last 50
+  };
+
   return {
     loaded, saveStatus, lastSavedTime, tab, setTab, settings, setSettings,
     settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId, setSelectedSceneId,
@@ -297,11 +318,13 @@ export function useStudioState(_user: User) {
     showBackups, setShowBackups, verticalPreview, setVerticalPreview,
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
-    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
+    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiHistory, setAiHistory,
+    aiErrors, setAiErrors, aiLoading, setAiLoading,
     aiApplied, setAiApplied, hintApplied, setHintApplied,
+    exportStatus, setExportStatus,
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
-    handleSaveBackup
+    handleSaveBackup, addAiHistory
   };
 }

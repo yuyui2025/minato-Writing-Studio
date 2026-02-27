@@ -75,12 +75,13 @@ function Studio({ user }: { user: User }) {
     showBackups, setShowBackups, verticalPreview, setVerticalPreview,
     editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
     sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
-    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
+    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiHistory, setAiHistory, aiErrors, setAiErrors, aiLoading, setAiLoading,
     aiApplied, setAiApplied, hintApplied, setHintApplied,
+    exportStatus, setExportStatus,
     selectedScene, manuscriptText, wordCount,
     handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
-    handleSaveBackup
+    handleSaveBackup, addAiHistory
   } = useStudioState(user);
 
   if (!loaded) return (
@@ -140,6 +141,18 @@ function Studio({ user }: { user: User }) {
         setShowExport={setShowExport}
       />
 
+      {/* Export Success Message */}
+      {exportStatus && (
+        <div style={{
+          position: "fixed", top: 60, left: "50%", transform: "translateX(-50%)",
+          zIndex: 1000, background: "rgba(42,128,96,0.9)", color: "#fff",
+          padding: "8px 20px", borderRadius: 4, fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+          border: "1px solid #5ab090", pointerEvents: "none", animation: "fadeOut 3s forwards"
+        }}>
+          {exportStatus}
+        </div>
+      )}
+
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         {/* フロートオーバーレイ背景 */}
         {sidebarOpen && sidebarFloat && (
@@ -171,6 +184,8 @@ function Studio({ user }: { user: User }) {
           setEditorSettings={setEditorSettings}
           handleSceneSelect={handleSceneSelect}
           handleAddScene={handleAddScene}
+          aiHistory={aiHistory}
+          setAiHistory={setAiHistory}
         />
 
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
@@ -266,6 +281,7 @@ function Studio({ user }: { user: User }) {
           handleManuscriptChange={handleManuscriptChange}
           settings={settings}
           selectedScene={selectedScene}
+          addAiHistory={addAiHistory}
         />
         </ErrorBoundary>
       )}

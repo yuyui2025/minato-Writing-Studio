@@ -19,6 +19,12 @@
         overflow: hidden;
       }
       #root { height: 100dvh; display: flex; flex-direction: column; }
+      @keyframes fadeOut {
+        0% { opacity: 0; transform: translate(-50%, -10px); }
+        10% { opacity: 1; transform: translate(-50%, 0); }
+        80% { opacity: 1; transform: translate(-50%, 0); }
+        100% { opacity: 0; transform: translate(-50%, -10px); }
+      }
     </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600;700&display=swap" rel="stylesheet" />
