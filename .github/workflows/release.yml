@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm run test:run
+
+      - name: Build app
+        run: npm run build
+
+      - name: Package build artifact
+        run: |
+          cd dist
+          zip -r ../minato-writing-studio-${{ github.ref_name }}.zip .
+
+      - name: Generate release notes from CHANGELOG
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          awk -v version="$VERSION" '
+            $0 ~ "^## \\[" version "\\]" {capture=1; next}
+            capture && $0 ~ "^## \\[" {capture=0}
+            capture {print}
+          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' > RELEASE_NOTES.md
+
+          if [ ! -s RELEASE_NOTES.md ]; then
+            {
+              echo "Release ${GITHUB_REF_NAME}"
+              echo
+              echo "See CHANGELOG.md for details."
+            } > RELEASE_NOTES.md
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: minato-writing-studio-${{ github.ref_name }}.zip
