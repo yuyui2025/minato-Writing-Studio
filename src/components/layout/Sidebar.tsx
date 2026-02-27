@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { statusColors } from "../../constants";
 import type {
   Scene, Manuscripts, SceneDraft, Settings, EditorSettings, SidebarTabKey, TabKey, AiHistoryItem
@@ -44,6 +44,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
   handleSceneSelect, handleAddScene,
   aiHistory, onInsertHistory, onClearHistory,
 }) => {
+  const [expandedIds, setExpandedIds] = useState<number[]>([]);
+
+  const toggleExpand = (id: number) => {
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
   return (
     <aside style={{
       width: sidebarOpen ? 220 : 36,
@@ -208,6 +214,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 aiHistory.map(item => {
                   const d = new Date(item.timestamp);
                   const timeLabel = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+                  const isExpanded = expandedIds.includes(item.id);
                   return (
                     <div key={item.id} style={{ padding: "8px 10px", background: "#0a0f1a", border: "1px solid #1a2535", borderRadius: 4 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
@@ -217,15 +224,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       {item.sceneTitle && (
                         <div style={{ fontSize: 9, color: "#2a4060", marginBottom: 3, fontStyle: "italic" }}>{item.sceneTitle}</div>
                       )}
-                      <div style={{ fontSize: 11, color: "#8ab0cc", lineHeight: 1.6, marginBottom: 6, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" } as React.CSSProperties}>
+                      <div style={{
+                        fontSize: 11, color: "#8ab0cc", lineHeight: 1.6, marginBottom: 6,
+                        ...(isExpanded ? {} : { overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" })
+                      } as React.CSSProperties}>
                         {item.content}
                       </div>
-                      <button
-                        onClick={() => onInsertHistory(item.content)}
-                        style={{ fontSize: 10, padding: "2px 10px", background: "rgba(42,128,96,0.12)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
-                      >
-                        追記
-                      </button>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          onClick={() => onInsertHistory(item.content)}
+                          style={{ fontSize: 10, padding: "2px 10px", background: "rgba(42,128,96,0.12)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          追記
+                        </button>
+                        <button
+                          onClick={() => toggleExpand(item.id)}
+                          style={{ fontSize: 10, padding: "2px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                        >
+                          {isExpanded ? "閉じる" : "展開"}
+                        </button>
+                      </div>
                     </div>
                   );
                 })
@@ -241,17 +259,46 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { key: "structure", label: "構成" },
             { key: "settings", label: "世界観" },
             { key: "prefs", label: "環境" },
+            { key: "ai", label: "AI履歴" },
           ].map(({ key, label }) => (
-            <button key={key} onClick={() => setTab(key as TabKey)} style={{
+            <button key={key} onClick={() => {
+              if (key === "ai") {
+                setSidebarTab("ai");
+                setSidebarOpen(true);
+              } else {
+                setTab(key as TabKey);
+              }
+            }} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
-              color: tab === key ? "#7ab3e0" : "#2a4060",
+              color: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "#7ab3e0" : "#2a4060",
               cursor: "pointer", fontSize: 10, fontFamily: "inherit",
               writingMode: "vertical-rl", letterSpacing: 2,
-              borderLeft: tab === key ? "2px solid #4a6fa5" : "2px solid transparent",
-              background: tab === key ? "rgba(74,111,165,0.08)" : "transparent",
+              borderLeft: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "2px solid #4a6fa5" : "2px solid transparent",
+              background: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "rgba(74,111,165,0.08)" : "transparent",
             }}>{label}</button>
           ))}
+
+          {/* 折りたたみ時の簡易履歴表示 */}
+          {aiHistory.length > 0 && (
+            <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+              <div style={{ fontSize: 8, color: "#1a2535", writingMode: "vertical-rl", letterSpacing: 1 }}>RECENT AI</div>
+              {aiHistory.slice(0, 3).map(item => (
+                <div
+                  key={item.id}
+                  onClick={() => { setSidebarTab("ai"); setSidebarOpen(true); toggleExpand(item.id); }}
+                  title={`${item.label}: ${item.content.substring(0, 20)}...`}
+                  style={{
+                    width: 20, height: 20, borderRadius: "50%", background: "#0a0f1a", border: "1px solid #1a2535",
+                    display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
+                    fontSize: 10, color: "#4a6fa5", fontWeight: "bold"
+                  }}
+                >
+                  {item.label.substring(0, 1)}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </aside>

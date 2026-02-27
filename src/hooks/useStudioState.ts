@@ -277,7 +277,9 @@ export function useStudioState(_user: User) {
   };
 
   const downloadFile = (content: string, filename: string) => {
-    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    // UTF-8 BOM for Windows compatibility (prevents mojibake)
+    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+    const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -286,6 +288,7 @@ export function useStudioState(_user: User) {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    alert(`${filename} を出力しました。`);
   };
 
   const exportScene = (fmt: "md" | "txt") => {
