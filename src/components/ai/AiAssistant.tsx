@@ -64,25 +64,35 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
 
   if (!selectedScene) return null;
 
+  const panelWidth = aiWide ? 420 : 300;
+
   return (
     <>
       {showSettings && aiFloat && (
         <div onClick={() => setShowSettings(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", zIndex: 200 }} />
       )}
       <div style={{
-        position: "fixed", top: 44, right: 0, bottom: 0, zIndex: 201,
-        width: showSettings ? (aiWide ? 420 : 300) : 0,
-        background: "#080c16", borderLeft: showSettings ? "1px solid #1e2d42" : "none",
-        overflow: "hidden", transition: "width 0.2s ease",
-        display: "flex", flexDirection: "column",
+        position: aiFloat ? "fixed" : "relative",
+        top: aiFloat ? 44 : 0,
+        right: 0,
+        bottom: 0,
+        zIndex: 201,
+        width: showSettings ? panelWidth : 0,
+        background: "#080c16",
+        borderLeft: showSettings ? "1px solid #1e2d42" : "none",
+        overflow: "hidden",
+        transition: "width 0.2s ease",
+        display: "flex",
+        flexDirection: "column",
+        flexShrink: 0,
         ...(aiFloat && showSettings ? { boxShadow: "-4px 0 20px rgba(0,0,0,0.6)" } : {}),
       }}>
         {showSettings && (
-          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+          <div style={{ display: "flex", flexDirection: "column", height: "100%", width: panelWidth }}>
             {/* パネルヘッダー */}
             <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #1e2d42", gap: 6, flexShrink: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#4a6fa5", flex: 1 }}>AI アシスト</div>
-              <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={aiFloat ? "固定表示に切替" : "フロート表示に切替"}>{aiFloat ? "浮" : "固"}</button>
+              <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: !aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={!aiFloat ? "フロート表示に切替" : "固定表示に切替"}>{!aiFloat ? "固" : "浮"}</button>
               <button onClick={() => setAiWide(!aiWide)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiWide ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={aiWide ? "幅を狭く" : "幅を広く"}>{aiWide ? "◂" : "▸"}</button>
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
@@ -148,7 +158,17 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               <PolishPanel
                 manuscriptText={manuscriptText}
                 result={aiResults.polish}
-                onResult={t => setAiResults(r => ({ ...r, polish: t }))}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, polish: t }));
+                  if (t) {
+                    try {
+                      const clean = t.replace(/```json|```/g, "").trim();
+                      const suggestions = JSON.parse(clean);
+                      const historyText = suggestions.map((s: any) => `・[${s.reason}] ${s.original} → ${s.suggestion}`).join("\n");
+                      addAiHistory("推敲提案", historyText, selectedScene.title);
+                    } catch(e) {}
+                  }
+                }}
                 loading={aiLoading.polish}
                 onLoading={v => setAiLoading(l => ({ ...l, polish: v }))}
                 error={aiErrors.polish}
@@ -164,7 +184,17 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
               />
               <HintPanel
                 result={aiResults.hint}
-                onResult={t => setAiResults(r => ({ ...r, hint: t }))}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, hint: t }));
+                  if (t) {
+                    try {
+                      const clean = t.replace(/```json|```/g, "").trim();
+                      const hints = JSON.parse(clean);
+                      const historyText = hints.map((h: any) => `・[${h.reason}] ${h.hint}`).join("\n");
+                      addAiHistory("執筆ヒント", historyText, selectedScene.title);
+                    } catch(e) {}
+                  }
+                }}
                 loading={aiLoading.hint}
                 onLoading={v => setAiLoading(l => ({ ...l, hint: v }))}
                 error={aiErrors.hint}

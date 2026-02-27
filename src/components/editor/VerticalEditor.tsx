@@ -9,17 +9,34 @@ type VerticalEditorProps = {
 
 export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }: VerticalEditorProps) {
   const onChangeRef = useRef(onChange);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const lastTextRef = useRef(initialText);
+
   useEffect(() => {
     onChangeRef.current = onChange;
   });
 
   useEffect(() => {
     const handler = (e: MessageEvent) => {
-      if (e.data?.type === "vertical-input") onChangeRef.current(e.data.text);
+      if (e.data?.type === "vertical-input") {
+        lastTextRef.current = e.data.text;
+        onChangeRef.current(e.data.text);
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, []);
+
+  // Update iframe when initialText changes from outside
+  useEffect(() => {
+    if (initialText !== lastTextRef.current) {
+      lastTextRef.current = initialText;
+      const iframe = iframeRef.current;
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: 'vertical-update', text: initialText }, '*');
+      }
+    }
+  }, [initialText]);
 
   const srcDocRef = useRef<string | null>(null);
   if (!srcDocRef.current) {
@@ -52,11 +69,17 @@ body { display:flex; align-items:stretch; padding:20px; }
   editor.addEventListener('input', () => {
     window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '${parentOrigin}');
   });
+  window.addEventListener('message', (e) => {
+    if (e.data?.type === 'vertical-update') {
+      editor.innerText = e.data.text;
+    }
+  });
 </script></body></html>`;
   }
 
   return (
     <iframe
+      ref={iframeRef}
       srcDoc={srcDocRef.current}
       style={{ flex: 1, border: "1px solid #1a2535", borderRadius: 6, width: "100%", minHeight: 400 }}
     />

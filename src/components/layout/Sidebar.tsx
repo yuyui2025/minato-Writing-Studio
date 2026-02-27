@@ -262,20 +262,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
             { key: "ai", label: "AI履歴" },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => {
-              if (key === "ai") {
-                setSidebarTab("ai");
-                setSidebarOpen(true);
-              } else {
-                setTab(key as TabKey);
-              }
+              setTab(key as TabKey);
+              if (sidebarFloat) setSidebarOpen(false);
             }} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
-              color: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "#7ab3e0" : "#2a4060",
+              color: tab === key ? "#7ab3e0" : "#2a4060",
               cursor: "pointer", fontSize: 10, fontFamily: "inherit",
               writingMode: "vertical-rl", letterSpacing: 2,
-              borderLeft: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "2px solid #4a6fa5" : "2px solid transparent",
-              background: (key === "ai" ? sidebarTab === "ai" : tab === key) ? "rgba(74,111,165,0.08)" : "transparent",
+              borderLeft: tab === key ? "2px solid #4a6fa5" : "2px solid transparent",
+              background: tab === key ? "rgba(74,111,165,0.08)" : "transparent",
             }}>{label}</button>
           ))}
 
@@ -286,7 +282,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               {aiHistory.slice(0, 3).map(item => (
                 <div
                   key={item.id}
-                  onClick={() => { setSidebarTab("ai"); setSidebarOpen(true); toggleExpand(item.id); }}
+                  onClick={() => {
+                    setTab("ai");
+                    if (sidebarFloat) setSidebarOpen(false);
+                    if (!expandedIds.includes(item.id)) toggleExpand(item.id);
+                  }}
                   title={`${item.label}: ${item.content.substring(0, 20)}...`}
                   style={{
                     width: 20, height: 20, borderRadius: "50%", background: "#0a0f1a", border: "1px solid #1a2535",
