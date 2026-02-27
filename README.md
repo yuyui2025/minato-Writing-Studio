@@ -25,6 +25,12 @@ Claude AI（Anthropic）と連携した日本語小説執筆ツールです。�
 
 ---
 
+## リリースノート
+
+最新の更新内容は [`RELEASE_NOTES.md`](./RELEASE_NOTES.md) を参照してください。
+
+---
+
 ## 必要なもの
 
 | サービス | 用途 |
