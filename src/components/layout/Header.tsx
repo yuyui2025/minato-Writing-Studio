@@ -22,6 +22,8 @@ export const Header: React.FC<HeaderProps> = ({
   saveStatus, lastSavedTime, scenes, settings, manuscripts,
   saveWithBackup, setShowBackups, setShowExport
 }) => {
+  const hasProjectTitle = projectTitle.trim().length > 0;
+
   return (
     <header style={{ borderBottom: "1px solid #1e2d42", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(10,14,26,0.95)", position: "sticky", top: 0, zIndex: 100, height: 44 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -49,8 +51,23 @@ export const Header: React.FC<HeaderProps> = ({
             style={{ background: "transparent", border: "none", borderBottom: "1px solid #4a6fa5", color: "#e2eaf4", fontSize: 15, fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", outline: "none", letterSpacing: 1, width: 280 }}
           />
         ) : (
-          <div onClick={() => setEditingTitle(true)} style={{ fontSize: 15, fontWeight: 700, color: "#c8d8e8", letterSpacing: 1, cursor: "text", fontFamily: "'Noto Serif JP','Georgia',serif" }} title="クリックで編集">
-            {projectTitle}
+          <div
+            onClick={() => setEditingTitle(true)}
+            style={{
+              fontSize: 15,
+              fontWeight: 700,
+              color: hasProjectTitle ? "#c8d8e8" : "#3a5570",
+              letterSpacing: 1,
+              cursor: "text",
+              fontFamily: "'Noto Serif JP','Georgia',serif",
+              minWidth: 120,
+              minHeight: 22,
+              display: "flex",
+              alignItems: "center",
+            }}
+            title="クリックで編集"
+          >
+            {hasProjectTitle ? projectTitle : <span style={{ fontStyle: "italic" }}>タイトル未設定</span>}
           </div>
         )}
       </div>
