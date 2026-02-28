@@ -1,76 +1,100 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from "react";
 import type { User } from "@supabase/supabase-js";
-import { supabase } from "../supabase";
+import { storageGet, storageSet } from "../utils/storage";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
   AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 
-interface StoredData<T> {
-  value: T;
-  updated_at: string;
+interface StudioContextType {
+  loaded: boolean;
+  saveStatus: SaveStatus;
+  lastSavedTime: Date | null;
+  tab: TabKey;
+  setTab: React.Dispatch<React.SetStateAction<TabKey>>;
+  settings: Settings;
+  setSettings: React.Dispatch<React.SetStateAction<Settings>>;
+  settingsTab: keyof Settings;
+  setSettingsTab: React.Dispatch<React.SetStateAction<keyof Settings>>;
+  scenes: Scene[];
+  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
+  selectedSceneId: number | null;
+  setSelectedSceneId: React.Dispatch<React.SetStateAction<number | null>>;
+  manuscripts: Manuscripts;
+  setManuscripts: React.Dispatch<React.SetStateAction<Manuscripts>>;
+  showSettings: boolean;
+  setShowSettings: React.Dispatch<React.SetStateAction<boolean>>;
+  sidebarOpen: boolean;
+  setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  newScene: SceneDraft;
+  setNewScene: React.Dispatch<React.SetStateAction<SceneDraft>>;
+  addingScene: boolean;
+  setAddingScene: React.Dispatch<React.SetStateAction<boolean>>;
+  confirmDelete: number | null;
+  setConfirmDelete: React.Dispatch<React.SetStateAction<number | null>>;
+  addingChapter: boolean;
+  setAddingChapter: React.Dispatch<React.SetStateAction<boolean>>;
+  projectTitle: string;
+  setProjectTitle: React.Dispatch<React.SetStateAction<string>>;
+  editingTitle: boolean;
+  setEditingTitle: React.Dispatch<React.SetStateAction<boolean>>;
+  showExport: boolean;
+  setShowExport: React.Dispatch<React.SetStateAction<boolean>>;
+  sceneSearch: string;
+  setSceneSearch: React.Dispatch<React.SetStateAction<string>>;
+  backups: Backup[];
+  setBackups: React.Dispatch<React.SetStateAction<Backup[]>>;
+  showBackups: boolean;
+  setShowBackups: React.Dispatch<React.SetStateAction<boolean>>;
+  verticalPreview: boolean;
+  setVerticalPreview: React.Dispatch<React.SetStateAction<boolean>>;
+  editingSceneTitle: boolean;
+  setEditingSceneTitle: React.Dispatch<React.SetStateAction<boolean>>;
+  editingSceneSynopsis: boolean;
+  setEditingSceneSynopsis: React.Dispatch<React.SetStateAction<boolean>>;
+  sidebarFloat: boolean;
+  setSidebarFloat: React.Dispatch<React.SetStateAction<boolean>>;
+  sidebarTab: SidebarTabKey;
+  setSidebarTab: React.Dispatch<React.SetStateAction<SidebarTabKey>>;
+  editorSettings: EditorSettings;
+  setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
+  aiFloat: boolean;
+  setAiFloat: React.Dispatch<React.SetStateAction<boolean>>;
+  aiWide: boolean;
+  setAiWide: React.Dispatch<React.SetStateAction<boolean>>;
+  aiResults: AiResults;
+  setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
+  aiErrors: AiErrors;
+  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
+  aiLoading: AiLoading;
+  setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
+  aiApplied: AppliedState;
+  setAiApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
+  hintApplied: AppliedState;
+  setHintApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
+  aiHistory: AiHistoryItem[];
+  addAiHistory: (label: string, content: string, sceneTitle?: string) => void;
+  clearAiHistory: () => void;
+  autoBackups: Backup[];
+  selectedScene: Scene | null;
+  manuscriptText: string;
+  wordCount: number;
+  handleSceneSelect: (scene: Scene) => void;
+  handleManuscriptChange: (text: string) => void;
+  handleStatusChange: (id: number, status: SceneStatus) => void;
+  handleAddScene: () => void;
+  handleDeleteScene: (id: number) => void;
+  confirmDeleteExecute: () => void;
+  saveWithBackup: (sc: Scene[], st: Settings, ms: Manuscripts, pt: string, label?: string | null) => Promise<void>;
+  exportScene: (fmt: "md" | "txt") => void;
+  exportAll: (fmt: "md" | "txt") => void;
+  handleSaveBackup: (label: string | null) => void;
 }
 
-async function storageGet<T = unknown>(key: string): Promise<T | null> {
-  // 1. Get from LocalStorage
-  const localRaw = localStorage.getItem(key);
-  const localData: StoredData<T> | null = localRaw ? JSON.parse(localRaw) : null;
+const StudioContext = createContext<StudioContextType | undefined>(undefined);
 
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return localData?.value || null;
-
-    // 2. Get from Supabase
-    const { data, error } = await supabase
-      .from("minato_data")
-      .select("value, updated_at")
-      .eq("user_id", user.id)
-      .eq("key", key)
-      .single();
-
-    if (error || !data) return localData?.value || null;
-
-    const remoteData: StoredData<T> = { value: data.value, updated_at: data.updated_at };
-
-    // 3. Compare timestamps
-    if (!localData || new Date(remoteData.updated_at) > new Date(localData.updated_at)) {
-      // Remote is newer or local is missing
-      localStorage.setItem(key, JSON.stringify(remoteData));
-      return remoteData.value;
-    }
-    return localData.value;
-  } catch {
-    return localData?.value || null;
-  }
-}
-
-async function storageSet(key: string, value: unknown): Promise<boolean> {
-  const updatedAt = new Date().toISOString();
-  const data = { value, updated_at: updatedAt };
-  
-  // Always save to localStorage first
-  localStorage.setItem(key, JSON.stringify(data));
-
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-
-    const { error } = await supabase.from("minato_data").upsert({
-      user_id: user.id,
-      key,
-      value,
-      updated_at: updatedAt,
-    }, { onConflict: "user_id,key" });
-
-    return !error;
-  } catch (e) {
-    console.error(e);
-    return false;
-  }
-}
-
-export function useStudioState(_user: User) {
+export function StudioProvider({ children, user }: { children: React.ReactNode, user: User }) {
   const [loaded, setLoaded] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("saved");
@@ -108,8 +132,7 @@ export function useStudioState(_user: User) {
   const [hintApplied, setHintApplied] = useState<AppliedState>({});
   const [aiHistory, setAiHistory] = useState<AiHistoryItem[]>([]);
   const [autoBackups, setAutoBackups] = useState<Backup[]>([]);
-  const [exportContent, setExportContent] = useState<string>("");
-  const [showExportContent, setShowExportContent] = useState<boolean>(false);
+  
   const previousIsOnlineRef = useRef(navigator.onLine);
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
   const latestStateRef = useRef({ scenes: initialScenes, manuscripts: {} as Manuscripts });
@@ -127,7 +150,6 @@ export function useStudioState(_user: User) {
     [manuscriptText]
   );
 
-  // Track online status
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
@@ -141,7 +163,7 @@ export function useStudioState(_user: User) {
 
   useEffect(() => {
     (async () => {
-      setLoaded(false); // Reload data when user changes
+      setLoaded(false);
       const [sc, st, ms, pt, bk, es, ah, ab] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
@@ -162,7 +184,7 @@ export function useStudioState(_user: User) {
       if (ab) setAutoBackups(ab);
       setLoaded(true);
     })();
-  }, [_user?.id]); // Re-run when user logs in/out
+  }, [user?.id]);
 
   const syncAll = useCallback(async () => {
     if (!loaded) return;
@@ -201,7 +223,6 @@ export function useStudioState(_user: User) {
     return () => clearTimeout(t);
   }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, loaded, syncAll]);
 
-  // Force sync when coming back online
   useEffect(() => {
     if (!loaded) return;
     const wasOnline = previousIsOnlineRef.current;
@@ -235,7 +256,6 @@ export function useStudioState(_user: User) {
     } catch { setSaveStatus("error"); }
   };
 
-  // Keep latestStateRef current for use in the auto-backup timer
   useEffect(() => { latestStateRef.current = { scenes, manuscripts }; }, [scenes, manuscripts]);
 
   const addAiHistory = useCallback((label: string, content: string, sceneTitle?: string) => {
@@ -246,7 +266,6 @@ export function useStudioState(_user: User) {
 
   const clearAiHistory = useCallback(() => { setAiHistory([]); storageSet("minato:aiHistory", []); }, []);
 
-  // Auto-backup every 10 minutes
   useEffect(() => {
     if (!loaded) return;
     const timer = setInterval(() => {
@@ -277,7 +296,6 @@ export function useStudioState(_user: User) {
   };
 
   const downloadFile = (content: string, filename: string) => {
-    // UTF-8 BOM for Windows compatibility (prevents mojibake)
     const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
     const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -323,7 +341,7 @@ export function useStudioState(_user: User) {
     storageSet("minato:backups", updated);
   };
 
-  return {
+  const value: StudioContextType = {
     loaded, saveStatus, lastSavedTime, tab, setTab, settings, setSettings,
     settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId, setSelectedSceneId,
     manuscripts, setManuscripts, showSettings, setShowSettings, sidebarOpen, setSidebarOpen,
@@ -341,4 +359,14 @@ export function useStudioState(_user: User) {
     handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
     handleSaveBackup
   };
+
+  return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;
+}
+
+export function useStudio() {
+  const context = useContext(StudioContext);
+  if (context === undefined) {
+    throw new Error("useStudio must be used within a StudioProvider");
+  }
+  return context;
 }

@@ -1,20 +1,13 @@
-import { Scene } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-type ExportModalProps = {
-  selectedScene: Scene | null;
-  _projectTitle: string;
-  onExportScene: (fmt: "md" | "txt") => void;
-  onExportAll: (fmt: "md" | "txt") => void;
-  onClose: () => void;
-};
+export function ExportModal() {
+  const {
+    selectedScene,
+    exportScene,
+    exportAll,
+    setShowExport
+  } = useStudio();
 
-export function ExportModal({
-  selectedScene,
-  _projectTitle,
-  onExportScene,
-  onExportAll,
-  onClose,
-}: ExportModalProps) {
   return (
     <div
       style={{
@@ -34,7 +27,7 @@ export function ExportModal({
             <div style={{ fontSize: 11, color: "#3a5570", marginBottom: 10 }}>選択中のシーン：「{selectedScene.title}」</div>
             <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
               <button
-                onClick={() => onExportScene("md")}
+                onClick={() => exportScene("md")}
                 style={{
                   flex: 1,
                   padding: "8px",
@@ -50,7 +43,7 @@ export function ExportModal({
                 .md
               </button>
               <button
-                onClick={() => onExportScene("txt")}
+                onClick={() => exportScene("txt")}
                 style={{
                   flex: 1,
                   padding: "8px",
@@ -71,7 +64,7 @@ export function ExportModal({
         <div style={{ fontSize: 11, color: "#3a5570", marginBottom: 10 }}>全シーンまとめて</div>
         <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
           <button
-            onClick={() => onExportAll("md")}
+            onClick={() => exportAll("md")}
             style={{
               flex: 1,
               padding: "8px",
@@ -87,7 +80,7 @@ export function ExportModal({
             .md
           </button>
           <button
-            onClick={() => onExportAll("txt")}
+            onClick={() => exportAll("txt")}
             style={{
               flex: 1,
               padding: "8px",
@@ -104,7 +97,7 @@ export function ExportModal({
           </button>
         </div>
         <button
-          onClick={onClose}
+          onClick={() => setShowExport(false)}
           style={{
             width: "100%",
             padding: "7px",

@@ -1,27 +1,17 @@
 import { useRef, useState } from "react";
-import { Scene, Settings, Manuscripts, Backup } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-type BackupModalProps = {
-  backups: Backup[];
-  autoBackups: Backup[];
-  _scenes: Scene[];
-  _settings: Settings;
-  _manuscripts: Manuscripts;
-  onRestore: (scenes: Scene[], manuscripts: Manuscripts, settings?: Settings, projectTitle?: string) => void;
-  onSaveBackup: (label: string | null) => void;
-  onClose: () => void;
-};
-
-export function BackupModal({
-  backups,
-  autoBackups,
-  _scenes,
-  _settings,
-  _manuscripts,
-  onRestore,
-  onSaveBackup,
-  onClose,
-}: BackupModalProps) {
+export function BackupModal() {
+  const {
+    backups,
+    autoBackups,
+    setScenes,
+    setManuscripts,
+    setSettings,
+    setProjectTitle,
+    handleSaveBackup,
+    setShowBackups
+  } = useStudio();
   const backupLabelRef = useRef<HTMLInputElement>(null);
   const [track, setTrack] = useState<"manual" | "auto">("manual");
 
@@ -81,7 +71,7 @@ export function BackupModal({
             <button
               onClick={() => {
                 const label = backupLabelRef.current?.value || null;
-                onSaveBackup(label);
+                handleSaveBackup(label);
                 if (backupLabelRef.current) backupLabelRef.current.value = "";
               }}
               style={{
@@ -134,7 +124,13 @@ export function BackupModal({
                     </div>
                   </div>
                   <button
-                    onClick={() => onRestore(bk.scenes || [], bk.manuscripts || {}, bk.settings, bk.projectTitle)}
+                    onClick={() => {
+                      setScenes(bk.scenes || []);
+                      setManuscripts(bk.manuscripts || {});
+                      if (bk.settings) setSettings(bk.settings);
+                      if (bk.projectTitle) setProjectTitle(bk.projectTitle);
+                      setShowBackups(false);
+                    }}
                     style={{
                       padding: "4px 12px",
                       background: "rgba(74,111,165,0.15)",
@@ -154,7 +150,7 @@ export function BackupModal({
           </div>
         )}
         <button
-          onClick={onClose}
+          onClick={() => setShowBackups(false)}
           style={{
             width: "100%",
             padding: "7px",

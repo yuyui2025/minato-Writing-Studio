@@ -1,27 +1,14 @@
 import React, { useState } from "react";
 import { statusColors, statusLabels } from "../../constants";
-import type { Scene, Manuscripts, SceneDraft } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
+import type { Scene } from "../../types";
 
-interface StructureViewProps {
-  scenes: Scene[];
-  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
-  manuscripts: Manuscripts;
-  addingScene: boolean;
-  setAddingScene: (v: boolean) => void;
-  newScene: SceneDraft;
-  setNewScene: (v: SceneDraft) => void;
-  handleAddScene: () => void;
-  addingChapter: boolean;
-  setAddingChapter: (v: boolean) => void;
-  handleSceneSelect: (s: Scene) => void;
-  selectedSceneId: number | null;
-}
-
-export const StructureView: React.FC<StructureViewProps> = ({
-  scenes, setScenes, manuscripts, addingScene, setAddingScene,
-  newScene, setNewScene, handleAddScene, addingChapter,
-  setAddingChapter, handleSceneSelect, selectedSceneId
-}) => {
+export const StructureView: React.FC = () => {
+  const {
+    scenes, setScenes, manuscripts, addingScene, setAddingScene,
+    newScene, setNewScene, handleAddScene, addingChapter,
+    setAddingChapter, handleSceneSelect, selectedSceneId
+  } = useStudio();
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: number; position: "before" | "after" } | null>(null);
   const [dropChapter, setDropChapter] = useState<string | null>(null);
