@@ -1,49 +1,72 @@
 # minato Writing Studio
 
-「港に届いた例外」執筆支援PWA
-
-Claude AI（Anthropic）と連携した日本語小説執筆ツールです。縦書きプレビュー・シーン管理・AI推敲など、創作に特化した機能を備えています。
-
----
-
-## 機能一覧
-
-- **シーン管理** — 章・タイトル・概要・ステータス（未着手 / 執筆中 / 完成）
-- **構成ビュー** — 章ツリーで全体像を俯瞰・文字数集計
-- **縦書きプレビュー** — iframeによる縦組み表示
-- **AI支援**
-  - 続き提案（200字）
-  - 文章推敲（3案）
-  - 執筆ヒント（3点）
-  - 矛盾チェック
-  - 概要自動生成
-  - 世界観拡張メモ
-- **自動保存** — 900msデバウンスでSupabaseに保存
-- **バックアップ** — 最大5世代のバージョン履歴
-- **出力** — Markdown / テキスト形式でエクスポート
-- **PWA対応** — ホーム画面追加・オフライン対応
+汎用的な日本語執筆向けの PWA（Progressive Web App）です。  
+アウトライン管理・エディタ・縦書きプレビュー・AI支援を1つにまとめ、短編から長編、ブログ下書き、資料作成まで幅広い執筆ワークフローに対応します。
 
 ---
 
-## リリースノート
+## 主な特徴
 
-最新の更新内容は [`RELEASE_NOTES.md`](./RELEASE_NOTES.md) を参照してください。
+- **プロジェクト/シーン管理**
+  - 章・セクション単位で構成を整理
+  - タイトル、概要、ステータス（未着手 / 執筆中 / 完成）を管理
+- **構成ビュー**
+  - ツリー形式で全体構成を俯瞰
+  - シーンごとの文字数集計
+- **執筆ビュー**
+  - 集中しやすいエディタレイアウト
+  - テキストとメタ情報を同時編集
+- **縦書きプレビュー**
+  - 日本語原稿の見え方を縦組みで確認
+- **AI執筆支援（Claude連携）**
+  - 続き提案、推敲、執筆ヒント、矛盾チェック
+  - 概要生成、世界観メモ補助
+- **自動保存 + バックアップ**
+  - 900ms デバウンスで自動保存
+  - 最大5世代の手動バックアップ
+- **エクスポート**
+  - Markdown / テキスト形式で出力
+- **PWA対応**
+  - ホーム画面追加
+  - オフラインでも基本操作が可能
+
+---
+
+## 想定ユースケース
+
+- 小説・シナリオ・エッセイなどの長文執筆
+- ブログ記事や技術記事の下書き
+- 研究メモや企画書の構成整理
+- AIを使った初稿作成・リライト補助
+
+---
+
+## 技術スタック
+
+| レイヤー | 技術 |
+|---|---|
+| フロントエンド | React 18 + TypeScript |
+| ビルド | Vite 5 |
+| 認証・DB | Supabase |
+| AI | Anthropic Claude |
+| PWA | vite-plugin-pwa |
+| ホスティング | Vercel / Cloudflare Pages / その他静的配信 + APIプロキシ |
 
 ---
 
 ## 必要なもの
 
 | サービス | 用途 |
-|---------|------|
+|---|---|
 | [Anthropic](https://console.anthropic.com/) | Claude APIキー |
 | [Supabase](https://supabase.com/) | 認証（Google OAuth）・データ保存 |
-| [Vercel](https://vercel.com/)（推奨） | ホスティング・APIプロキシ |
+| [Vercel](https://vercel.com/)（推奨） | APIキーを秘匿したまま配信（Serverless API） |
 
 ---
 
 ## セットアップ
 
-### 1. インストール
+### 1. 依存パッケージのインストール
 
 ```bash
 npm install
@@ -57,8 +80,8 @@ cp .env.example .env
 
 `.env` を編集：
 
-```
-# Anthropic（開発時のみ使用。本番はサーバー側で設定）
+```env
+# Anthropic（開発時のみ使用。推奨: 本番はサーバー側で設定）
 ANTHROPIC_API_KEY=sk-ant-xxxxxxxxxxxx
 
 # Supabase
@@ -66,14 +89,12 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
 ```
 
-### 3. Supabase の設定
+### 3. Supabase の初期設定
 
-Supabaseダッシュボードで以下を設定してください。
+Supabase ダッシュボードで以下を設定します。
 
-**Google OAuthの有効化：**
-Authentication → Providers → Google をオン
-
-**データテーブルの作成：**
+- Authentication → Providers → **Google** を有効化
+- SQL Editor で以下を実行
 
 ```sql
 create table minato_data (
@@ -85,15 +106,14 @@ create table minato_data (
   unique (user_id, key)
 );
 
--- RLS（行レベルセキュリティ）を有効化
 alter table minato_data enable row level security;
 
-create policy "自分のデータのみ操作可"
+create policy "Users can access only own rows"
   on minato_data for all
   using (auth.uid() = user_id);
 ```
 
-### 4. 開発サーバーの起動
+### 4. 開発サーバー起動
 
 ```bash
 npm run dev
@@ -102,88 +122,72 @@ npm run dev
 
 ---
 
+## 利用可能なコマンド
+
+```bash
+npm run dev        # 開発サーバー起動
+npm run build      # 型チェック + 本番ビルド
+npm run preview    # ビルド成果物のローカル確認
+npm run lint       # ESLint
+npm run typecheck  # TypeScript型チェック
+npm run test       # Vitest（watch）
+npm run test:run   # Vitest（単発実行）
+```
+
+---
+
 ## デプロイ
 
 ### Vercel（推奨）
 
-APIキーをサーバー側で管理できるため、最もセキュアな構成です。
-
-1. GitHubにpush
-2. Vercelにプロジェクトをインポート
-3. 環境変数を設定：
-   - `ANTHROPIC_API_KEY` — Anthropic APIキー（サーバー側）
+1. GitHubへ push
+2. Vercel にプロジェクトをインポート
+3. 環境変数を設定
+   - `ANTHROPIC_API_KEY`（サーバー側）
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
 4. デプロイ
 
-`/api/anthropic` のサーバーレス関数がプロキシとして動作し、APIキーはブラウザに露出しません。
+`/api/anthropic` がプロキシとして機能し、APIキーをクライアントへ露出せずに AI 機能を利用できます。
 
 ### Cloudflare Pages
 
 ```bash
 npm run build
-# dist/ をCloudflare Pagesにアップロード
 ```
 
-> **注意：** Cloudflare Pagesでは `api/anthropic.js` が動作しないため、AI機能を使うには別途バックエンドプロキシが必要です。APIキーをそのままフロントエンドに含める構成はサポートしていません。
+`dist/` をアップロードして配信可能です。  
+ただし `api/anthropic.ts` は Cloudflare Pages Functions の設定なしでは動作しないため、AI機能を使うには別途バックエンドプロキシが必要です。
 
-### VPS / 自宅サーバー
+### VPS / 自前サーバー
 
 ```bash
 npm run build
-# dist/ フォルダをnginxやcaddyで配信
 ```
 
-nginx設定例：
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-    root /path/to/dist;
-    index index.html;
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-}
-```
-
-APIキーを隠すには、バックエンドリバースプロキシを別途用意してください。
+`dist/` を Nginx / Caddy 等で静的配信してください。AI機能を有効化する場合は API キーを秘匿する中継APIを別途用意してください。
 
 ---
 
-## スマホでのインストール（PWA）
+## PWAとしてインストール
 
-1. Safari で開く
-2. 共有ボタン →「ホーム画面に追加」
-3. アプリとして起動できます（Android は Chrome から「アプリをインストール」）
+- **iOS (Safari)**: 共有 → 「ホーム画面に追加」
+- **Android (Chrome)**: 「アプリをインストール」
 
 ---
 
 ## セキュリティ
 
-- **Vercel デプロイ時：** APIキーはサーバーレス関数内にのみ存在し、ブラウザには露出しません
-- **APIプロキシのバリデーション：** 使用モデル・トークン数・メッセージ形式を検証し、不正なリクエストを拒否します
-- **認証：** Supabase Google OAuth によるユーザー認証。データはユーザーIDで厳密に分離されています（RLS）
-- **縦書きエディタ：** iframeとのメッセージングはオリジン検証済み
+- APIキーは**本番ではサーバー側管理**を推奨
+- APIプロキシでリクエストの妥当性チェックを実施
+- Supabase RLSでユーザーごとにデータアクセスを分離
+- 縦書きプレビューの iframe 通信はオリジン検証を実施
 
 ---
 
-## データ保存
+## リリース情報
 
-- **Supabase**（ログイン時）にリアルタイム保存
-- 自動保存（900msデバウンス）＋手動バックアップ（最大5世代）
-- 「出力」機能でMarkdownまたはテキストとしてローカルにエクスポート可能
+変更履歴は以下を参照してください。
 
----
-
-## 技術スタック
-
-| レイヤー | 技術 |
-|---------|------|
-| フロントエンド | React 18 + TypeScript |
-| ビルド | Vite 5 |
-| 認証・DB | Supabase |
-| AI | Anthropic Claude (claude-sonnet-4-20250514) |
-| PWA | vite-plugin-pwa |
-| ホスティング | Vercel / Cloudflare Pages |
+- [`RELEASE_NOTES.md`](./RELEASE_NOTES.md)
+- [`CHANGELOG.md`](./CHANGELOG.md)
