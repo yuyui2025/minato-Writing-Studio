@@ -2,48 +2,19 @@ import React, { useState } from "react";
 import { VerticalEditor } from "../editor/VerticalEditor";
 import { AiPanel } from "../ai/AiPanel";
 import { statusColors, statusLabels } from "../../constants";
-import type {
-  Scene, EditorSettings, AiResults, AiLoading, Settings, SceneStatus, AiErrors
-} from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-interface WriteViewProps {
-  selectedScene: Scene | null;
-  scenes: Scene[];
-  setScenes: React.Dispatch<React.SetStateAction<Scene[]>>;
-  selectedSceneId: number | null;
-  editingSceneTitle: boolean;
-  setEditingSceneTitle: (v: boolean) => void;
-  editingSceneSynopsis: boolean;
-  setEditingSceneSynopsis: (v: boolean) => void;
-  handleStatusChange: (id: number, status: SceneStatus) => void;
-  verticalPreview: boolean;
-  setVerticalPreview: (v: boolean) => void;
-  handleDeleteScene: (id: number) => void;
-  manuscriptText: string;
-  handleManuscriptChange: (text: string) => void;
-  editorSettings: EditorSettings;
-  handleSceneSelect: (s: Scene) => void;
-  wordCount: number;
-  aiResults: AiResults;
-  setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
-  aiErrors: AiErrors;
-  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
-  aiLoading: AiLoading;
-  setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
-  settings: Settings;
-  addAiHistory: (label: string, content: string, sceneTitle?: string) => void;
-}
-
-export const WriteView: React.FC<WriteViewProps> = ({
-  selectedScene, scenes, setScenes, selectedSceneId,
-  editingSceneTitle, setEditingSceneTitle,
-  editingSceneSynopsis, setEditingSceneSynopsis,
-  handleStatusChange, verticalPreview, setVerticalPreview,
-  handleDeleteScene, manuscriptText, handleManuscriptChange,
-  editorSettings, handleSceneSelect, wordCount,
-  aiResults, setAiResults, aiErrors, setAiErrors,
-  aiLoading, setAiLoading, settings, addAiHistory
-}) => {
+export const WriteView: React.FC = () => {
+  const {
+    selectedScene, scenes, setScenes, selectedSceneId,
+    editingSceneTitle, setEditingSceneTitle,
+    editingSceneSynopsis, setEditingSceneSynopsis,
+    handleStatusChange, verticalPreview, setVerticalPreview,
+    handleDeleteScene, manuscriptText, handleManuscriptChange,
+    editorSettings, handleSceneSelect, wordCount,
+    aiResults, setAiResults, aiErrors, setAiErrors,
+    aiLoading, setAiLoading, settings, addAiHistory
+  } = useStudio();
   const [footerOpen, setFooterOpen] = useState(true);
 
   if (!selectedScene) {

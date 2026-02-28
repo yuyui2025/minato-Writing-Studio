@@ -1,3 +1,4 @@
+import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { User } from "@supabase/supabase-js";
@@ -17,19 +18,23 @@ vi.mock("../supabase", () => ({
   },
 }));
 
-import { useStudioState } from "../hooks/useStudioState";
+import { StudioProvider, useStudio } from "../contexts/StudioContext";
 import { initialScenes } from "../constants";
 
 const mockUser = { id: "user-1" } as User;
 
-describe("useStudioState", () => {
+const wrapper = ({ children }: { children: React.ReactNode }) => (
+  <StudioProvider user={mockUser}>{children}</StudioProvider>
+);
+
+describe("StudioContext", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
   });
 
   it("initializes with default scenes", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
 
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
@@ -37,7 +42,7 @@ describe("useStudioState", () => {
   });
 
   it("starts with no selected scene", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
 
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
@@ -47,7 +52,7 @@ describe("useStudioState", () => {
   });
 
   it("selects a scene and updates selectedScene", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {
@@ -59,7 +64,7 @@ describe("useStudioState", () => {
   });
 
   it("updates manuscript text and computes wordCount", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {
@@ -75,7 +80,7 @@ describe("useStudioState", () => {
   });
 
   it("adds a new scene", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     const initialCount = result.current.scenes.length;
@@ -95,7 +100,7 @@ describe("useStudioState", () => {
   });
 
   it("deletes a scene via confirmDeleteExecute", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     const initialCount = result.current.scenes.length;
@@ -116,7 +121,7 @@ describe("useStudioState", () => {
   });
 
   it("deselects scene when selected scene is deleted", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {
@@ -135,7 +140,7 @@ describe("useStudioState", () => {
   });
 
   it("changes scene status", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {
@@ -147,13 +152,13 @@ describe("useStudioState", () => {
   });
 
   it("starts with default tab 'write'", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
     expect(result.current.tab).toBe("write");
   });
 
   it("updates project title", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {
@@ -164,7 +169,7 @@ describe("useStudioState", () => {
   });
 
   it("wordCount ignores whitespace", async () => {
-    const { result } = renderHook(() => useStudioState(mockUser));
+    const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
     act(() => {

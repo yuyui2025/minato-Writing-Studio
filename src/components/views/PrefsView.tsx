@@ -1,14 +1,8 @@
 import React from "react";
-import type { EditorSettings } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-interface PrefsViewProps {
-  editorSettings: EditorSettings;
-  setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
-}
-
-export const PrefsView: React.FC<PrefsViewProps> = ({
-  editorSettings, setEditorSettings
-}) => {
+export const PrefsView: React.FC = () => {
+  const { editorSettings, setEditorSettings } = useStudio();
   return (
     <div style={{ padding: "24px 32px", overflowY: "auto" }}>
       <h2 style={{ margin: "0 0 24px", fontSize: 16, color: "#7ab3e0", fontWeight: 400, letterSpacing: 2 }}>環境設定</h2>

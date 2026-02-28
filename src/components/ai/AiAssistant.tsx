@@ -3,11 +3,7 @@ import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
 import { callAnthropic, AiError } from "../../utils/ai";
-import type {
-  Scene, Settings, AppliedState,
-  AiResults, AiLoading, AiErrors
-} from "../../types";
-
+import { useStudio } from "../../contexts/StudioContext";
 
 export function parsePolishHistoryEntries(result: string): string[] {
   const clean = result.replace(/```json|```/g, "").trim();
@@ -21,38 +17,15 @@ export function parsePolishHistoryEntries(result: string): string[] {
     .map(s => `・[${s.reason ?? "理由なし"}] ${s.original} → ${s.suggestion}`);
 }
 
-interface AiAssistantProps {
-  showSettings: boolean;
-  setShowSettings: (v: boolean) => void;
-  aiFloat: boolean;
-  setAiFloat: (v: boolean) => void;
-  aiWide: boolean;
-  setAiWide: (v: boolean) => void;
-  aiResults: AiResults;
-  setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
-  aiErrors: AiErrors;
-  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
-  aiLoading: AiLoading;
-  setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
-  aiApplied: AppliedState;
-  setAiApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
-  hintApplied: AppliedState;
-  setHintApplied: React.Dispatch<React.SetStateAction<AppliedState>>;
-  manuscriptText: string;
-  handleManuscriptChange: (text: string) => void;
-  settings: Settings;
-  selectedScene: Scene | null;
-  addAiHistory: (label: string, content: string, sceneTitle?: string) => void;
-}
-
-export const AiAssistant: React.FC<AiAssistantProps> = ({
-  showSettings, setShowSettings, aiFloat, setAiFloat,
-  aiWide, setAiWide, aiResults, setAiResults,
-  aiErrors, setAiErrors,
-  aiLoading, setAiLoading, aiApplied, setAiApplied,
-  hintApplied, setHintApplied, manuscriptText,
-  handleManuscriptChange, settings, selectedScene, addAiHistory
-}) => {
+export const AiAssistant: React.FC = () => {
+  const {
+    showSettings, setShowSettings, aiFloat, setAiFloat,
+    aiWide, setAiWide, aiResults, setAiResults,
+    aiErrors, setAiErrors,
+    aiLoading, setAiLoading, aiApplied, setAiApplied,
+    hintApplied, setHintApplied, manuscriptText,
+    handleManuscriptChange, settings, selectedScene, addAiHistory
+  } = useStudio();
   const [freeText, setFreeText] = useState("");
 
   const runFreeInstruct = async () => {

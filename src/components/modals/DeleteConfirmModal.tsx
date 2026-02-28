@@ -1,12 +1,9 @@
-import { Scene } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-type DeleteConfirmModalProps = {
-  scene: Scene | undefined;
-  onConfirm: () => void;
-  onCancel: () => void;
-};
+export function DeleteConfirmModal() {
+  const { scenes, confirmDelete, setConfirmDelete, confirmDeleteExecute } = useStudio();
+  const scene = scenes.find((s) => s.id === confirmDelete);
 
-export function DeleteConfirmModal({ scene, onConfirm, onCancel }: DeleteConfirmModalProps) {
   if (!scene) return null;
 
   return (
@@ -37,7 +34,7 @@ export function DeleteConfirmModal({ scene, onConfirm, onCancel }: DeleteConfirm
         <div style={{ fontSize: 12, color: "#3a5570", marginBottom: 24 }}>この操作は取り消せません。</div>
         <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
           <button
-            onClick={onCancel}
+            onClick={() => setConfirmDelete(null)}
             style={{
               padding: "7px 20px",
               background: "transparent",
@@ -52,7 +49,7 @@ export function DeleteConfirmModal({ scene, onConfirm, onCancel }: DeleteConfirm
             キャンセル
           </button>
           <button
-            onClick={onConfirm}
+            onClick={confirmDeleteExecute}
             style={{
               padding: "7px 20px",
               background: "rgba(180,40,40,0.2)",

@@ -1,53 +1,28 @@
 import React, { useState } from "react";
 import { statusColors } from "../../constants";
+import { useStudio } from "../../contexts/StudioContext";
 import type {
-  Scene, Manuscripts, SceneDraft, Settings, EditorSettings, SidebarTabKey, TabKey, AiHistoryItem
+  SceneDraft, Settings, SidebarTabKey, TabKey, Scene
 } from "../../types";
 
-interface SidebarProps {
-  sidebarOpen: boolean;
-  setSidebarOpen: (v: boolean) => void;
-  sidebarFloat: boolean;
-  setSidebarFloat: (v: boolean) => void;
-  sidebarTab: SidebarTabKey;
-  setSidebarTab: (v: SidebarTabKey) => void;
-  tab: TabKey;
-  setTab: (v: TabKey) => void;
-  scenes: Scene[];
-  selectedSceneId: number | null;
-  manuscripts: Manuscripts;
-  sceneSearch: string;
-  setSceneSearch: (v: string) => void;
-  newScene: SceneDraft;
-  setNewScene: (v: SceneDraft) => void;
-  addingScene: boolean;
-  setAddingScene: (v: boolean) => void;
-  addingChapter: boolean;
-  setAddingChapter: (v: boolean) => void;
-  settings: Settings;
-  setSettings: (v: Settings) => void;
-  editorSettings: EditorSettings;
-  setEditorSettings: React.Dispatch<React.SetStateAction<EditorSettings>>;
-  handleSceneSelect: (s: Scene) => void;
-  handleAddScene: () => void;
-  aiHistory: AiHistoryItem[];
-  onInsertHistory: (content: string) => void;
-  onClearHistory: () => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({
-  sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
-  sidebarTab, setSidebarTab, tab, setTab, scenes, selectedSceneId,
-  manuscripts, sceneSearch, setSceneSearch, newScene, setNewScene,
-  addingScene, setAddingScene, addingChapter, setAddingChapter,
-  settings, setSettings, editorSettings, setEditorSettings,
-  handleSceneSelect, handleAddScene,
-  aiHistory, onInsertHistory, onClearHistory,
-}) => {
+export const Sidebar: React.FC = () => {
+  const {
+    sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
+    sidebarTab, setSidebarTab, tab, setTab, scenes, selectedSceneId,
+    manuscripts, sceneSearch, setSceneSearch, newScene, setNewScene,
+    addingScene, setAddingScene, addingChapter, setAddingChapter,
+    settings, setSettings, editorSettings, setEditorSettings,
+    handleSceneSelect, handleAddScene,
+    aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
+  } = useStudio();
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const onInsertHistory = (content: string) => {
+    handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + content);
   };
 
   return (
@@ -205,7 +180,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
                 <span style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", flex: 1 }}>AI 履歴</span>
                 {aiHistory.length > 0 && (
-                  <button onClick={onClearHistory} style={{ fontSize: 9, padding: "2px 7px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>全クリア</button>
+                  <button onClick={clearAiHistory} style={{ fontSize: 9, padding: "2px 7px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>全クリア</button>
                 )}
               </div>
               {aiHistory.length === 0 ? (

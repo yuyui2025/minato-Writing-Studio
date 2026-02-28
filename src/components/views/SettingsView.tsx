@@ -1,25 +1,14 @@
 import React from "react";
 import { AiPanel } from "../ai/AiPanel";
-import type { Settings, AiResults, AiLoading, AiErrors } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-interface SettingsViewProps {
-  settings: Settings;
-  setSettings: React.Dispatch<React.SetStateAction<Settings>>;
-  settingsTab: keyof Settings;
-  setSettingsTab: (v: keyof Settings) => void;
-  aiResults: AiResults;
-  setAiResults: React.Dispatch<React.SetStateAction<AiResults>>;
-  aiErrors: AiErrors;
-  setAiErrors: React.Dispatch<React.SetStateAction<AiErrors>>;
-  aiLoading: AiLoading;
-  setAiLoading: React.Dispatch<React.SetStateAction<AiLoading>>;
-}
+export const SettingsView: React.FC = () => {
+  const {
+    settings, setSettings, settingsTab, setSettingsTab,
+    aiResults, setAiResults, aiErrors, setAiErrors,
+    aiLoading, setAiLoading
+  } = useStudio();
 
-export const SettingsView: React.FC<SettingsViewProps> = ({
-  settings, setSettings, settingsTab, setSettingsTab,
-  aiResults, setAiResults, aiErrors, setAiErrors,
-  aiLoading, setAiLoading
-}) => {
   return (
     <div style={{ padding: "24px 32px", overflowY: "auto" }}>
       <h2 style={{ margin: "0 0 16px", fontSize: 16, color: "#7ab3e0", fontWeight: 400, letterSpacing: 2 }}>世界観メモ</h2>

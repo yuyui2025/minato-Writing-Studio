@@ -9,11 +9,11 @@ import { WriteView } from "./components/views/WriteView";
 import { StructureView } from "./components/views/StructureView";
 import { SettingsView } from "./components/views/SettingsView";
 import { PrefsView } from "./components/views/PrefsView";
-import { useStudioState } from "./hooks/useStudioState";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { StudioProvider, useStudio } from "./contexts/StudioContext";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -62,29 +62,19 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <Studio user={user} />
+      <StudioProvider user={user}>
+        <Studio />
+      </StudioProvider>
     </ErrorBoundary>
   );
 }
 
-function Studio({ user }: { user: User }) {
+function Studio() {
   const {
-    loaded, saveStatus, lastSavedTime, tab, setTab, settings, setSettings,
-    settingsTab, setSettingsTab, scenes, setScenes, selectedSceneId,
-    manuscripts, setManuscripts, showSettings, setShowSettings, sidebarOpen, setSidebarOpen,
-    newScene, setNewScene, addingScene, setAddingScene, confirmDelete, setConfirmDelete,
-    addingChapter, setAddingChapter, projectTitle, setProjectTitle, editingTitle, setEditingTitle,
-    showExport, setShowExport, sceneSearch, setSceneSearch, backups,
-    showBackups, setShowBackups, verticalPreview, setVerticalPreview,
-    editingSceneTitle, setEditingSceneTitle, editingSceneSynopsis, setEditingSceneSynopsis,
-    sidebarFloat, setSidebarFloat, sidebarTab, setSidebarTab, editorSettings, setEditorSettings,
-    aiFloat, setAiFloat, aiWide, setAiWide, aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading,
-    aiApplied, setAiApplied, hintApplied, setHintApplied,
-    selectedScene, manuscriptText, wordCount,
-    handleSceneSelect, handleManuscriptChange, handleStatusChange, handleAddScene,
-    handleDeleteScene, confirmDeleteExecute, saveWithBackup, exportScene, exportAll,
-    handleSaveBackup, aiHistory, addAiHistory, clearAiHistory, autoBackups,
-  } = useStudioState(user);
+    loaded, tab, sidebarOpen, showSettings,
+    confirmDelete, showExport, showBackups, setSidebarOpen, setShowSettings,
+    sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
+  } = useStudio();
 
   if (!loaded) return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -96,161 +86,25 @@ function Studio({ user }: { user: User }) {
   return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", display: "flex", flexDirection: "column" }}>
       {/* Delete confirm modal */}
-      {confirmDelete && (
-        <DeleteConfirmModal
-          scene={scenes.find((s) => s.id === confirmDelete)}
-          onConfirm={confirmDeleteExecute}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
+      {confirmDelete && <DeleteConfirmModal />}
       {/* Export modal */}
-      {showExport && (
-        <ExportModal
-          selectedScene={selectedScene}
-          _projectTitle={projectTitle}
-          onExportScene={exportScene}
-          onExportAll={exportAll}
-          onClose={() => setShowExport(false)}
-        />
-      )}
+      {showExport && <ExportModal />}
       {/* Backup modal */}
-      {showBackups && (
-        <BackupModal
-          backups={backups}
-          autoBackups={autoBackups}
-          _scenes={scenes}
-          _settings={settings}
-          _manuscripts={manuscripts}
-          onRestore={(sc, ms, restoredSettings, restoredTitle) => {
-            setScenes(sc);
-            setManuscripts(ms);
-            if (restoredSettings) setSettings(restoredSettings);
-            if (restoredTitle) setProjectTitle(restoredTitle);
-            setShowBackups(false);
-          }}
-          onSaveBackup={handleSaveBackup}
-          onClose={() => setShowBackups(false)}
-        />
-      )}
-      <Header
-        projectTitle={projectTitle}
-        setProjectTitle={setProjectTitle}
-        editingTitle={editingTitle}
-        setEditingTitle={setEditingTitle}
-        saveStatus={saveStatus}
-        lastSavedTime={lastSavedTime}
-        scenes={scenes}
-        settings={settings}
-        manuscripts={manuscripts}
-        saveWithBackup={saveWithBackup}
-        setShowBackups={setShowBackups}
-        setShowExport={setShowExport}
-      />
+      {showBackups && <BackupModal />}
+      <Header />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         {/* フロートオーバーレイ背景 */}
-        {((sidebarOpen && sidebarFloat) || (showSettings && aiFloat && tab === "write")) && (
+        {((sidebarOpen && sidebarFloat) || (showSettings && tab === "write")) && (
           <div onClick={() => { setSidebarOpen(false); setShowSettings(false); }} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.4)" }} />
         )}
-        <Sidebar
-          sidebarOpen={sidebarOpen}
-          setSidebarOpen={setSidebarOpen}
-          sidebarFloat={sidebarFloat}
-          setSidebarFloat={setSidebarFloat}
-          sidebarTab={sidebarTab}
-          setSidebarTab={setSidebarTab}
-          tab={tab}
-          setTab={setTab}
-          scenes={scenes}
-          selectedSceneId={selectedSceneId}
-          manuscripts={manuscripts}
-          sceneSearch={sceneSearch}
-          setSceneSearch={setSceneSearch}
-          newScene={newScene}
-          setNewScene={setNewScene}
-          addingScene={addingScene}
-          setAddingScene={setAddingScene}
-          addingChapter={addingChapter}
-          setAddingChapter={setAddingChapter}
-          settings={settings}
-          setSettings={setSettings}
-          editorSettings={editorSettings}
-          setEditorSettings={setEditorSettings}
-          handleSceneSelect={handleSceneSelect}
-          handleAddScene={handleAddScene}
-          aiHistory={aiHistory}
-          onInsertHistory={(content) => handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + content)}
-          onClearHistory={clearAiHistory}
-        />
+        <Sidebar />
 
         <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          {tab === "write" && (
-            <WriteView
-              selectedScene={selectedScene}
-              scenes={scenes}
-              setScenes={setScenes}
-              selectedSceneId={selectedSceneId}
-              editingSceneTitle={editingSceneTitle}
-              setEditingSceneTitle={setEditingSceneTitle}
-              editingSceneSynopsis={editingSceneSynopsis}
-              setEditingSceneSynopsis={setEditingSceneSynopsis}
-              handleStatusChange={handleStatusChange}
-              verticalPreview={verticalPreview}
-              setVerticalPreview={setVerticalPreview}
-              handleDeleteScene={handleDeleteScene}
-              manuscriptText={manuscriptText}
-              handleManuscriptChange={handleManuscriptChange}
-              editorSettings={editorSettings}
-              handleSceneSelect={handleSceneSelect}
-              wordCount={wordCount}
-              aiResults={aiResults}
-              setAiResults={setAiResults}
-              aiErrors={aiErrors}
-              setAiErrors={setAiErrors}
-              aiLoading={aiLoading}
-              setAiLoading={setAiLoading}
-              settings={settings}
-              addAiHistory={addAiHistory}
-            />
-          )}
-
-          {tab === "structure" && (
-            <StructureView
-              scenes={scenes}
-              setScenes={setScenes}
-              manuscripts={manuscripts}
-              addingScene={addingScene}
-              setAddingScene={setAddingScene}
-              newScene={newScene}
-              setNewScene={setNewScene}
-              handleAddScene={handleAddScene}
-              addingChapter={addingChapter}
-              setAddingChapter={setAddingChapter}
-              handleSceneSelect={handleSceneSelect}
-              selectedSceneId={selectedSceneId}
-            />
-          )}
-
-          {tab === "settings" && (
-            <SettingsView
-              settings={settings}
-              setSettings={setSettings}
-              settingsTab={settingsTab}
-              setSettingsTab={setSettingsTab}
-              aiResults={aiResults}
-              setAiResults={setAiResults}
-              aiErrors={aiErrors}
-              setAiErrors={setAiErrors}
-              aiLoading={aiLoading}
-              setAiLoading={setAiLoading}
-            />
-          )}
-          {tab === "prefs" && (
-            <PrefsView
-              editorSettings={editorSettings}
-              setEditorSettings={setEditorSettings}
-            />
-          )}
+          {tab === "write" && <WriteView />}
+          {tab === "structure" && <StructureView />}
+          {tab === "settings" && <SettingsView />}
+          {tab === "prefs" && <PrefsView />}
           {tab === "ai" && (
             <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid #1e2d42", paddingBottom: "12px" }}>
@@ -298,29 +152,7 @@ function Studio({ user }: { user: User }) {
         {/* AI Assistant */}
         {tab === "write" && (
           <ErrorBoundary fallback={<div style={{ position: "fixed", right: 16, bottom: 16, padding: "8px 16px", background: "#0a0e1a", border: "1px solid #2a4060", color: "#e05555", fontSize: 11, borderRadius: 4 }}>AIアシスタントでエラーが発生しました</div>}>
-            <AiAssistant
-              showSettings={showSettings}
-              setShowSettings={setShowSettings}
-              aiFloat={aiFloat}
-              setAiFloat={setAiFloat}
-              aiWide={aiWide}
-              setAiWide={setAiWide}
-              aiResults={aiResults}
-              setAiResults={setAiResults}
-              aiErrors={aiErrors}
-              setAiErrors={setAiErrors}
-              aiLoading={aiLoading}
-              setAiLoading={setAiLoading}
-              aiApplied={aiApplied}
-              setAiApplied={setAiApplied}
-              hintApplied={hintApplied}
-              setHintApplied={setHintApplied}
-              manuscriptText={manuscriptText}
-              handleManuscriptChange={handleManuscriptChange}
-              settings={settings}
-              selectedScene={selectedScene}
-              addAiHistory={addAiHistory}
-            />
+            <AiAssistant />
           </ErrorBoundary>
         )}
       </div>

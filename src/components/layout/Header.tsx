@@ -1,27 +1,13 @@
 import React from "react";
 import { supabase } from "../../supabase";
-import type { Scene, Settings, Manuscripts, SaveStatus } from "../../types";
+import { useStudio } from "../../contexts/StudioContext";
 
-interface HeaderProps {
-  projectTitle: string;
-  setProjectTitle: (v: string) => void;
-  editingTitle: boolean;
-  setEditingTitle: (v: boolean) => void;
-  saveStatus: SaveStatus;
-  lastSavedTime: Date | null;
-  scenes: Scene[];
-  settings: Settings;
-  manuscripts: Manuscripts;
-  saveWithBackup: (sc: Scene[], st: Settings, ms: Manuscripts, pt: string) => void;
-  setShowBackups: (v: boolean) => void;
-  setShowExport: (v: boolean) => void;
-}
-
-export const Header: React.FC<HeaderProps> = ({
-  projectTitle, setProjectTitle, editingTitle, setEditingTitle,
-  saveStatus, lastSavedTime, scenes, settings, manuscripts,
-  saveWithBackup, setShowBackups, setShowExport
-}) => {
+export const Header: React.FC = () => {
+  const {
+    projectTitle, setProjectTitle, editingTitle, setEditingTitle,
+    saveStatus, lastSavedTime, scenes, settings, manuscripts,
+    saveWithBackup, setShowBackups, setShowExport
+  } = useStudio();
   const hasProjectTitle = projectTitle.trim().length > 0;
 
   return (
