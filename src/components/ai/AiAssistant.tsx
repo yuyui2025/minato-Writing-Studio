@@ -8,6 +8,19 @@ import type {
   AiResults, AiLoading, AiErrors
 } from "../../types";
 
+
+export function parsePolishHistoryEntries(result: string): string[] {
+  const clean = result.replace(/```json|```/g, "").trim();
+  const suggestions = JSON.parse(clean);
+  if (!Array.isArray(suggestions)) return [];
+
+  return suggestions
+    .filter((s): s is { reason?: string; original: string; suggestion: string } =>
+      typeof s?.original === "string" && s.original.trim().length > 0 && typeof s?.suggestion === "string" && s.suggestion.trim().length > 0
+    )
+    .map(s => `・[${s.reason ?? "理由なし"}] ${s.original} → ${s.suggestion}`);
+}
+
 interface AiAssistantProps {
   showSettings: boolean;
   setShowSettings: (v: boolean) => void;
@@ -162,10 +175,8 @@ export const AiAssistant: React.FC<AiAssistantProps> = ({
                   setAiResults(r => ({ ...r, polish: t }));
                   if (t) {
                     try {
-                      const clean = t.replace(/```json|```/g, "").trim();
-                      const suggestions = JSON.parse(clean);
-                      const historyText = suggestions.map((s: any) => `・[${s.reason}] ${s.original} → ${s.suggestion}`).join("\n");
-                      addAiHistory("推敲提案", historyText, selectedScene.title);
+                      const entries = parsePolishHistoryEntries(t);
+                      entries.forEach(entry => addAiHistory("推敲提案", entry, selectedScene.title));
                     } catch(e) {}
                   }
                 }}
