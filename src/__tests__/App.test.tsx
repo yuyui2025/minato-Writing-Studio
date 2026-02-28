@@ -25,7 +25,7 @@ vi.mock("../supabase", () => ({
 describe("App", () => {
   test("renders project title when not authenticated", async () => {
     render(<App />);
-    const titleElement = await screen.findByText(/港に届いた例外/i);
+    const titleElement = await screen.findByText(/minato Writing Studio/i);
     expect(titleElement).toBeInTheDocument();
   });
 
