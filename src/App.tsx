@@ -32,7 +32,10 @@ export default function App() {
   }, []);
 
   if (authLoading) return (
-    <div style={{ height: "100dvh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0a0e1a", color: "#2a4060", fontSize: 12, letterSpacing: 2 }}>読み込み中…</div>
+    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 8 }}>
+      <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 2 }}>読み込み中…</div>
+      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
+    </div>
   );
 
   if (!user) return (
@@ -49,7 +52,7 @@ export default function App() {
         </svg>
         <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
       </div>
-      <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>港に届いた例外</div>
+      <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>minato Writing Studio</div>
       <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{
         padding: "10px 28px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5",
         color: "#7ab3e0", cursor: "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
@@ -84,8 +87,9 @@ function Studio({ user }: { user: User }) {
   } = useStudioState(user);
 
   if (!loaded) return (
-    <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", alignItems: "center", justifyContent: "center" }}>
+    <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
       <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 3 }}>loading...</div>
+      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
     </div>
   );
 
