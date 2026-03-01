@@ -22,3 +22,10 @@ export class TextMetrics {
  * - reading_time_sec: estimated reading time in seconds at 400 chars/min
  */
 export function analyze(text: string): TextMetrics;
+
+/**
+ * Parse a Japanese manuscript into structured sections.
+ * Returns a JSON string: { title: string, sections: [{chapter, title, content}] }
+ * No external crates required — JSON is built manually.
+ */
+export function parse_document(text: string): string;

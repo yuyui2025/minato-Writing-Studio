@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 import { storageSet } from "../utils/storage";
@@ -61,6 +61,7 @@ export interface StudioState {
   editingTitle: boolean;
   showExport: boolean;
   showBackups: boolean;
+  showImport: boolean;
   verticalPreview: boolean;
 
   // editor
@@ -113,6 +114,7 @@ export interface StudioState {
   setEditingTitle: (v: boolean) => void;
   setShowExport: (v: boolean) => void;
   setShowBackups: (v: boolean) => void;
+  setShowImport: (v: boolean) => void;
   setVerticalPreview: (v: boolean) => void;
   setEditorSettings: (v: EditorSettings | ((prev: EditorSettings) => EditorSettings)) => void;
   setBackups: (v: Backup[] | ((prev: Backup[]) => Backup[])) => void;
@@ -142,6 +144,7 @@ export interface StudioState {
   handleSaveBackup: (label: string | null) => void;
   exportScene: (fmt: "md" | "txt") => void;
   exportAll: (fmt: "md" | "txt") => void;
+  importProject: (data: ImportData) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -192,6 +195,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   editingTitle: false,
   showExport: false,
   showBackups: false,
+  showImport: false,
   verticalPreview: false,
   editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "dark" },
   backups: [],
@@ -245,6 +249,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setEditingTitle: (v) => set({ editingTitle: v }),
   setShowExport: (v) => set({ showExport: v }),
   setShowBackups: (v) => set({ showBackups: v }),
+  setShowImport: (v) => set({ showImport: v }),
   setVerticalPreview: (v) => set({ verticalPreview: v }),
   setEditorSettings: (v) => set((s) => ({ editorSettings: typeof v === "function" ? v(s.editorSettings) : v })),
   setBackups: (v) => set((s) => ({ backups: typeof v === "function" ? v(s.backups) : v })),
@@ -372,6 +377,49 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     downloadFile(content, `${projectTitle}.${fmt}`);
     set({ showExport: false });
   },
+
+  importProject: async (data) => {
+    const { scenes, manuscripts, settings, projectTitle, backups } = get();
+    // Create a backup of current state before overwriting
+    const backup: Backup = {
+      timestamp: new Date().toISOString(),
+      label: "インポート前の自動バックアップ",
+      scenes,
+      manuscripts,
+      settings,
+      projectTitle,
+    };
+    const newBackups = [backup, ...backups].slice(0, 5);
+    const mergedSettings: Settings = {
+      world: data.settings.world || settings.world,
+      characters: data.settings.characters || settings.characters,
+      theme: settings.theme,
+    };
+    const newScenes = data.scenes;
+    const newManuscripts = data.manuscripts;
+    const newTitle = data.projectTitle ?? projectTitle;
+    const firstId = newScenes[0]?.id ?? null;
+    set({
+      backups: newBackups,
+      scenes: newScenes,
+      manuscripts: newManuscripts,
+      settings: mergedSettings,
+      projectTitle: newTitle,
+      selectedSceneId: firstId,
+      showImport: false,
+      tab: "write",
+      textMetrics: null,
+      ...computeDerived(newScenes, newManuscripts, firstId),
+    });
+    // Persist to storage asynchronously (best-effort)
+    await Promise.all([
+      storageSet("minato:scenes", newScenes),
+      storageSet("minato:manuscripts", newManuscripts),
+      storageSet("minato:settings", mergedSettings),
+      storageSet("minato:title", newTitle),
+      storageSet("minato:backups", newBackups),
+    ]).catch(() => {/* ignore storage errors */});
+  },
 }));
 
 // テスト用: ストアを初期状態にリセットする
@@ -401,6 +449,7 @@ export function resetStudioStore() {
     editingTitle: false,
     showExport: false,
     showBackups: false,
+    showImport: false,
     verticalPreview: false,
     editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "dark" },
     backups: [],

@@ -11,6 +11,7 @@ import { SettingsView } from "./components/views/SettingsView";
 import { PrefsView } from "./components/views/PrefsView";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
+import { ImportModal } from "./components/modals/ImportModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StudioProvider, useStudio } from "./contexts/StudioContext";
@@ -72,7 +73,7 @@ export default function App() {
 function Studio() {
   const {
     loaded, tab, sidebarOpen, showSettings,
-    confirmDelete, showExport, showBackups, setSidebarOpen, setShowSettings,
+    confirmDelete, showExport, showBackups, showImport, setSidebarOpen, setShowSettings,
     sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
   } = useStudio();
 
@@ -89,6 +90,8 @@ function Studio() {
       {confirmDelete && <DeleteConfirmModal />}
       {/* Export modal */}
       {showExport && <ExportModal />}
+      {/* Import modal */}
+      {showImport && <ImportModal />}
       {/* Backup modal */}
       {showBackups && <BackupModal />}
       <Header />
