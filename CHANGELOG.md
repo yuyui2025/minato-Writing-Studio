@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [1.1.0] - 2026-03-01
-
 ### Changed
 - Refactored state management from `useStudioState` hook to `StudioContext` using React Context API to eliminate extensive prop drilling.
 - Extracted data persistence and Supabase synchronization logic to `src/utils/storage.ts` for better separation of concerns.
