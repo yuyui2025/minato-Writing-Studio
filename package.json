@@ -8,8 +8,8 @@
   },
   "scripts": {
     "build:wasm": "wasm-pack build rust/text-analyzer --target bundler --out-dir ../../src/wasm/text_analyzer",
-    "dev": "npm run build:wasm && vite",
-    "build": "npm run build:wasm && tsc --noEmit && vite build",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
