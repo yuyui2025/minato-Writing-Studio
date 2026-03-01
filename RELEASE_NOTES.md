@@ -1,5 +1,21 @@
 # リリースノート
 
+## [Unreleased] — Zustand 移行
+
+### 🏗 アーキテクチャ改善
+- **状態管理を React Context → Zustand に移行**
+  - `src/stores/useStudioStore.ts` を新設。全ステート・アクションを一元管理。
+  - `StudioContext.tsx` を副作用専用ラッパーに刷新（399行 → 144行）。
+  - `useStudio()` の API は後方互換を維持し、コンポーネントへの変更なしに移行。
+  - Zustand のグローバルストアにより React Context 起因の不要な再レンダリングを抑制。
+
+### 🧪 テスト
+- テスト間のストア状態汚染を防ぐ `resetStudioStore()` を追加。
+- `StudioContext.test.tsx` を更新し、全11テストが安定してパスするよう修正。
+- テスト総数: 60件 全パス。
+
+---
+
 ## v1.0.0（2026-02-27）
 
 minato Writing Studio の初回安定版リリースです。  
