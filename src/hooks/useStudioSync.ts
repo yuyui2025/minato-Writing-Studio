@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { useStudioStore } from "../stores/useStudioStore";
 import { storageGet, storageSet } from "../utils/storage";
@@ -16,15 +16,15 @@ export function useStudioSync(user: User | null) {
   }, [store.scenes, store.manuscripts]);
 
   // Track online status
+  const [isOnlineState, setIsOnlineState] = useState(navigator.onLine);
   useEffect(() => {
-    const handleOnline = () => { /* Update via store if needed but logic is in syncAll */ };
-    const handleOffline = () => { /* ... */ };
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
+    const update = () => setIsOnlineState(navigator.onLine);
+    window.addEventListener("online", update);
+    window.addEventListener("offline", update);
     return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
+      window.removeEventListener("online", update);
+      window.removeEventListener("offline", update);
+    }
   }, []);
 
   // Initial Load
@@ -101,31 +101,6 @@ export function useStudioSync(user: User | null) {
   // Force sync when coming back online
   useEffect(() => {
     if (!store.loaded) return;
-    const isOnline = navigator.onLine;
-    const wasOnline = previousIsOnlineRef.current;
-    if (!wasOnline && isOnline) {
-      syncAllRef.current();
-    }
-    previousIsOnlineRef.current = isOnline;
-  }, [store.loaded]); // Check periodically or rely on browser event? The browser event doesn't trigger this effect directly unless state changes.
-  // Actually navigator.onLine changes don't trigger re-render by themselves.
-  // We need a state for online status if we want to react to it in useEffect, but we can also just use the event listener.
-  // For simplicity, let's keep the existing pattern but we might need a local state `isOnline` to trigger the effect.
-  // The store doesn't track `isOnline` explicitly for logic, only for saveStatus display maybe?
-  // Let's add a local state here just for this trigger.
-  const [isOnlineState, setIsOnlineState] = React.useState(navigator.onLine);
-  useEffect(() => {
-    const update = () => setIsOnlineState(navigator.onLine);
-    window.addEventListener("online", update);
-    window.addEventListener("offline", update);
-    return () => {
-      window.removeEventListener("online", update);
-      window.removeEventListener("offline", update);
-    }
-  }, []);
-  
-  useEffect(() => {
-    if (!store.loaded) return;
     if (isOnlineState && !previousIsOnlineRef.current) {
         syncAllRef.current();
     }
@@ -144,5 +119,3 @@ export function useStudioSync(user: User | null) {
     return () => clearInterval(timer);
   }, [store.loaded, store.settings, store.projectTitle]);
 }
-
-import React from "react";

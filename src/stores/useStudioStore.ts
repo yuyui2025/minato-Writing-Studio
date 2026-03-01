@@ -45,7 +45,10 @@ interface StudioState {
   aiHistory: AiHistoryItem[];
   autoBackups: Backup[];
 
-  // Computed (will be derived in hook or selectors, but here we keep raw state)
+  // Derived (Computed)
+  selectedScene: Scene | null;
+  manuscriptText: string;
+  wordCount: number;
   
   // Actions
   setLoaded: (loaded: boolean) => void;
@@ -80,8 +83,8 @@ interface StudioState {
   setAiResults: (results: AiResults | ((prev: AiResults) => AiResults)) => void;
   setAiErrors: (errors: AiErrors | ((prev: AiErrors) => AiErrors)) => void;
   setAiLoading: (loading: AiLoading | ((prev: AiLoading) => AiLoading)) => void;
-  setAiApplied: (applied: AppliedState) => void;
-  setHintApplied: (applied: AppliedState) => void;
+  setAiApplied: (applied: AppliedState | ((prev: AppliedState) => AppliedState)) => void;
+  setHintApplied: (applied: AppliedState | ((prev: AppliedState) => AppliedState)) => void;
   setAutoBackups: (backups: Backup[] | ((prev: Backup[]) => Backup[])) => void;
   setAiHistory: (history: AiHistoryItem[] | ((prev: AiHistoryItem[]) => AiHistoryItem[])) => void;
 
@@ -100,236 +103,252 @@ interface StudioState {
   exportAll: (fmt: "md" | "txt") => void;
 }
 
-export const useStudioStore = create<StudioState>((set, get) => ({
-  // Initial State
-  loaded: false,
-  saveStatus: "saved",
-  lastSavedTime: null,
-  tab: "write",
-  settings: initialSettings,
-  settingsTab: "world",
-  scenes: initialScenes,
-  selectedSceneId: null,
-  manuscripts: {},
-  showSettings: false,
-  sidebarOpen: true,
-  newScene: { chapter: "", title: "", synopsis: "" },
-  addingScene: false,
-  confirmDelete: null,
-  addingChapter: false,
-  projectTitle: "港に届いた例外",
-  editingTitle: false,
-  showExport: false,
-  sceneSearch: "",
-  backups: [],
-  showBackups: false,
-  verticalPreview: false,
-  editingSceneTitle: false,
-  editingSceneSynopsis: false,
-  sidebarFloat: true,
-  sidebarTab: "write",
-  editorSettings: { fontSize: 15, lineHeight: 2.2 },
-  aiFloat: false,
-  aiWide: false,
-  aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
-  aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
-  aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, freeInstruct: false },
-  aiApplied: {},
-  hintApplied: {},
-  aiHistory: [],
-  autoBackups: [],
+export const useStudioStore = create<StudioState>((set, get) => {
+  // Derived state updater
+  const updateDerived = (state: Partial<StudioState>) => {
+    const nextScenes = state.scenes ?? get().scenes;
+    const nextManuscripts = state.manuscripts ?? get().manuscripts;
+    const nextSelectedId = state.selectedSceneId !== undefined ? state.selectedSceneId : get().selectedSceneId;
 
-  // Setters
-  setLoaded: (v) => set({ loaded: v }),
-  setSaveStatus: (v) => set({ saveStatus: v }),
-  setLastSavedTime: (v) => set({ lastSavedTime: v }),
-  setTab: (v) => set({ tab: v }),
-  setSettings: (v) => set((state) => ({ settings: typeof v === "function" ? v(state.settings) : v })),
-  setSettingsTab: (v) => set({ settingsTab: v }),
-  setScenes: (v) => set((state) => ({ scenes: typeof v === "function" ? v(state.scenes) : v })),
-  setSelectedSceneId: (v) => set({ selectedSceneId: v }),
-  setManuscripts: (v) => set((state) => ({ manuscripts: typeof v === "function" ? v(state.manuscripts) : v })),
-  setShowSettings: (v) => set({ showSettings: v }),
-  setSidebarOpen: (v) => set({ sidebarOpen: v }),
-  setNewScene: (v) => set({ newScene: v }),
-  setAddingScene: (v) => set({ addingScene: v }),
-  setConfirmDelete: (v) => set({ confirmDelete: v }),
-  setAddingChapter: (v) => set({ addingChapter: v }),
-  setProjectTitle: (v) => set({ projectTitle: v }),
-  setEditingTitle: (v) => set({ editingTitle: v }),
-  setShowExport: (v) => set({ showExport: v }),
-  setSceneSearch: (v) => set({ sceneSearch: v }),
-  setBackups: (v) => set({ backups: v }),
-  setShowBackups: (v) => set({ showBackups: v }),
-  setVerticalPreview: (v) => set({ verticalPreview: v }),
-  setEditingSceneTitle: (v) => set({ editingSceneTitle: v }),
-  setEditingSceneSynopsis: (v) => set({ editingSceneSynopsis: v }),
-  setSidebarFloat: (v) => set({ sidebarFloat: v }),
-  setSidebarTab: (v) => set({ sidebarTab: v }),
-  setEditorSettings: (v) => set((state) => ({ editorSettings: typeof v === "function" ? v(state.editorSettings) : v })),
-  setAiFloat: (v) => set({ aiFloat: v }),
-  setAiWide: (v) => set({ aiWide: v }),
-  setAiResults: (v) => set((state) => ({ aiResults: typeof v === "function" ? v(state.aiResults) : v })),
-  setAiErrors: (v) => set((state) => ({ aiErrors: typeof v === "function" ? v(state.aiErrors) : v })),
-  setAiLoading: (v) => set((state) => ({ aiLoading: typeof v === "function" ? v(state.aiLoading) : v })),
-  setAiApplied: (v) => set({ aiApplied: v }),
-  setHintApplied: (v) => set({ hintApplied: v }),
-  setAutoBackups: (v) => set((state) => ({ autoBackups: typeof v === "function" ? v(state.autoBackups) : v })),
-  setAiHistory: (v) => set((state) => ({ aiHistory: typeof v === "function" ? v(state.aiHistory) : v })),
+    const selectedScene = nextScenes.find(s => s.id === nextSelectedId) ?? null;
+    const manuscriptText = nextSelectedId ? (nextManuscripts[nextSelectedId] ?? "") : "";
+    const wordCount = manuscriptText.replace(/\s/g, "").length;
 
-  // Complex Actions
-  addAiHistory: (label, content, sceneTitle) => {
-    if (!content.trim()) return;
-    const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle };
-    set(state => ({ aiHistory: [item, ...state.aiHistory].slice(0, 30) }));
-  },
+    return { selectedScene, manuscriptText, wordCount };
+  };
 
-  clearAiHistory: () => {
-    set({ aiHistory: [] });
-    storageSet("minato:aiHistory", []);
-  },
+  return {
+    // Initial State
+    loaded: false,
+    saveStatus: "saved",
+    lastSavedTime: null,
+    tab: "write",
+    settings: initialSettings,
+    settingsTab: "world",
+    scenes: initialScenes,
+    selectedSceneId: null,
+    manuscripts: {},
+    showSettings: false,
+    sidebarOpen: true,
+    newScene: { chapter: "", title: "", synopsis: "" },
+    addingScene: false,
+    confirmDelete: null,
+    addingChapter: false,
+    projectTitle: "港に届いた例外",
+    editingTitle: false,
+    showExport: false,
+    sceneSearch: "",
+    backups: [],
+    showBackups: false,
+    verticalPreview: false,
+    editingSceneTitle: false,
+    editingSceneSynopsis: false,
+    sidebarFloat: true,
+    sidebarTab: "write",
+    editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "dark" },
+    aiFloat: false,
+    aiWide: false,
+    aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
+    aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
+    aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, freeInstruct: false },
+    aiApplied: {},
+    hintApplied: {},
+    aiHistory: [],
+    autoBackups: [],
 
-  handleSceneSelect: (scene) => {
-    set({ selectedSceneId: scene.id, tab: "write" });
-  },
+    // Initial Derived
+    selectedScene: null,
+    manuscriptText: "",
+    wordCount: 0,
 
-  handleManuscriptChange: (text) => {
-    const { selectedSceneId, manuscripts } = get();
-    if (selectedSceneId !== null) {
-      set({ manuscripts: { ...manuscripts, [selectedSceneId]: text } });
-    }
-  },
+    // Setters
+    setLoaded: (v) => set({ loaded: v }),
+    setSaveStatus: (v) => set({ saveStatus: v }),
+    setLastSavedTime: (v) => set({ lastSavedTime: v }),
+    setTab: (v) => set({ tab: v }),
+    setSettings: (v) => set((state) => ({ settings: typeof v === "function" ? v(state.settings) : v })),
+    setSettingsTab: (v) => set({ settingsTab: v }),
+    setScenes: (v) => set((state) => {
+      const nextScenes = typeof v === "function" ? v(state.scenes) : v;
+      return { scenes: nextScenes, ...updateDerived({ scenes: nextScenes }) };
+    }),
+    setSelectedSceneId: (v) => set((state) => {
+      return { selectedSceneId: v, ...updateDerived({ selectedSceneId: v }) };
+    }),
+    setManuscripts: (v) => set((state) => {
+      const nextManuscripts = typeof v === "function" ? v(state.manuscripts) : v;
+      return { manuscripts: nextManuscripts, ...updateDerived({ manuscripts: nextManuscripts }) };
+    }),
+    setShowSettings: (v) => set({ showSettings: v }),
+    setSidebarOpen: (v) => set({ sidebarOpen: v }),
+    setNewScene: (v) => set({ newScene: v }),
+    setAddingScene: (v) => set({ addingScene: v }),
+    setConfirmDelete: (v) => set({ confirmDelete: v }),
+    setAddingChapter: (v) => set({ addingChapter: v }),
+    setProjectTitle: (v) => set({ projectTitle: v }),
+    setEditingTitle: (v) => set({ editingTitle: v }),
+    setShowExport: (v) => set({ showExport: v }),
+    setSceneSearch: (v) => set({ sceneSearch: v }),
+    setBackups: (v) => set({ backups: v }),
+    setShowBackups: (v) => set({ showBackups: v }),
+    setVerticalPreview: (v) => set({ verticalPreview: v }),
+    setEditingSceneTitle: (v) => set({ editingSceneTitle: v }),
+    setEditingSceneSynopsis: (v) => set({ editingSceneSynopsis: v }),
+    setSidebarFloat: (v) => set({ sidebarFloat: v }),
+    setSidebarTab: (v) => set({ sidebarTab: v }),
+    setEditorSettings: (v) => set((state) => ({ editorSettings: typeof v === "function" ? v(state.editorSettings) : v })),
+    setAiFloat: (v) => set({ aiFloat: v }),
+    setAiWide: (v) => set({ aiWide: v }),
+    setAiResults: (v) => set((state) => ({ aiResults: typeof v === "function" ? v(state.aiResults) : v })),
+    setAiErrors: (v) => set((state) => ({ aiErrors: typeof v === "function" ? v(state.aiErrors) : v })),
+    setAiLoading: (v) => set((state) => ({ aiLoading: typeof v === "function" ? v(state.aiLoading) : v })),
+    setAiApplied: (v) => set((state) => ({ aiApplied: typeof v === "function" ? v(state.aiApplied) : v })),
+    setHintApplied: (v) => set((state) => ({ hintApplied: typeof v === "function" ? v(state.hintApplied) : v })),
+    setAutoBackups: (v) => set((state) => ({ autoBackups: typeof v === "function" ? v(state.autoBackups) : v })),
+    setAiHistory: (v) => set((state) => ({ aiHistory: typeof v === "function" ? v(state.aiHistory) : v })),
 
-  handleStatusChange: (id, status) => {
-    set(state => ({ scenes: state.scenes.map(s => s.id === id ? { ...s, status } : s) }));
-  },
+    // Complex Actions
+    addAiHistory: (label, content, sceneTitle) => {
+      if (!content.trim()) return;
+      const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle };
+      set(state => ({ aiHistory: [item, ...state.aiHistory].slice(0, 30) }));
+    },
 
-  handleAddScene: () => {
-    const { newScene, scenes } = get();
-    const scene: Scene = { ...newScene, id: Date.now(), status: "empty" };
-    set({
-      scenes: [...scenes, scene],
-      newScene: { chapter: "", title: "", synopsis: "" },
-      addingScene: false
-    });
-  },
+    clearAiHistory: () => {
+      set({ aiHistory: [] });
+      storageSet("minato:aiHistory", []);
+    },
 
-  handleDeleteScene: (id) => set({ confirmDelete: id }),
+    handleSceneSelect: (scene) => {
+      set({ selectedSceneId: scene.id, tab: "write", ...updateDerived({ selectedSceneId: scene.id }) });
+    },
 
-  confirmDeleteExecute: () => {
-    const { confirmDelete, scenes, selectedSceneId, manuscripts } = get();
-    if (confirmDelete === null) return;
-    const nextScenes = scenes.filter(s => s.id !== confirmDelete);
-    const nextManuscripts = { ...manuscripts };
-    delete nextManuscripts[confirmDelete];
-    
-    set({
-      scenes: nextScenes,
-      manuscripts: nextManuscripts,
-      selectedSceneId: selectedSceneId === confirmDelete ? null : selectedSceneId,
-      confirmDelete: null
-    });
-  },
-
-  saveWithBackup: async (sc, st, ms, pt, label = null) => {
-    set({ saveStatus: "saving" });
-    const { backups } = get();
-    try {
-      const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms, settings: st, projectTitle: pt };
-      const updatedBackups = [newBackup, ...backups].slice(0, 5);
-      set({ backups: updatedBackups });
-      
-      const success = await Promise.all([
-        storageSet("minato:scenes", sc),
-        storageSet("minato:settings", st),
-        storageSet("minato:manuscripts", ms),
-        storageSet("minato:title", pt),
-        storageSet("minato:backups", updatedBackups),
-      ]);
-
-      if (success.every(r => r)) {
-        set({ saveStatus: "saved", lastSavedTime: new Date() });
-      } else {
-        set({ saveStatus: navigator.onLine ? "error" : "offline" });
+    handleManuscriptChange: (text) => {
+      const { selectedSceneId, manuscripts } = get();
+      if (selectedSceneId !== null) {
+        const nextManuscripts = { ...manuscripts, [selectedSceneId]: text };
+        set({ manuscripts: nextManuscripts, ...updateDerived({ manuscripts: nextManuscripts }) });
       }
-    } catch { set({ saveStatus: "error" }); }
-  },
+    },
 
-  handleSaveBackup: (label) => {
-    const { backups, scenes, manuscripts, settings, projectTitle } = get();
-    const newBackup = {
-      timestamp: new Date().toISOString(),
-      label,
-      scenes,
-      manuscripts,
-      settings,
-      projectTitle,
-    };
-    const updated = [newBackup, ...backups].slice(0, 5);
-    set({ backups: updated });
-    storageSet("minato:backups", updated);
-  },
+    handleStatusChange: (id, status) => {
+      const nextScenes = get().scenes.map(s => s.id === id ? { ...s, status } : s);
+      set({ scenes: nextScenes, ...updateDerived({ scenes: nextScenes }) });
+    },
 
-  exportScene: (fmt) => {
-    const { scenes, selectedSceneId, manuscripts, setShowExport } = get();
-    const selectedScene = scenes.find(s => s.id === selectedSceneId);
-    if (!selectedScene) return;
-    
-    const text = manuscripts[selectedScene.id] || "";
-    const content = fmt === "md"
-      ? `# ${selectedScene.chapter} — ${selectedScene.title}
+    handleAddScene: () => {
+      const { newScene, scenes } = get();
+      const scene: Scene = { ...newScene, id: Date.now(), status: "empty" };
+      const nextScenes = [...scenes, scene];
+      set({
+        scenes: nextScenes,
+        newScene: { chapter: "", title: "", synopsis: "" },
+        addingScene: false,
+        ...updateDerived({ scenes: nextScenes })
+      });
+    },
 
-${selectedScene.synopsis ? `> ${selectedScene.synopsis}
+    handleDeleteScene: (id) => set({ confirmDelete: id }),
 
-` : ""}${text}`
-      : `${selectedScene.chapter} — ${selectedScene.title}
-${"=".repeat(30)}
-${selectedScene.synopsis ? `${selectedScene.synopsis}
+    confirmDeleteExecute: () => {
+      const { confirmDelete, scenes, selectedSceneId, manuscripts } = get();
+      if (confirmDelete === null) return;
+      const nextScenes = scenes.filter(s => s.id !== confirmDelete);
+      const nextManuscripts = { ...manuscripts };
+      delete nextManuscripts[confirmDelete];
+      
+      const nextSelectedId = selectedSceneId === confirmDelete ? null : selectedSceneId;
+      
+      set({
+        scenes: nextScenes,
+        manuscripts: nextManuscripts,
+        selectedSceneId: nextSelectedId,
+        confirmDelete: null,
+        ...updateDerived({ scenes: nextScenes, manuscripts: nextManuscripts, selectedSceneId: nextSelectedId })
+      });
+    },
 
-` : ""}${text}`;
-    
-    // Download logic directly in store action? Ideally separated but keeping logic together for now
-    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${selectedScene.title}.${fmt}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    alert(`${selectedScene.title}.${fmt} を出力しました。`);
-    setShowExport(false);
-  },
+    saveWithBackup: async (sc, st, ms, pt, label = null) => {
+      set({ saveStatus: "saving" });
+      const { backups } = get();
+      try {
+        const newBackup = { timestamp: new Date().toISOString(), label, scenes: sc, manuscripts: ms, settings: st, projectTitle: pt };
+        const updatedBackups = [newBackup, ...backups].slice(0, 5);
+        set({ backups: updatedBackups });
+        
+        const success = await Promise.all([
+          storageSet("minato:scenes", sc),
+          storageSet("minato:settings", st),
+          storageSet("minato:manuscripts", ms),
+          storageSet("minato:title", pt),
+          storageSet("minato:backups", updatedBackups),
+        ]);
 
-  exportAll: (fmt) => {
-    const { projectTitle, scenes, manuscripts, setShowExport } = get();
-    const content = fmt === "md"
-      ? `# ${projectTitle}
+        if (success.every(r => r)) {
+          set({ saveStatus: "saved", lastSavedTime: new Date() });
+        } else {
+          set({ saveStatus: navigator.onLine ? "error" : "offline" });
+        }
+      } catch { set({ saveStatus: "error" }); }
+    },
 
-` + scenes.map(s => `## ${s.chapter} — ${s.title}
+    handleSaveBackup: (label) => {
+      const { backups, scenes, manuscripts, settings, projectTitle } = get();
+      const newBackup = {
+        timestamp: new Date().toISOString(),
+        label,
+        scenes,
+        manuscripts,
+        settings,
+        projectTitle,
+      };
+      const updated = [newBackup, ...backups].slice(0, 5);
+      set({ backups: updated });
+      storageSet("minato:backups", updated);
+    },
 
-${s.synopsis ? `> ${s.synopsis}
+    exportScene: (fmt) => {
+      const { scenes, selectedSceneId, manuscripts, setShowExport } = get();
+      const selectedScene = scenes.find(s => s.id === selectedSceneId);
+      if (!selectedScene) return;
+      
+      const text = manuscripts[selectedScene.id] || "";
+      const content = fmt === "md"
+        ? `# ${selectedScene.chapter} — ${selectedScene.title}\n\n${selectedScene.synopsis ? `> ${selectedScene.synopsis}\n\n` : ""}${text}`
+        : `${selectedScene.chapter} — ${selectedScene.title}\n${"=".repeat(30)}\n${selectedScene.synopsis ? `${selectedScene.synopsis}\n\n` : ""}${text}`;
+      
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${selectedScene.title}.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert(`${selectedScene.title}.${fmt} を出力しました。`);
+      setShowExport(false);
+    },
 
-` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
-      : scenes.map(s => `${s.chapter} — ${s.title}
-${"=".repeat(30)}
-${s.synopsis ? `${s.synopsis}
-
-` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
-    
-    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-    const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${projectTitle}.${fmt}`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    alert(`${projectTitle}.${fmt} を出力しました。`);
-    setShowExport(false);
-  }
-}));
+    exportAll: (fmt) => {
+      const { projectTitle, scenes, manuscripts, setShowExport } = get();
+      const content = fmt === "md"
+        ? `# ${projectTitle}\n\n` + scenes.map(s => `## ${s.chapter} — ${s.title}\n\n${s.synopsis ? `> ${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n---\n\n")
+        : scenes.map(s => `${s.chapter} — ${s.title}\n${"=".repeat(30)}\n${s.synopsis ? `${s.synopsis}\n\n` : ""}${manuscripts[s.id] || "（未執筆）"}`).join("\n\n" + "─".repeat(40) + "\n\n");
+      
+      const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+      const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${projectTitle}.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      alert(`${projectTitle}.${fmt} を出力しました。`);
+      setShowExport(false);
+    }
+  };
+});
