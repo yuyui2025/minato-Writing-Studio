@@ -6,6 +6,7 @@ import type {
 } from "../../types";
 
 export const Sidebar: React.FC = () => {
+  const store = useStudioStore();
   const {
     sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
     sidebarTab, setSidebarTab, tab, setTab, scenes, selectedSceneId,
@@ -14,7 +15,8 @@ export const Sidebar: React.FC = () => {
     settings, setSettings, editorSettings, setEditorSettings,
     handleSceneSelect, handleAddScene,
     aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
-  } = useStudioStore();
+  } = store;
+
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {
