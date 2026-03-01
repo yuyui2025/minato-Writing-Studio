@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { useStudioStore } from "../../stores/useStudioStore";
+import { useStudio } from "../../contexts/StudioContext";
 
 export function BackupModal() {
   const {
@@ -11,7 +11,7 @@ export function BackupModal() {
     setProjectTitle,
     handleSaveBackup,
     setShowBackups
-  } = useStudioStore();
+  } = useStudio();
   const backupLabelRef = useRef<HTMLInputElement>(null);
   const [track, setTrack] = useState<"manual" | "auto">("manual");
 

@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { VerticalEditor } from "../editor/VerticalEditor";
 import { AiPanel } from "../ai/AiPanel";
 import { statusColors, statusLabels } from "../../constants";
-import { useStudioStore } from "../../stores/useStudioStore";
+import { useStudio } from "../../contexts/StudioContext";
 
 export const WriteView: React.FC = () => {
   const {
@@ -14,7 +14,7 @@ export const WriteView: React.FC = () => {
     editorSettings, handleSceneSelect, wordCount,
     aiResults, setAiResults, aiErrors, setAiErrors,
     aiLoading, setAiLoading, settings, addAiHistory
-  } = useStudioStore();
+  } = useStudio();
   const [footerOpen, setFooterOpen] = useState(true);
 
   if (!selectedScene) {

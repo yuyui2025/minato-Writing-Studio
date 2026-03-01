@@ -1,8 +1,8 @@
 import React from "react";
-import { useStudioStore } from "../../stores/useStudioStore";
+import { useStudio } from "../../contexts/StudioContext";
 
 export const PrefsView: React.FC = () => {
-  const { editorSettings, setEditorSettings } = useStudioStore();
+  const { editorSettings, setEditorSettings } = useStudio();
   return (
     <div style={{ padding: "24px 32px", overflowY: "auto" }}>
       <h2 style={{ margin: "0 0 24px", fontSize: 16, color: "#7ab3e0", fontWeight: 400, letterSpacing: 2 }}>環境設定</h2>
@@ -19,6 +19,30 @@ export const PrefsView: React.FC = () => {
         </div>
         <div style={{ padding: "12px 16px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 6 }}>
           <div style={{ fontSize: editorSettings.fontSize, lineHeight: editorSettings.lineHeight, color: "#8ab0cc", fontFamily: "'Noto Serif JP','Georgia',serif" }}>プレビュー：夜明け前の霧の中、自律貨物船が静かに接岸した。</div>
+        </div>
+        <div>
+          <div style={{ fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 }}>テーマ</div>
+          <div style={{ display: "flex", gap: 8 }}>
+            {(["dark", "light", "system"] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => setEditorSettings(s => ({ ...s, colorTheme: t }))}
+                style={{
+                  flex: 1, padding: "8px 4px",
+                  background: (editorSettings.colorTheme ?? "dark") === t ? "rgba(74,111,165,0.2)" : "transparent",
+                  border: "1px solid",
+                  borderColor: (editorSettings.colorTheme ?? "dark") === t ? "#4a6fa5" : "#1e2d42",
+                  color: (editorSettings.colorTheme ?? "dark") === t ? "#7ab3e0" : "#3a5570",
+                  cursor: "pointer", fontSize: 12, borderRadius: 4, fontFamily: "inherit",
+                }}
+              >
+                {t === "dark" ? "ダーク" : t === "light" ? "ライト" : "システム"}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: "#2a4060", marginTop: 6 }}>
+            {(editorSettings.colorTheme ?? "dark") === "system" ? "OSの設定に従います" : ""}
+          </div>
         </div>
       </div>
     </div>
