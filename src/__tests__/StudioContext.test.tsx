@@ -1,6 +1,6 @@
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { User } from "@supabase/supabase-js";
 
 // Mock supabase module
@@ -19,6 +19,7 @@ vi.mock("../supabase", () => ({
 }));
 
 import { StudioProvider, useStudio } from "../contexts/StudioContext";
+import { resetStudioStore } from "../stores/useStudioStore";
 import { initialScenes } from "../constants";
 
 const mockUser = { id: "user-1" } as User;
@@ -31,6 +32,11 @@ describe("StudioContext", () => {
   beforeEach(() => {
     localStorage.clear();
     vi.clearAllMocks();
+    resetStudioStore();
+  });
+
+  afterEach(() => {
+    resetStudioStore();
   });
 
   it("initializes with default scenes", async () => {
