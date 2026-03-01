@@ -101,6 +101,28 @@ export function analyze(text) {
     const ret = wasm.analyze(ptr0, len0);
     return TextMetrics.__wrap(ret);
 }
+
+/**
+ * Parse a Japanese manuscript into structured sections.
+ * Returns a JSON string: { title: string, sections: [{chapter, title, content}] }
+ * No external crates required — JSON is built manually.
+ * @param {string} text
+ * @returns {string}
+ */
+export function parse_document(text) {
+    let deferred2_0;
+    let deferred2_1;
+    try {
+        const ptr0 = passStringToWasm0(text, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
+        const ret = wasm.parse_document(ptr0, len0);
+        deferred2_0 = ret[0];
+        deferred2_1 = ret[1];
+        return getStringFromWasm0(ret[0], ret[1]);
+    } finally {
+        wasm.__wbindgen_free(deferred2_0, deferred2_1, 1);
+    }
+}
 export function __wbg___wbindgen_throw_6ddd609b62940d55(arg0, arg1) {
     throw new Error(getStringFromWasm0(arg0, arg1));
 }

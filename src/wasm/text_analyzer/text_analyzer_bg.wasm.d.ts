@@ -13,7 +13,9 @@ export const __wbg_set_textmetrics_reading_time_sec: (a: number, b: number) => v
 export const __wbg_set_textmetrics_sentence_count: (a: number, b: number) => void;
 export const __wbg_textmetrics_free: (a: number, b: number) => void;
 export const analyze: (a: number, b: number) => number;
+export const parse_document: (a: number, b: number) => [number, number];
 export const __wbindgen_externrefs: WebAssembly.Table;
 export const __wbindgen_malloc: (a: number, b: number) => number;
 export const __wbindgen_realloc: (a: number, b: number, c: number, d: number) => number;
+export const __wbindgen_free: (a: number, b: number, c: number) => void;
 export const __wbindgen_start: () => void;

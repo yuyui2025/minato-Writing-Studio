@@ -1,4 +1,4 @@
-import type { TextMetrics } from "../types";
+import type { TextMetrics, ParsedDocument } from "../types";
 
 type WasmRaw = {
   char_count: number;
@@ -10,7 +10,10 @@ type WasmRaw = {
 };
 type WasmAnalyze = (text: string) => WasmRaw;
 
+type WasmParseDocument = (text: string) => string;
+
 let analyzeFunc: WasmAnalyze | null = null;
+let parseDocFunc: WasmParseDocument | null = null;
 
 export async function analyzeText(text: string): Promise<TextMetrics | null> {
   try {
@@ -28,6 +31,19 @@ export async function analyzeText(text: string): Promise<TextMetrics | null> {
     };
     raw.free();
     return metrics;
+  } catch {
+    return null;
+  }
+}
+
+export async function parseDocument(text: string): Promise<ParsedDocument | null> {
+  try {
+    if (!parseDocFunc) {
+      const mod = await import("../wasm/text_analyzer/text_analyzer.js");
+      parseDocFunc = (mod as unknown as { parse_document: WasmParseDocument }).parse_document;
+    }
+    const json = parseDocFunc(text);
+    return JSON.parse(json) as ParsedDocument;
   } catch {
     return null;
   }

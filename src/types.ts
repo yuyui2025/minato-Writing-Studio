@@ -63,3 +63,26 @@ export type TextMetrics = {
   kanji_rate: number;
   reading_time_sec: number;
 };
+
+export type ParsedSection = {
+  chapter: string;
+  title: string;
+  content: string;
+};
+
+export type ParsedDocument = {
+  title: string;
+  sections: ParsedSection[];
+};
+
+export type AiExtractResult = {
+  characters: string;
+  world: string;
+};
+
+export type ImportData = {
+  scenes: Scene[];
+  manuscripts: Manuscripts;
+  settings: Partial<Settings>;
+  projectTitle?: string;
+};

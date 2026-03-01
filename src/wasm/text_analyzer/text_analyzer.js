@@ -5,5 +5,5 @@ import { __wbg_set_wasm } from "./text_analyzer_bg.js";
 __wbg_set_wasm(wasm);
 wasm.__wbindgen_start();
 export {
-    TextMetrics, analyze
+    TextMetrics, analyze, parse_document
 } from "./text_analyzer_bg.js";
