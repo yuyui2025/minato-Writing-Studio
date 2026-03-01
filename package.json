@@ -7,7 +7,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build rust/text-analyzer --target bundler --out-dir ../../src/wasm/text_analyzer",
+    "build:wasm": "wasm-pack build rust/text-analyzer --target bundler --out-dir ../../src/wasm/text_analyzer && rm -f src/wasm/text_analyzer/.gitignore",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

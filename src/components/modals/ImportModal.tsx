@@ -40,7 +40,6 @@ export function ImportModal() {
   const [sections, setSections] = useState<ParsedSection[]>([]);
   const [characters, setCharacters] = useState("");
   const [world, setWorld] = useState("");
-  const [rawText, setRawText] = useState("");
 
   const handleFile = useCallback(async (file: File) => {
     if (!file.name.match(/\.(md|txt)$/i)) {
@@ -51,7 +50,6 @@ export function ImportModal() {
     setStep("analyzing");
 
     const text = await file.text();
-    setRawText(text);
 
     const [parsed, aiResult] = await Promise.all([
       parseDocument(text),
