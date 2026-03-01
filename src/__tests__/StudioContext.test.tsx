@@ -2,6 +2,7 @@ import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { User } from "@supabase/supabase-js";
+import type { Scene } from "../types";
 
 // Mock supabase module
 vi.mock("../supabase", () => ({
@@ -20,9 +21,11 @@ vi.mock("../supabase", () => ({
 
 import { StudioProvider, useStudio } from "../contexts/StudioContext";
 import { resetStudioStore } from "../stores/useStudioStore";
-import { initialScenes } from "../constants";
 
 const mockUser = { id: "user-1" } as User;
+
+// テスト用の汎用シーン（作品内容に依存しない）
+const testScene: Scene = { id: 1, chapter: "第一章", title: "テストシーン", status: "empty", synopsis: "" };
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <StudioProvider user={mockUser}>{children}</StudioProvider>
@@ -39,12 +42,12 @@ describe("StudioContext", () => {
     resetStudioStore();
   });
 
-  it("initializes with default scenes", async () => {
+  it("initializes with empty scenes", async () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
 
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    expect(result.current.scenes).toEqual(initialScenes);
+    expect(result.current.scenes).toEqual([]);
   });
 
   it("starts with no selected scene", async () => {
@@ -61,24 +64,20 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.handleSceneSelect(initialScenes[0]);
-    });
+    act(() => { result.current.setScenes([testScene]); });
+    act(() => { result.current.handleSceneSelect(testScene); });
 
-    expect(result.current.selectedScene?.id).toBe(initialScenes[0].id);
-    expect(result.current.selectedScene?.title).toBe(initialScenes[0].title);
+    expect(result.current.selectedScene?.id).toBe(testScene.id);
+    expect(result.current.selectedScene?.title).toBe(testScene.title);
   });
 
   it("updates manuscript text and computes wordCount", async () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.handleSceneSelect(initialScenes[0]);
-    });
-    act(() => {
-      result.current.handleManuscriptChange("Hello World");
-    });
+    act(() => { result.current.setScenes([testScene]); });
+    act(() => { result.current.handleSceneSelect(testScene); });
+    act(() => { result.current.handleManuscriptChange("Hello World"); });
 
     expect(result.current.manuscriptText).toBe("Hello World");
     // wordCount excludes whitespace: "HelloWorld" = 10
@@ -92,7 +91,7 @@ describe("StudioContext", () => {
     const initialCount = result.current.scenes.length;
 
     act(() => {
-      result.current.setNewScene({ chapter: "第三章", title: "新シーン", synopsis: "あらすじ" });
+      result.current.setNewScene({ chapter: "第一章", title: "新シーン", synopsis: "あらすじ" });
     });
     act(() => {
       result.current.handleAddScene();
@@ -101,7 +100,7 @@ describe("StudioContext", () => {
     expect(result.current.scenes.length).toBe(initialCount + 1);
     const added = result.current.scenes[result.current.scenes.length - 1];
     expect(added?.title).toBe("新シーン");
-    expect(added?.chapter).toBe("第三章");
+    expect(added?.chapter).toBe("第一章");
     expect(added?.status).toBe("empty");
   });
 
@@ -109,20 +108,16 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
+    act(() => { result.current.setScenes([testScene]); });
     const initialCount = result.current.scenes.length;
-    const targetId = initialScenes[0].id;
 
-    act(() => {
-      result.current.handleDeleteScene(targetId);
-    });
-    expect(result.current.confirmDelete).toBe(targetId);
+    act(() => { result.current.handleDeleteScene(testScene.id); });
+    expect(result.current.confirmDelete).toBe(testScene.id);
 
-    act(() => {
-      result.current.confirmDeleteExecute();
-    });
+    act(() => { result.current.confirmDeleteExecute(); });
 
     expect(result.current.scenes.length).toBe(initialCount - 1);
-    expect(result.current.scenes.find(s => s.id === targetId)).toBeUndefined();
+    expect(result.current.scenes.find(s => s.id === testScene.id)).toBeUndefined();
     expect(result.current.confirmDelete).toBeNull();
   });
 
@@ -130,17 +125,12 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.handleSceneSelect(initialScenes[0]);
-    });
-    expect(result.current.selectedScene?.id).toBe(initialScenes[0].id);
+    act(() => { result.current.setScenes([testScene]); });
+    act(() => { result.current.handleSceneSelect(testScene); });
+    expect(result.current.selectedScene?.id).toBe(testScene.id);
 
-    act(() => {
-      result.current.handleDeleteScene(initialScenes[0].id);
-    });
-    act(() => {
-      result.current.confirmDeleteExecute();
-    });
+    act(() => { result.current.handleDeleteScene(testScene.id); });
+    act(() => { result.current.confirmDeleteExecute(); });
 
     expect(result.current.selectedScene).toBeNull();
   });
@@ -149,11 +139,10 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.handleStatusChange(initialScenes[0].id, "done");
-    });
+    act(() => { result.current.setScenes([testScene]); });
+    act(() => { result.current.handleStatusChange(testScene.id, "done"); });
 
-    const scene = result.current.scenes.find(s => s.id === initialScenes[0].id);
+    const scene = result.current.scenes.find(s => s.id === testScene.id);
     expect(scene?.status).toBe("done");
   });
 
@@ -167,9 +156,7 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.setProjectTitle("新プロジェクト");
-    });
+    act(() => { result.current.setProjectTitle("新プロジェクト"); });
 
     expect(result.current.projectTitle).toBe("新プロジェクト");
   });
@@ -178,12 +165,9 @@ describe("StudioContext", () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
 
-    act(() => {
-      result.current.handleSceneSelect(initialScenes[0]);
-    });
-    act(() => {
-      result.current.handleManuscriptChange("あいう えお\nかきく");
-    });
+    act(() => { result.current.setScenes([testScene]); });
+    act(() => { result.current.handleSceneSelect(testScene); });
+    act(() => { result.current.handleManuscriptChange("あいう えお\nかきく"); });
 
     // "あいうえおかきく" = 8 chars without whitespace
     expect(result.current.wordCount).toBe(8);
