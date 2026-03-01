@@ -120,7 +120,6 @@ export const Sidebar: React.FC = () => {
     }}>
       {sidebarOpen ? (
         <>
-          {/* Sidebar header: tabs + close */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
               <button key={key} onClick={() => {
@@ -138,7 +137,6 @@ export const Sidebar: React.FC = () => {
             <button onClick={() => setSidebarOpen(false)} style={{ padding: "8px 10px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: "#2a4060", cursor: "pointer", fontSize: 11, fontFamily: "inherit", flexShrink: 0 }}>◀</button>
           </div>
 
-          {/* Sidebar content: 執筆 = scene list */}
           {sidebarTab === "write" && <>
             <div style={{ padding: "8px 12px 4px" }}>
               <input
@@ -164,8 +162,8 @@ export const Sidebar: React.FC = () => {
                 <button onClick={() => setAddingScene(true)} style={{ width: "100%", padding: "7px", border: "1px dashed #1e2d42", background: "transparent", color: "#2a4060", cursor: "pointer", fontSize: 11, borderRadius: 4, fontFamily: "inherit" }}>＋ シーンを追加</button>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {[["chapter", "章名"], ["title", "タイトル"], ["synopsis", "概要"]].map(([key, ph]) => (
-                    <input key={key} placeholder={ph} value={newScene[key as keyof SceneDraft]} onChange={e => setNewScene({ ...newScene, [key as keyof SceneDraft]: e.target.value })} style={{ background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 3, fontSize: 11, fontFamily: "inherit", outline: "none" }} />
+                  {(["chapter", "title", "synopsis"] as const).map((key) => (
+                    <input key={key} placeholder={key === "chapter" ? "章名" : key === "title" ? "タイトル" : "概要"} value={newScene[key]} onChange={e => setNewScene({ ...newScene, [key]: e.target.value })} style={{ background: "#0e1520", border: "1px solid #1e2d42", color: "#8ab0cc", padding: "5px 8px", borderRadius: 3, fontSize: 11, fontFamily: "inherit", outline: "none" }} />
                   ))}
                   <div style={{ display: "flex", gap: 4 }}>
                     <button onClick={handleAddScene} style={{ flex: 1, padding: "5px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>追加</button>
@@ -176,7 +174,6 @@ export const Sidebar: React.FC = () => {
             </div>
           </>}
 
-          {/* Sidebar content: 構成 = chapter tree with drag-and-drop */}
           {sidebarTab === "structure" && (() => {
             const chapters = scenes.reduce((acc, scene) => {
               const ch = scene.chapter || "未分類";
@@ -264,7 +261,7 @@ export const Sidebar: React.FC = () => {
                     <input autoFocus placeholder="章名" value={newScene.chapter} onChange={e => setNewScene({ ...newScene, chapter: e.target.value })} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#c8d8e8", fontSize: 12, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
                     <input placeholder="タイトル（省略可）" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => { if (e.key === "Enter") { handleAddScene(); setAddingChapter(false); }}} style={{ background: "transparent", border: "none", borderBottom: "1px solid #1a2535", color: "#8ab0cc", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
                     <div style={{ display: "flex", gap: 4 }}>
-                      <button onClick={() => { handleAddScene(); setAddingChapter(false); }} style={{ flex: 1, padding: "3px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>追加</button>
+                      <button onClick={handleAddScene} style={{ flex: 1, padding: "3px", background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>追加</button>
                       <button onClick={() => { setAddingChapter(false); setNewScene({ chapter: "", title: "", synopsis: "" }); }} style={{ flex: 1, padding: "3px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", borderRadius: 3, fontSize: 10, fontFamily: "inherit" }}>×</button>
                     </div>
                   </div>
@@ -275,7 +272,6 @@ export const Sidebar: React.FC = () => {
             );
           })()}
 
-          {/* Sidebar content: 設定 */}
           {sidebarTab === "settings" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
@@ -347,7 +343,6 @@ export const Sidebar: React.FC = () => {
             </div>
           )}
 
-          {/* AI履歴タブ */}
           {sidebarTab === "ai" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
@@ -424,7 +419,6 @@ export const Sidebar: React.FC = () => {
             }}>{label}</button>
           ))}
 
-          {/* 折りたたみ時の簡易履歴表示 */}
           {aiHistory.length > 0 && (
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
               <div style={{ fontSize: 8, color: "#1a2535", writingMode: "vertical-rl", letterSpacing: 1 }}>RECENT AI</div>

@@ -202,8 +202,14 @@ export const useStudioStore = create<StudioState>((set, get) => {
     setAiResults: (v) => set((state) => ({ aiResults: typeof v === "function" ? v(state.aiResults) : v })),
     setAiErrors: (v) => set((state) => ({ aiErrors: typeof v === "function" ? v(state.aiErrors) : v })),
     setAiLoading: (v) => set((state) => ({ aiLoading: typeof v === "function" ? v(state.aiLoading) : v })),
-    setAiApplied: (v) => set((state) => ({ aiApplied: typeof v === "function" ? v(state.aiApplied) : v })),
-    setHintApplied: (v) => set((state) => ({ hintApplied: typeof v === "function" ? v(state.hintApplied) : v })),
+    setAiApplied: (v) => set((state) => {
+      const next = typeof v === "function" ? v(state.aiApplied) : v;
+      return { aiApplied: next };
+    }),
+    setHintApplied: (v) => set((state) => {
+      const next = typeof v === "function" ? v(state.hintApplied) : v;
+      return { hintApplied: next };
+    }),
     setAutoBackups: (v) => set((state) => ({ autoBackups: typeof v === "function" ? v(state.autoBackups) : v })),
     setAiHistory: (v) => set((state) => ({ aiHistory: typeof v === "function" ? v(state.aiHistory) : v })),
 

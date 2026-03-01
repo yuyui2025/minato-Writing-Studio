@@ -4,17 +4,22 @@ import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
 import { callAnthropic, AiError } from "../../utils/ai";
 import { useStudioStore } from "../../stores/useStudioStore";
+import type { AppliedState } from "../../types";
 
 export function parsePolishHistoryEntries(result: string): string[] {
   const clean = result.replace(/```json|```/g, "").trim();
-  const suggestions = JSON.parse(clean);
-  if (!Array.isArray(suggestions)) return [];
+  try {
+    const suggestions = JSON.parse(clean);
+    if (!Array.isArray(suggestions)) return [];
 
-  return suggestions
-    .filter((s): s is { reason?: string; original: string; suggestion: string } =>
-      typeof s?.original === "string" && s.original.trim().length > 0 && typeof s?.suggestion === "string" && s.suggestion.trim().length > 0
-    )
-    .map(s => `・[${s.reason ?? "理由なし"}] ${s.original} → ${s.suggestion}`);
+    return suggestions
+      .filter((s): s is { reason?: string; original: string; suggestion: string } =>
+        typeof s?.original === "string" && s.original.trim().length > 0 && typeof s?.suggestion === "string" && s.suggestion.trim().length > 0
+      )
+      .map(s => `・[${s.reason ?? "理由なし"}] ${s.original} → ${s.suggestion}`);
+  } catch {
+    return [];
+  }
 }
 
 export const AiAssistant: React.FC = () => {
@@ -52,6 +57,14 @@ export const AiAssistant: React.FC = () => {
 
   const panelWidth = aiWide ? 420 : 300;
 
+  // Dispatch wrappers to satisfy Dispatch<SetStateAction<AppliedState>>
+  const handleAiApplied: React.Dispatch<React.SetStateAction<AppliedState>> = (value) => {
+    setAiApplied(value);
+  };
+  const handleHintApplied: React.Dispatch<React.SetStateAction<AppliedState>> = (value) => {
+    setHintApplied(value);
+  };
+
   return (
     <>
       {showSettings && aiFloat && (
@@ -75,7 +88,6 @@ export const AiAssistant: React.FC = () => {
       }}>
         {showSettings && (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: panelWidth }}>
-            {/* パネルヘッダー */}
             <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #1e2d42", gap: 6, flexShrink: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#4a6fa5", flex: 1 }}>AI アシスト</div>
               <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: !aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={!aiFloat ? "フロート表示に切替" : "固定表示に切替"}>{!aiFloat ? "固" : "浮"}</button>
@@ -83,7 +95,6 @@ export const AiAssistant: React.FC = () => {
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
             <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
-              {/* 自由指示パネル */}
               <div style={{ borderBottom: "1px solid #1a2535", paddingBottom: 16 }}>
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>✦ 自由指示</div>
                 <textarea
@@ -158,7 +169,7 @@ export const AiAssistant: React.FC = () => {
                 error={aiErrors.polish}
                 onError={t => setAiErrors(e => ({ ...e, polish: t }))}
                 applied={aiApplied}
-                onApplied={setAiApplied}
+                onApplied={handleAiApplied}
                 onApply={(original, replacement) => {
                   const idx = manuscriptText.indexOf(original);
                   if (idx === -1) return;
@@ -184,7 +195,7 @@ export const AiAssistant: React.FC = () => {
                 error={aiErrors.hint}
                 onError={t => setAiErrors(e => ({ ...e, hint: t }))}
                 applied={hintApplied}
-                onApplied={setHintApplied}
+                onApplied={handleHintApplied}
                 manuscriptText={manuscriptText}
                 onInsert={handleManuscriptChange}
                 prompt={`以下の世界観・設定と現在のシーンを踏まえて、このシーンをより良くするヒントを3点挙げてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || "なし"}\n【本文末尾】${manuscriptText.slice(-300)}`}
