@@ -14,7 +14,8 @@ export const Sidebar: React.FC = () => {
     addingScene, setAddingScene, addingChapter, setAddingChapter,
     settings, setSettings, editorSettings, setEditorSettings,
     handleSceneSelect, handleAddScene,
-    aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
+    aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
+    aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading, addAiHistory
   } = store;
 
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
