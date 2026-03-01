@@ -11,7 +11,7 @@ export const WriteView: React.FC = () => {
     editingSceneSynopsis, setEditingSceneSynopsis,
     handleStatusChange, verticalPreview, setVerticalPreview,
     handleDeleteScene, manuscriptText, handleManuscriptChange,
-    editorSettings, handleSceneSelect, wordCount,
+    editorSettings, handleSceneSelect, wordCount, textMetrics,
     aiResults, setAiResults, aiErrors, setAiErrors,
     aiLoading, setAiLoading, settings, addAiHistory
   } = useStudio();
@@ -88,7 +88,15 @@ export const WriteView: React.FC = () => {
             const next = scenes[idx + 1];
             return (<>
               <button onClick={() => prev && handleSceneSelect(prev)} disabled={!prev} style={{ padding: "4px 10px", background: "transparent", border: "1px solid", borderColor: prev ? "#1e2d42" : "#0e1520", color: prev ? "#3a5570" : "#1a2535", cursor: prev ? "pointer" : "default", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>← {prev ? (prev.title || "無題") : "—"}</button>
-              <div style={{ flex: 1, textAlign: "center", fontSize: 11, color: "#2a4060" }}>{wordCount.toLocaleString()} 文字</div>
+              <div style={{ flex: 1, textAlign: "center", fontSize: 11, color: "#2a4060" }}>
+                {wordCount.toLocaleString()} 文字
+                {textMetrics && (
+                  <span style={{ marginLeft: 6, color: "#1e3050" }}>
+                    · {textMetrics.sentence_count} 文
+                    · 約 {Math.ceil(textMetrics.reading_time_sec / 60)} 分
+                  </span>
+                )}
+              </div>
               <button onClick={() => next && handleSceneSelect(next)} disabled={!next} style={{ padding: "4px 10px", background: "transparent", border: "1px solid", borderColor: next ? "#1e2d42" : "#0e1520", color: next ? "#3a5570" : "#1a2535", cursor: next ? "pointer" : "default", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>{next ? (next.title || "無題") : "—"} →</button>
             </>);
           })()}

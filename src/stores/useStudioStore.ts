@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 import { storageSet } from "../utils/storage";
@@ -84,6 +84,7 @@ export interface StudioState {
   selectedScene: Scene | null;
   manuscriptText: string;
   wordCount: number;
+  textMetrics: TextMetrics | null;
 
   // ---------------------------------------------------------------------------
   // Setters (plain state updates)
@@ -124,6 +125,7 @@ export interface StudioState {
   setAiApplied: (v: AppliedState | ((prev: AppliedState) => AppliedState)) => void;
   setHintApplied: (v: AppliedState | ((prev: AppliedState) => AppliedState)) => void;
   setAiHistory: (v: AiHistoryItem[] | ((prev: AiHistoryItem[]) => AiHistoryItem[])) => void;
+  setTextMetrics: (v: TextMetrics | null) => void;
 
   // ---------------------------------------------------------------------------
   // Actions (business logic)
@@ -205,6 +207,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   selectedScene: null,
   manuscriptText: "",
   wordCount: 0,
+  textMetrics: null,
 
   // ---------------------------------------------------------------------------
   // Setters
@@ -254,6 +257,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAiApplied: (v) => set((s) => ({ aiApplied: typeof v === "function" ? v(s.aiApplied) : v })),
   setHintApplied: (v) => set((s) => ({ hintApplied: typeof v === "function" ? v(s.hintApplied) : v })),
   setAiHistory: (v) => set((s) => ({ aiHistory: typeof v === "function" ? v(s.aiHistory) : v })),
+  setTextMetrics: (v) => set({ textMetrics: v }),
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -412,5 +416,6 @@ export function resetStudioStore() {
     selectedScene: null,
     manuscriptText: "",
     wordCount: 0,
+    textMetrics: null,
   });
 }
