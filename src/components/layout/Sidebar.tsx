@@ -1,23 +1,32 @@
 import React, { useState } from "react";
 import { statusColors } from "../../constants";
 import { useStudioStore } from "../../stores/useStudioStore";
+import { useStudio } from "../../contexts/StudioContext";
+import { AiPanel } from "../ai/AiPanel";
 import type {
-  SceneDraft, Settings, SidebarTabKey, TabKey, Scene
+  SceneDraft, SidebarTabKey, TabKey, Scene
 } from "../../types";
 
 export const Sidebar: React.FC = () => {
   const store = useStudioStore();
   const {
     sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
-    sidebarTab, setSidebarTab, tab, setTab, scenes, selectedSceneId,
+    sidebarTab, setSidebarTab, tab, setTab, scenes, setScenes, selectedSceneId,
     manuscripts, sceneSearch, setSceneSearch, newScene, setNewScene,
     addingScene, setAddingScene, addingChapter, setAddingChapter,
-    settings, setSettings, editorSettings, setEditorSettings,
+    settings, setSettings, settingsTab, setSettingsTab, editorSettings, setEditorSettings,
     handleSceneSelect, handleAddScene,
     aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
-  } = store;
-
+  } = useStudioStore();
+    aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
+    aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading, addAiHistory,
+  } = useStudio();
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+
+  // Drag-and-drop state for structure tab
+  const [sidebarDraggingId, setSidebarDraggingId] = useState<number | null>(null);
+  const [sidebarDropTarget, setSidebarDropTarget] = useState<{ id: number; position: "before" | "after" } | null>(null);
+  const [sidebarDropChapter, setSidebarDropChapter] = useState<string | null>(null);
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -25,6 +34,76 @@ export const Sidebar: React.FC = () => {
 
   const onInsertHistory = (content: string) => {
     handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + content);
+  };
+
+  // Drag handlers for sidebar structure tab
+  const handleStructureDragStart = (e: React.DragEvent, sceneId: number) => {
+    setSidebarDraggingId(sceneId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleStructureDragEnd = () => {
+    setSidebarDraggingId(null);
+    setSidebarDropTarget(null);
+    setSidebarDropChapter(null);
+  };
+
+  const handleStructureDragOverScene = (e: React.DragEvent, sceneId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const position = e.clientY < rect.top + rect.height / 2 ? "before" : "after";
+    setSidebarDropTarget({ id: sceneId, position });
+    setSidebarDropChapter(null);
+  };
+
+  const handleStructureDragOverChapter = (e: React.DragEvent, chapter: string) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setSidebarDropChapter(chapter);
+    setSidebarDropTarget(null);
+  };
+
+  const handleStructureDropOnScene = (e: React.DragEvent, targetId: number, targetChapter: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!sidebarDraggingId || sidebarDraggingId === targetId) {
+      setSidebarDropTarget(null);
+      return;
+    }
+    const position = sidebarDropTarget?.position ?? "after";
+    const draggedScene = scenes.find(s => s.id === sidebarDraggingId);
+    if (!draggedScene) return;
+    const rest = scenes.filter(s => s.id !== sidebarDraggingId);
+    const targetIdx = rest.findIndex(s => s.id === targetId);
+    const insertIdx = position === "before" ? targetIdx : targetIdx + 1;
+    setScenes([
+      ...rest.slice(0, insertIdx),
+      { ...draggedScene, chapter: targetChapter },
+      ...rest.slice(insertIdx),
+    ]);
+    setSidebarDraggingId(null);
+    setSidebarDropTarget(null);
+  };
+
+  const handleStructureDropOnChapter = (e: React.DragEvent, chapter: string) => {
+    e.preventDefault();
+    if (!sidebarDraggingId) return;
+    const draggedScene = scenes.find(s => s.id === sidebarDraggingId);
+    if (!draggedScene) return;
+    const rest = scenes.filter(s => s.id !== sidebarDraggingId);
+    const chapterIndices = rest.map((s, i) => ({ s, i })).filter(({ s }) => s.chapter === chapter);
+    const insertIdx = chapterIndices.length > 0
+      ? chapterIndices[chapterIndices.length - 1].i + 1
+      : rest.length;
+    setScenes([
+      ...rest.slice(0, insertIdx),
+      { ...draggedScene, chapter },
+      ...rest.slice(insertIdx),
+    ]);
+    setSidebarDraggingId(null);
+    setSidebarDropChapter(null);
   };
 
   return (
@@ -44,7 +123,11 @@ export const Sidebar: React.FC = () => {
         <>
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => { setSidebarTab(key); setTab(key as TabKey); }} style={{
+              <button key={key} onClick={() => {
+                setSidebarTab(key);
+                // In fixed (non-float) mode, main view stays on write
+                if (sidebarFloat) setTab(key as TabKey);
+              }} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
                 color: sidebarTab === key ? "#7ab3e0" : "#2a4060",
@@ -106,20 +189,61 @@ export const Sidebar: React.FC = () => {
                   const anyDraft = chScenes.some(s => s.status === "draft");
                   const chColor = allDone ? statusColors.done : anyDraft ? statusColors.draft : statusColors.empty;
                   const isAddingHere = addingScene && newScene.chapter === chapter;
+                  const isChapterDropTarget = sidebarDropChapter === chapter;
                   return (
-                    <div key={chapter}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingBottom: 4, borderBottom: "1px solid #1a2535" }}>
+                    <div
+                      key={chapter}
+                      onDragOver={e => handleStructureDragOverChapter(e, chapter)}
+                      onDrop={e => handleStructureDropOnChapter(e, chapter)}
+                    >
+                      <div style={{
+                        display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingBottom: 4,
+                        borderBottom: `1px solid ${isChapterDropTarget ? "#4a6fa5" : "#1a2535"}`,
+                        background: isChapterDropTarget ? "rgba(74,111,165,0.06)" : "transparent",
+                        borderRadius: isChapterDropTarget ? 3 : 0,
+                        transition: "background 0.1s",
+                      }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: chColor, boxShadow: `0 0 5px ${chColor}66` }} />
                         <span style={{ fontSize: 11, color: "#c8d8e8", fontWeight: 600, flex: 1 }}>{chapter || "未分類"}</span>
                         <button onClick={() => { setNewScene({ chapter, title: "", synopsis: "" }); setAddingScene(true); }} style={{ fontSize: 10, padding: "1px 6px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>＋</button>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", gap: 3, paddingLeft: 10 }}>
-                        {chScenes.map(scene => (
-                          <div key={scene.id} onClick={() => handleSceneSelect(scene)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 4, cursor: "pointer", background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "transparent", border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "transparent" }}>
-                            <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: statusColors[scene.status] }} />
-                            <span style={{ fontSize: 11, color: "#8ab0cc", flex: 1 }}>{scene.title ? scene.title : <span style={{ color: "#2a4060", fontStyle: "italic" }}>無題</span>}</span>
-                          </div>
-                        ))}
+                        {chScenes.map(scene => {
+                          const isDropBefore = sidebarDropTarget?.id === scene.id && sidebarDropTarget.position === "before";
+                          const isDropAfter = sidebarDropTarget?.id === scene.id && sidebarDropTarget.position === "after";
+                          const isDragging = sidebarDraggingId === scene.id;
+                          return (
+                            <div key={scene.id}>
+                              {isDropBefore && (
+                                <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginBottom: 2 }} />
+                              )}
+                              <div
+                                draggable
+                                onDragStart={e => handleStructureDragStart(e, scene.id)}
+                                onDragEnd={handleStructureDragEnd}
+                                onDragOver={e => handleStructureDragOverScene(e, scene.id)}
+                                onDrop={e => handleStructureDropOnScene(e, scene.id, scene.chapter)}
+                                onClick={() => handleSceneSelect(scene)}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 6, padding: "5px 8px", borderRadius: 4,
+                                  cursor: "grab",
+                                  background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "transparent",
+                                  border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "transparent",
+                                  opacity: isDragging ? 0.4 : 1,
+                                  transition: "opacity 0.15s",
+                                  userSelect: "none",
+                                }}
+                              >
+                                <span style={{ fontSize: 9, color: "#2a4060", flexShrink: 0 }}>⠿</span>
+                                <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: statusColors[scene.status] }} />
+                                <span style={{ fontSize: 11, color: "#8ab0cc", flex: 1 }}>{scene.title ? scene.title : <span style={{ color: "#2a4060", fontStyle: "italic" }}>無題</span>}</span>
+                              </div>
+                              {isDropAfter && (
+                                <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginTop: 2 }} />
+                              )}
+                            </div>
+                          );
+                        })}
                         {isAddingHere && (
                           <div style={{ padding: "6px 8px", background: "#0a0f1a", border: "1px dashed #2a4060", borderRadius: 4, display: "flex", flexDirection: "column", gap: 5 }}>
                             <input autoFocus placeholder="タイトル" value={newScene.title} onChange={e => setNewScene({ ...newScene, title: e.target.value })} onKeyDown={e => e.key === "Enter" && handleAddScene()} style={{ background: "transparent", border: "none", borderBottom: "1px solid #2a4060", color: "#8ab0cc", fontSize: 11, fontFamily: "inherit", outline: "none", padding: "2px 0" }} />
@@ -151,12 +275,39 @@ export const Sidebar: React.FC = () => {
 
           {sidebarTab === "settings" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-              {[["world","世界観"],["characters","キャラクター"],["theme","テーマ"]].map(([key, label]) => (
-                <div key={key}>
-                  <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 4 }}>{label}</div>
-                  <textarea value={settings[key as keyof Settings]} onChange={e => setSettings({ ...settings, [key]: e.target.value })} style={{ width: "100%", minHeight: 80, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "inherit", fontSize: 11, lineHeight: 1.8, padding: "6px 8px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }} />
-                </div>
-              ))}
+              <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
+                {(["world", "characters", "theme"] as const).map(key => (
+                  <button key={key} onClick={() => setSettingsTab(key)} style={{
+                    flex: 1, padding: "3px 2px", borderRadius: 3, border: "1px solid",
+                    borderColor: settingsTab === key ? "#4a6fa5" : "#1e2d42",
+                    background: settingsTab === key ? "rgba(74,111,165,0.15)" : "transparent",
+                    color: settingsTab === key ? "#7ab3e0" : "#3a5570",
+                    cursor: "pointer", fontSize: 9, fontFamily: "inherit",
+                  }}>
+                    {key === "world" ? "世界観" : key === "characters" ? "キャラ" : "テーマ"}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                value={settings[settingsTab]}
+                onChange={e => setSettings({ ...settings, [settingsTab]: e.target.value })}
+                style={{ width: "100%", minHeight: 80, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "inherit", fontSize: 11, lineHeight: 1.8, padding: "6px 8px", resize: "vertical", outline: "none", borderRadius: 4, boxSizing: "border-box" }}
+              />
+              <AiPanel
+                label="AIで拡張"
+                compact
+                result={aiResults.worldExpand || ""}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, worldExpand: t }));
+                  if (t) addAiHistory("世界観拡張", t);
+                }}
+                onLoading={v => setAiLoading(l => ({ ...l, worldExpand: v }))}
+                loading={aiLoading.worldExpand}
+                error={aiErrors.worldExpand}
+                onError={t => setAiErrors(e => ({ ...e, worldExpand: t }))}
+                prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${settingsTab === "world" ? "世界観" : settingsTab === "characters" ? "キャラクター" : "テーマ"}】\n${settings[settingsTab]}`}
+                onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
+              />
             </div>
           )}
           {sidebarTab === "prefs" && (
