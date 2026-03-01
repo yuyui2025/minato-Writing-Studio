@@ -1,7 +1,7 @@
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 
 export function DeleteConfirmModal() {
-  const { scenes, confirmDelete, setConfirmDelete, confirmDeleteExecute } = useStudio();
+  const { scenes, confirmDelete, setConfirmDelete, confirmDeleteExecute } = useStudioStore();
   const scene = scenes.find((s) => s.id === confirmDelete);
 
   if (!scene) return null;

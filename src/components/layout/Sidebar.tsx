@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { statusColors } from "../../constants";
+import { useStudioStore } from "../../stores/useStudioStore";
 import { useStudio } from "../../contexts/StudioContext";
 import { AiPanel } from "../ai/AiPanel";
 import type {
@@ -14,6 +15,8 @@ export const Sidebar: React.FC = () => {
     addingScene, setAddingScene, addingChapter, setAddingChapter,
     settings, setSettings, settingsTab, setSettingsTab, editorSettings, setEditorSettings,
     handleSceneSelect, handleAddScene,
+    aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
+  } = useStudioStore();
     aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
     aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading, addAiHistory,
   } = useStudio();

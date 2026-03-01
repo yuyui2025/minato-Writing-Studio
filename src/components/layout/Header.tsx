@@ -1,13 +1,13 @@
 import React from "react";
 import { supabase } from "../../supabase";
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 
 export const Header: React.FC = () => {
   const {
     projectTitle, setProjectTitle, editingTitle, setEditingTitle,
     saveStatus, lastSavedTime, scenes, settings, manuscripts,
     saveWithBackup, setShowBackups, setShowExport
-  } = useStudio();
+  } = useStudioStore();
   const hasProjectTitle = projectTitle.trim().length > 0;
 
   return (

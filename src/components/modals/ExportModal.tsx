@@ -1,4 +1,4 @@
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 
 export function ExportModal() {
   const {
@@ -6,7 +6,7 @@ export function ExportModal() {
     exportScene,
     exportAll,
     setShowExport
-  } = useStudio();
+  } = useStudioStore();
 
   return (
     <div

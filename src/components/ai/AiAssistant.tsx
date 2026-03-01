@@ -3,7 +3,7 @@ import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
 import { callAnthropic, AiError } from "../../utils/ai";
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 
 export function parsePolishHistoryEntries(result: string): string[] {
   const clean = result.replace(/```json|```/g, "").trim();
@@ -25,7 +25,7 @@ export const AiAssistant: React.FC = () => {
     aiLoading, setAiLoading, aiApplied, setAiApplied,
     hintApplied, setHintApplied, manuscriptText,
     handleManuscriptChange, settings, selectedScene, addAiHistory
-  } = useStudio();
+  } = useStudioStore();
   const [freeText, setFreeText] = useState("");
 
   const runFreeInstruct = async () => {
