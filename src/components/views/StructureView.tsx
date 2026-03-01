@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { statusColors, statusLabels } from "../../constants";
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 import type { Scene } from "../../types";
 
 export const StructureView: React.FC = () => {
@@ -8,7 +8,7 @@ export const StructureView: React.FC = () => {
     scenes, setScenes, manuscripts, addingScene, setAddingScene,
     newScene, setNewScene, handleAddScene, addingChapter,
     setAddingChapter, handleSceneSelect, selectedSceneId
-  } = useStudio();
+  } = useStudioStore();
   const [draggingId, setDraggingId] = useState<number | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: number; position: "before" | "after" } | null>(null);
   const [dropChapter, setDropChapter] = useState<string | null>(null);

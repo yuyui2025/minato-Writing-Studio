@@ -1,13 +1,13 @@
 import React from "react";
 import { AiPanel } from "../ai/AiPanel";
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 
 export const SettingsView: React.FC = () => {
   const {
     settings, setSettings, settingsTab, setSettingsTab,
     aiResults, setAiResults, aiErrors, setAiErrors,
-    aiLoading, setAiLoading, addAiHistory
-  } = useStudio();
+    aiLoading, setAiLoading
+  } = useStudioStore();
 
   return (
     <div style={{ padding: "24px 32px", overflowY: "auto" }}>
@@ -23,10 +23,7 @@ export const SettingsView: React.FC = () => {
       <AiPanel
         label="AIで意味を拡張"
         result={aiResults.worldExpand || ""}
-        onResult={t => {
-          setAiResults(r => ({ ...r, worldExpand: t }));
-          if (t) addAiHistory("世界観拡張", t);
-        }}
+        onResult={t => setAiResults(r => ({ ...r, worldExpand: t }))}
         onLoading={v => setAiLoading(l => ({ ...l, worldExpand: v }))}
         loading={aiLoading.worldExpand}
         error={aiErrors.worldExpand}

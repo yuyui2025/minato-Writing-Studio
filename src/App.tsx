@@ -13,7 +13,8 @@ import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { StudioProvider, useStudio } from "./contexts/StudioContext";
+import { useStudioStore } from "./stores/useStudioStore";
+import { useStudioSync } from "./hooks/useStudioSync";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -62,19 +63,19 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <StudioProvider user={user}>
-        <Studio />
-      </StudioProvider>
+      <Studio user={user} />
     </ErrorBoundary>
   );
 }
 
-function Studio() {
+function Studio({ user }: { user: User }) {
+  useStudioSync(user); // Initialize synchronization
+
   const {
     loaded, tab, sidebarOpen, showSettings,
     confirmDelete, showExport, showBackups, setSidebarOpen, setShowSettings,
     sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
-  } = useStudio();
+  } = useStudioStore();
 
   if (!loaded) return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>

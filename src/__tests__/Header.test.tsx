@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, test, vi } from "vitest";
 import "@testing-library/jest-dom";
 import { Header } from "../components/layout/Header";
-import { useStudio } from "../contexts/StudioContext";
+import { useStudioStore } from "../stores/useStudioStore";
 
 vi.mock("../supabase", () => ({
   supabase: {
@@ -12,14 +12,15 @@ vi.mock("../supabase", () => ({
   },
 }));
 
-vi.mock("../contexts/StudioContext", () => ({
-  useStudio: vi.fn(),
+// Mock the zustand store hook
+vi.mock("../stores/useStudioStore", () => ({
+  useStudioStore: vi.fn(),
 }));
 
 describe("Header", () => {
   test("shows placeholder and allows entering edit mode when project title is blank", () => {
     const setEditingTitle = vi.fn();
-    (useStudio as any).mockReturnValue({
+    (useStudioStore as any).mockReturnValue({
       projectTitle: "   ",
       setProjectTitle: vi.fn(),
       editingTitle: false,

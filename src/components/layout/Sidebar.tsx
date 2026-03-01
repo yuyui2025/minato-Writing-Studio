@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { statusColors } from "../../constants";
-import { useStudio } from "../../contexts/StudioContext";
+import { useStudioStore } from "../../stores/useStudioStore";
 import type {
   SceneDraft, Settings, SidebarTabKey, TabKey, Scene
 } from "../../types";
@@ -14,7 +14,7 @@ export const Sidebar: React.FC = () => {
     settings, setSettings, editorSettings, setEditorSettings,
     handleSceneSelect, handleAddScene,
     aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange
-  } = useStudio();
+  } = useStudioStore();
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
 
   const toggleExpand = (id: number) => {

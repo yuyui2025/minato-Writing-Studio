@@ -3,6 +3,7 @@ import { expect, test, vi, describe } from "vitest";
 import "@testing-library/jest-dom";
 import App from "../App";
 
+// Mock supabase
 vi.mock("../supabase", () => ({
   supabase: {
     auth: {
@@ -22,6 +23,11 @@ vi.mock("../supabase", () => ({
   },
 }));
 
+// Mock useStudioSync to do nothing during test
+vi.mock("../hooks/useStudioSync", () => ({
+  useStudioSync: vi.fn(),
+}));
+
 describe("App", () => {
   test("renders project title when not authenticated", async () => {
     render(<App />);
@@ -31,13 +37,6 @@ describe("App", () => {
 
   test("renders Google login button when not authenticated", async () => {
     render(<App />);
-    const loginButton = await screen.findByRole("button", { name: /Googleでログイン/ });
-    expect(loginButton).toBeInTheDocument();
-  });
-
-  test("transitions from loading to login screen", async () => {
-    render(<App />);
-    // Wait for async auth to resolve and login screen to appear
     const loginButton = await screen.findByRole("button", { name: /Googleでログイン/ });
     expect(loginButton).toBeInTheDocument();
   });
