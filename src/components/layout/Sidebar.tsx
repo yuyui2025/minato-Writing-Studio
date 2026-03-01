@@ -8,6 +8,7 @@ import type {
 } from "../../types";
 
 export const Sidebar: React.FC = () => {
+  const store = useStudioStore();
   const {
     sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
     sidebarTab, setSidebarTab, tab, setTab, scenes, setScenes, selectedSceneId,
