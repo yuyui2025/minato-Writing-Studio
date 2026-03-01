@@ -43,7 +43,7 @@ export const Sidebar: React.FC = () => {
           {/* Sidebar header: tabs + close */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => setSidebarTab(key)} style={{
+              <button key={key} onClick={() => { setSidebarTab(key); setTab(key as TabKey); }} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
                 color: sidebarTab === key ? "#7ab3e0" : "#2a4060",
@@ -171,6 +171,27 @@ export const Sidebar: React.FC = () => {
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>行間　<span style={{ color: "#8ab0cc" }}>{editorSettings.lineHeight}</span></div>
                 <input type="range" min={1.4} max={3.0} step={0.1} value={editorSettings.lineHeight} onChange={e => setEditorSettings(s => ({ ...s, lineHeight: Number(e.target.value) }))} style={{ width: "100%" }} />
               </div>
+              <div>
+                <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>テーマ</div>
+                <div style={{ display: "flex", gap: 4 }}>
+                  {(["dark", "light", "system"] as const).map(t => (
+                    <button
+                      key={t}
+                      onClick={() => setEditorSettings(s => ({ ...s, colorTheme: t }))}
+                      style={{
+                        flex: 1, padding: "4px 2px",
+                        background: (editorSettings.colorTheme ?? "dark") === t ? "rgba(74,111,165,0.2)" : "transparent",
+                        border: "1px solid",
+                        borderColor: (editorSettings.colorTheme ?? "dark") === t ? "#4a6fa5" : "#1e2d42",
+                        color: (editorSettings.colorTheme ?? "dark") === t ? "#7ab3e0" : "#3a5570",
+                        cursor: "pointer", fontSize: 9, borderRadius: 3, fontFamily: "inherit",
+                      }}
+                    >
+                      {t === "dark" ? "暗" : t === "light" ? "明" : "自動"}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -238,6 +259,7 @@ export const Sidebar: React.FC = () => {
           ].map(({ key, label }) => (
             <button key={key} onClick={() => {
               setTab(key as TabKey);
+              setSidebarTab(key as SidebarTabKey);
               if (sidebarFloat) setSidebarOpen(false);
             }} style={{
               padding: "14px 0", width: "100%", border: "none",
