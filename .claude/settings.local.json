@@ -5,7 +5,15 @@
       "mcp__linear-server__get_issue",
       "Bash(npx tsc:*)",
       "mcp__linear-server__save_issue",
-      "mcp__claude_ai_Linear__list_issues"
+      "mcp__claude_ai_Linear__list_issues",
+      "mcp__claude_ai_Linear__get_issue",
+      "Bash(xargs grep:*)",
+      "Bash(git checkout:*)",
+      "Bash(git:*)",
+      "Bash(where git:*)",
+      "Bash(\"C:/Program Files/Git/cmd/git.exe\":*)",
+      "Bash(powershell:*)",
+      "Bash(cmd:*)"
     ]
   }
 }
