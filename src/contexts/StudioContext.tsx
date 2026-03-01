@@ -179,7 +179,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
       if (sc) setScenes(sc);
       if (st) setSettings(st);
       if (ms) setManuscripts(ms);
-      if (pt) setProjectTitle(pt);
+      if (pt !== null) setProjectTitle(pt);
       if (bk) setBackups(bk);
       if (es) setEditorSettings(es);
       if (ah) setAiHistory(ah);
