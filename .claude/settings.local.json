@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__linear-server__list_issues",
+      "mcp__linear-server__get_issue",
+      "Bash(npx tsc:*)",
+      "mcp__linear-server__save_issue"
+    ]
+  }
+}

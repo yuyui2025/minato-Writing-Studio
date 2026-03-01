@@ -122,7 +122,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
   const [editingSceneSynopsis, setEditingSceneSynopsis] = useState(false);
   const [sidebarFloat, setSidebarFloat] = useState(true);
   const [sidebarTab, setSidebarTab] = useState<SidebarTabKey>("write");
-  const [editorSettings, setEditorSettings] = useState<EditorSettings>({ fontSize: 15, lineHeight: 2.2 });
+  const [editorSettings, setEditorSettings] = useState<EditorSettings>({ fontSize: 15, lineHeight: 2.2, colorTheme: "dark" });
   const [aiFloat, setAiFloat] = useState(false);
   const [aiWide, setAiWide] = useState(false);
   const [aiResults, setAiResults] = useState<AiResults>({ polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" });
@@ -164,7 +164,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
   useEffect(() => {
     (async () => {
       setLoaded(false);
-      const [sc, st, ms, pt, bk, es, ah, ab] = await Promise.all([
+      const [sc, st, ms, pt, bk, es, ah, ab, sf, af] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
         storageGet<Manuscripts>("minato:manuscripts"),
@@ -173,6 +173,8 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
         storageGet<EditorSettings>("minato:editorSettings"),
         storageGet<AiHistoryItem[]>("minato:aiHistory"),
         storageGet<Backup[]>("minato:autoBackups"),
+        storageGet<boolean>("minato:sidebarFloat"),
+        storageGet<boolean>("minato:aiFloat"),
       ]);
       if (sc) setScenes(sc);
       if (st) setSettings(st);
@@ -182,6 +184,8 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
       if (es) setEditorSettings(es);
       if (ah) setAiHistory(ah);
       if (ab) setAutoBackups(ab);
+      if (sf !== null) setSidebarFloat(sf);
+      if (af !== null) setAiFloat(af);
       setLoaded(true);
     })();
   }, [user?.id]);
@@ -199,6 +203,8 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
         storageSet("minato:backups", backups),
         storageSet("minato:aiHistory", aiHistory),
         storageSet("minato:autoBackups", autoBackups),
+        storageSet("minato:sidebarFloat", sidebarFloat),
+        storageSet("minato:aiFloat", aiFloat),
       ]);
 
       const allSuccess = results.every(r => r);
@@ -211,7 +217,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
     } catch {
       setSaveStatus("error");
     }
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, aiHistory, autoBackups, loaded]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, backups, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded]);
 
   useEffect(() => {
     syncAllRef.current = syncAll;
@@ -221,7 +227,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
     if (!loaded) return;
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, loaded, syncAll]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded, syncAll]);
 
   useEffect(() => {
     if (!loaded) return;
@@ -265,6 +271,27 @@ export function StudioProvider({ children, user }: { children: React.ReactNode, 
   }, []);
 
   const clearAiHistory = useCallback(() => { setAiHistory([]); storageSet("minato:aiHistory", []); }, []);
+
+  useEffect(() => {
+    const applyTheme = (theme: "dark" | "light" | "system") => {
+      if (theme === "system") {
+        const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", isDark ? "dark" : "light");
+      } else {
+        document.documentElement.setAttribute("data-theme", theme);
+      }
+    };
+    const currentTheme = editorSettings.colorTheme ?? "dark";
+    applyTheme(currentTheme);
+    if (currentTheme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      const handler = (e: MediaQueryListEvent) => {
+        document.documentElement.setAttribute("data-theme", e.matches ? "dark" : "light");
+      };
+      mq.addEventListener("change", handler);
+      return () => mq.removeEventListener("change", handler);
+    }
+  }, [editorSettings.colorTheme]);
 
   useEffect(() => {
     if (!loaded) return;
