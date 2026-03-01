@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+- Refactored state management from `useStudioState` hook to `StudioContext` using React Context API to eliminate extensive prop drilling.
+- Extracted data persistence and Supabase synchronization logic to `src/utils/storage.ts` for better separation of concerns.
+- Reorganized application architecture to use a centralized Context Provider, allowing components to consume state via the `useStudio` hook.
+- Updated all test suites to support the new Context-based architecture.
+
 ### Added
 - release workflow (`.github/workflows/release.yml`) to automate test, build, packaging, and GitHub release publication.
 
