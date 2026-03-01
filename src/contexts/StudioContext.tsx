@@ -11,6 +11,7 @@ import type { User } from "@supabase/supabase-js";
 import { storageGet, storageSet } from "../utils/storage";
 import type { Scene, Settings, Manuscripts, EditorSettings, AiHistoryItem, Backup } from "../types";
 import { useStudioStore } from "../stores/useStudioStore";
+import { analyzeText } from "../utils/textAnalyzer";
 
 // ---------------------------------------------------------------------------
 // Provider: side effects only
@@ -133,6 +134,18 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
     return () => clearInterval(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded]);
+
+  // --- WASM text analysis (debounced 500 ms) ---
+  const { manuscriptText } = store;
+  useEffect(() => {
+    if (!manuscriptText) { store.setTextMetrics(null); return; }
+    const t = setTimeout(async () => {
+      const metrics = await analyzeText(manuscriptText);
+      store.setTextMetrics(metrics);
+    }, 500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [manuscriptText]);
 
   return <>{children}</>;
 }

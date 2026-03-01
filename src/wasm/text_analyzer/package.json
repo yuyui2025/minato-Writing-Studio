@@ -1,0 +1,17 @@
+{
+  "name": "text-analyzer",
+  "type": "module",
+  "version": "0.1.0",
+  "files": [
+    "text_analyzer_bg.wasm",
+    "text_analyzer.js",
+    "text_analyzer_bg.js",
+    "text_analyzer.d.ts"
+  ],
+  "main": "text_analyzer.js",
+  "types": "text_analyzer.d.ts",
+  "sideEffects": [
+    "./text_analyzer.js",
+    "./snippets/*"
+  ]
+}

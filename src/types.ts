@@ -55,3 +55,11 @@ export type AiHistoryItem = {
   content: string;
   sceneTitle?: string;
 };
+
+export type TextMetrics = {
+  char_count: number;
+  sentence_count: number;
+  paragraph_count: number;
+  kanji_rate: number;
+  reading_time_sec: number;
+};
