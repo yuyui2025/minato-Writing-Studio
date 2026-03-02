@@ -1,6 +1,43 @@
 import { callAnthropic } from "./ai";
 import type { AiExtractResult } from "../types";
 
+type ImportSectionLike = {
+  chapter?: string;
+  title?: string;
+  content: string;
+};
+
+const MAX_SECTION_CHARS = 1200;
+const MAX_ANALYSIS_CHARS = 3600;
+
+function normalizeHeading(section: ImportSectionLike, index: number): string {
+  const chapter = section.chapter?.trim();
+  const title = section.title?.trim();
+  if (chapter && title) return `${chapter} / ${title}`;
+  if (chapter) return chapter;
+  if (title) return title;
+  return `セクション${index + 1}`;
+}
+
+export function buildImportAnalysisExcerpt(sections: ImportSectionLike[]): string {
+  let used = 0;
+  const blocks: string[] = [];
+
+  sections.some((section, index) => {
+    if (used >= MAX_ANALYSIS_CHARS) return true;
+    const remaining = MAX_ANALYSIS_CHARS - used;
+    const sectionLimit = Math.min(MAX_SECTION_CHARS, remaining);
+    const body = section.content.trim().slice(0, sectionLimit);
+    if (!body) return false;
+
+    blocks.push(`## ${normalizeHeading(section, index)}\n${body}`);
+    used += body.length;
+    return false;
+  });
+
+  return blocks.join("\n\n");
+}
+
 /**
  * Sends the first ~3000 characters of a manuscript to Claude and extracts
  * character and world-building information as plain Japanese text.
@@ -11,7 +48,7 @@ import type { AiExtractResult } from "../types";
 export async function extractImportMetadata(
   text: string
 ): Promise<AiExtractResult | null> {
-  const sample = text.slice(0, 3000);
+  const sample = text.slice(0, MAX_ANALYSIS_CHARS);
 
   const prompt = `あなたは小説原稿の解析アシスタントです。以下の原稿の冒頭を読み、登場人物と世界観の情報を抽出してください。
 
@@ -39,4 +76,15 @@ ${sample}
   } catch {
     return null;
   }
+}
+
+export async function extractImportMetadataBySections(
+  sections: ImportSectionLike[],
+  fallbackText: string
+): Promise<AiExtractResult | null> {
+  const excerpt = buildImportAnalysisExcerpt(sections);
+  if (!excerpt) {
+    return extractImportMetadata(fallbackText);
+  }
+  return extractImportMetadata(excerpt);
 }
