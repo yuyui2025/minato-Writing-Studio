@@ -5,6 +5,7 @@ import { extractImportMetadata } from "../../utils/importExtractor";
 import type { ImportData, ParsedSection } from "../../types";
 
 type Step = "pick" | "analyzing" | "preview";
+type ImportMode = "new" | "append" | "replace";
 
 const BTN: React.CSSProperties = {
   padding: "8px 16px",
@@ -28,6 +29,18 @@ const TEXTAREA: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+/** Uint8Array をエンコード自動検出してデコードする */
+function decodeBuffer(uint8: Uint8Array): string {
+  if (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF) {
+    return new TextDecoder("utf-8").decode(uint8);
+  }
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(uint8);
+  } catch {
+    return new TextDecoder("shift-jis").decode(uint8);
+  }
+}
+
 export function ImportModal() {
   const store = useStudioStore();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -40,40 +53,56 @@ export function ImportModal() {
   const [sections, setSections] = useState<ParsedSection[]>([]);
   const [characters, setCharacters] = useState("");
   const [world, setWorld] = useState("");
+  const [importMode, setImportMode] = useState<ImportMode>("new");
 
   const handleFile = useCallback(async (file: File) => {
-    if (!file.name.match(/\.(md|txt)$/i)) {
-      setError(".md または .txt ファイルを選択してください");
+    const isZip = /\.zip$/i.test(file.name);
+    const isText = /\.(md|txt)$/i.test(file.name);
+    if (!isZip && !isText) {
+      setError(".md / .txt / .zip ファイルを選択してください");
       return;
     }
     setError(null);
     setStep("analyzing");
 
-    const buffer = await file.arrayBuffer();
-    const uint8 = new Uint8Array(buffer);
-    let text: string;
-    // UTF-8 BOM チェック
-    if (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF) {
-      text = new TextDecoder("utf-8").decode(buffer);
-    } else {
-      // UTF-8 として厳密に試み、失敗したら Shift-JIS にフォールバック
+    let combinedText: string;
+    let titleFromFile: string;
+
+    if (isZip) {
+      // YUY-43: zip 展開
+      const buffer = await file.arrayBuffer();
+      const { unzipSync } = await import("fflate");
+      let unzipped: Record<string, Uint8Array>;
       try {
-        text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+        unzipped = unzipSync(new Uint8Array(buffer));
       } catch {
-        text = new TextDecoder("shift-jis").decode(buffer);
+        setError("zip ファイルの展開に失敗しました");
+        setStep("pick");
+        return;
       }
+      const textFiles = Object.entries(unzipped)
+        .filter(([name]) => /\.(md|txt)$/i.test(name) && !name.includes("__MACOSX"))
+        .sort(([a], [b]) => a.localeCompare(b, "ja"));
+      if (textFiles.length === 0) {
+        setError("zip 内に .md / .txt ファイルが見つかりませんでした");
+        setStep("pick");
+        return;
+      }
+      combinedText = textFiles.map(([, data]) => decodeBuffer(data)).join("\n\n");
+      titleFromFile = file.name.replace(/\.zip$/i, "");
+    } else {
+      const buffer = await file.arrayBuffer();
+      combinedText = decodeBuffer(new Uint8Array(buffer));
+      titleFromFile = file.name.replace(/\.(md|txt)$/i, "");
     }
 
     const [parsed, aiResult] = await Promise.all([
-      parseDocument(text),
-      extractImportMetadata(text),
+      parseDocument(combinedText),
+      extractImportMetadata(combinedText.slice(0, 3000)),
     ]);
 
-    const detectedTitle = parsed?.title || file.name.replace(/\.(md|txt)$/i, "");
-    const detectedSections = parsed?.sections ?? [{ chapter: "", title: "", content: text }];
-
-    setProjectTitle(detectedTitle);
-    setSections(detectedSections);
+    setProjectTitle(parsed?.title || titleFromFile);
+    setSections(parsed?.sections ?? [{ chapter: "", title: "", content: combinedText }]);
     setCharacters(aiResult?.characters ?? "");
     setWorld(aiResult?.world ?? "");
     setStep("preview");
@@ -101,17 +130,27 @@ export function ImportModal() {
       status: "draft" as const,
     }));
     const manuscripts: Record<number, string> = {};
-    scenes.forEach((sc, i) => {
-      manuscripts[sc.id] = sections[i].content;
-    });
+    scenes.forEach((sc, i) => { manuscripts[sc.id] = sections[i].content; });
     const data: ImportData = {
       scenes,
       manuscripts,
       settings: { characters, world },
       projectTitle: projectTitle || undefined,
     };
-    await store.importProject(data);
-  }, [sections, characters, world, projectTitle, store]);
+    if (importMode === "new") {
+      store.createProjectFromImport(data);
+    } else if (importMode === "append") {
+      await store.appendToProject(data);
+    } else {
+      await store.importProject(data);
+    }
+  }, [sections, characters, world, projectTitle, importMode, store]);
+
+  const IMPORT_MODES: { mode: ImportMode; label: string; desc: string }[] = [
+    { mode: "new", label: "新規プロジェクト", desc: "現在のプロジェクトを残したまま新しいプロジェクトを作成します" },
+    { mode: "append", label: "現在に追加", desc: "現在のプロジェクトの末尾にシーンを追加します（設定は変更しません）" },
+    { mode: "replace", label: "現在を置き換え", desc: "現在のプロジェクトを置き換えます（バックアップ自動生成）" },
+  ];
 
   return (
     <div
@@ -165,11 +204,11 @@ export function ImportModal() {
               }}
             >
               <span style={{ fontSize: 28 }}>↑</span>
-              <span>.md / .txt をドロップ、またはクリックして選択</span>
+              <span>.md / .txt / .zip をドロップ、またはクリックして選択</span>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".md,.txt"
+                accept=".md,.txt,.zip"
                 style={{ display: "none" }}
                 onChange={onFileChange}
               />
@@ -199,19 +238,45 @@ export function ImportModal() {
         {/* ── Step 3: Preview ── */}
         {step === "preview" && (
           <>
+            {/* YUY-38: インポートモード選択 */}
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 6 }}>
+                インポート方法
+              </label>
+              <div style={{ display: "flex", gap: 6 }}>
+                {IMPORT_MODES.map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setImportMode(mode)}
+                    style={{
+                      flex: 1,
+                      padding: "6px 4px",
+                      background: importMode === mode ? "rgba(74,111,165,0.2)" : "transparent",
+                      border: `1px solid ${importMode === mode ? "#4a6fa5" : "#2a3f58"}`,
+                      color: importMode === mode ? "#7ab3e0" : "#4a6080",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginTop: 4, fontSize: 10, color: "#3a5070" }}>
+                {IMPORT_MODES.find(m => m.mode === importMode)?.desc}
+              </div>
+            </div>
+
             <div style={{ marginBottom: 16 }}>
               <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
-                プロジェクト名
+                {importMode === "new" ? "新規プロジェクト名" : "プロジェクト名（参考）"}
               </label>
               <input
                 value={projectTitle}
                 onChange={(e) => setProjectTitle(e.target.value)}
-                style={{
-                  ...TEXTAREA,
-                  minHeight: "unset",
-                  height: 32,
-                  resize: "none",
-                }}
+                style={{ ...TEXTAREA, minHeight: "unset", height: 32, resize: "none" }}
               />
             </div>
 
@@ -219,14 +284,7 @@ export function ImportModal() {
               <div style={{ fontSize: 11, color: "#5a8aaa", marginBottom: 8 }}>
                 検出シーン（{sections.length} 件）
               </div>
-              <div
-                style={{
-                  border: "1px solid #1e2d42",
-                  borderRadius: 4,
-                  maxHeight: 160,
-                  overflowY: "auto",
-                }}
-              >
+              <div style={{ border: "1px solid #1e2d42", borderRadius: 4, maxHeight: 160, overflowY: "auto" }}>
                 {sections.map((s, i) => (
                   <div
                     key={i}
@@ -236,12 +294,8 @@ export function ImportModal() {
                       fontSize: 11,
                     }}
                   >
-                    <span style={{ color: "#4a7090" }}>
-                      {s.chapter ? `${s.chapter} / ` : ""}
-                    </span>
-                    <span style={{ color: "#7ab3e0" }}>
-                      {s.title || `（タイトルなし）`}
-                    </span>
+                    <span style={{ color: "#4a7090" }}>{s.chapter ? `${s.chapter} / ` : ""}</span>
+                    <span style={{ color: "#7ab3e0" }}>{s.title || "（タイトルなし）"}</span>
                     <span style={{ color: "#3a5570", marginLeft: 8 }}>
                       {s.content.slice(0, 40).replace(/\n/g, " ")}
                       {s.content.length > 40 ? "…" : ""}
@@ -251,59 +305,52 @@ export function ImportModal() {
               </div>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
-                キャラクター（AI 抽出・編集可）
-              </label>
-              <textarea
-                value={characters}
-                onChange={(e) => setCharacters(e.target.value)}
-                placeholder="（抽出できませんでした。手入力してください）"
-                style={TEXTAREA}
-              />
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
-                世界観（AI 抽出・編集可）
-              </label>
-              <textarea
-                value={world}
-                onChange={(e) => setWorld(e.target.value)}
-                placeholder="（抽出できませんでした。手入力してください）"
-                style={TEXTAREA}
-              />
-            </div>
+            {importMode !== "append" && (
+              <>
+                <div style={{ marginBottom: 16 }}>
+                  <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
+                    キャラクター（AI 抽出・編集可）
+                  </label>
+                  <textarea
+                    value={characters}
+                    onChange={(e) => setCharacters(e.target.value)}
+                    placeholder="（抽出できませんでした。手入力してください）"
+                    style={TEXTAREA}
+                  />
+                </div>
+                <div style={{ marginBottom: 24 }}>
+                  <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
+                    世界観（AI 抽出・編集可）
+                  </label>
+                  <textarea
+                    value={world}
+                    onChange={(e) => setWorld(e.target.value)}
+                    placeholder="（抽出できませんでした。手入力してください）"
+                    style={TEXTAREA}
+                  />
+                </div>
+              </>
+            )}
 
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 onClick={() => store.setShowImport(false)}
-                style={{
-                  ...BTN,
-                  flex: 1,
-                  background: "transparent",
-                  border: "1px solid #1e2d42",
-                  color: "#3a5570",
-                }}
+                style={{ ...BTN, flex: 1, background: "transparent", border: "1px solid #1e2d42", color: "#3a5570" }}
               >
                 キャンセル
               </button>
               <button
                 onClick={handleImport}
-                style={{
-                  ...BTN,
-                  flex: 2,
-                  background: "rgba(74,111,165,0.2)",
-                  border: "1px solid #4a6fa5",
-                  color: "#7ab3e0",
-                }}
+                style={{ ...BTN, flex: 2, background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0" }}
               >
                 インポート実行
               </button>
             </div>
 
             <div style={{ marginTop: 10, fontSize: 10, color: "#2a3f58", textAlign: "center" }}>
-              現在のデータはインポート前にバックアップされます
+              {importMode === "replace" && "現在のデータはインポート前にバックアップされます"}
+              {importMode === "append" && "現在のシーンの末尾に追加されます"}
+              {importMode === "new" && "現在のプロジェクトはそのまま保持されます"}
             </div>
           </>
         )}

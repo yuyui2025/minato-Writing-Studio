@@ -160,6 +160,8 @@ export interface StudioState {
   exportScene: (fmt: "md" | "txt") => void;
   exportAll: (fmt: "md" | "txt") => void;
   importProject: (data: ImportData) => Promise<void>;
+  appendToProject: (data: ImportData) => Promise<void>;
+  createProjectFromImport: (data: ImportData) => void;
   createProject: () => void;
   switchProject: (id: string) => void;
 }
@@ -453,6 +455,75 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       storageSet("minato:title", newTitle),
       storageSet("minato:backups", newBackups),
     ]).catch(() => {/* ignore storage errors */});
+  },
+
+  // YUY-38: 既存プロジェクトにシーンを追加（設定・タイトルは変更しない）
+  appendToProject: async (data) => {
+    const { scenes, manuscripts, settings, projectTitle, backups } = get();
+    const backup: Backup = {
+      timestamp: new Date().toISOString(),
+      label: "シーン追加前の自動バックアップ",
+      scenes, manuscripts, settings, projectTitle,
+    };
+    const newBackups = [backup, ...backups].slice(0, 5);
+    const newScenes = [...scenes, ...data.scenes];
+    const newManuscripts = { ...manuscripts, ...data.manuscripts };
+    const firstNewId = data.scenes[0]?.id ?? null;
+    set({
+      backups: newBackups,
+      scenes: newScenes,
+      manuscripts: newManuscripts,
+      selectedSceneId: firstNewId,
+      showImport: false,
+      tab: "write",
+      textMetrics: null,
+      ...computeDerived(newScenes, newManuscripts, firstNewId),
+    });
+    await Promise.all([
+      storageSet("minato:scenes", newScenes),
+      storageSet("minato:manuscripts", newManuscripts),
+      storageSet("minato:backups", newBackups),
+    ]).catch(() => {});
+  },
+
+  // YUY-38: 新規プロジェクトを作成してインポート
+  createProjectFromImport: (data) => {
+    const s = get();
+    const id = `project-${Date.now()}`;
+    const now = new Date().toISOString();
+    const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
+    const currentProjects = s.projects.some(p => p.id === s.activeProjectId)
+      ? s.projects.map(p => p.id === s.activeProjectId
+        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }
+        : p)
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }, ...s.projects];
+    const newTitle = data.projectTitle || "インポートプロジェクト";
+    const mergedSettings: Settings = {
+      world: data.settings.world || initialSettings.world,
+      characters: data.settings.characters || initialSettings.characters,
+      theme: initialSettings.theme,
+    };
+    const firstId = data.scenes[0]?.id ?? null;
+    const newProject: ProjectRecord = {
+      id, title: newTitle, updatedAt: now,
+      scenes: data.scenes, manuscripts: data.manuscripts,
+      settings: mergedSettings, backups: [], aiHistory: [],
+    };
+    set({
+      projects: [newProject, ...currentProjects],
+      activeProjectId: id,
+      projectTitle: newTitle,
+      scenes: data.scenes,
+      manuscripts: data.manuscripts,
+      settings: mergedSettings,
+      backups: [],
+      aiHistory: [],
+      selectedSceneId: firstId,
+      showImport: false,
+      tab: "write",
+      textMetrics: null,
+      ...computeDerived(data.scenes, data.manuscripts, firstId),
+    });
   },
 
   createProject: () => set((s) => {
