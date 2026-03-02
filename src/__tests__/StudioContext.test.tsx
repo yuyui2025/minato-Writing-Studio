@@ -183,6 +183,70 @@ describe("StudioContext", () => {
     expect(result.current.aiApplied).toEqual({});
     expect(result.current.hintApplied).toEqual({});
   });
+
+
+  it("exports current project as project file", async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    URL.createObjectURL = vi.fn(() => "blob:mock");
+    URL.revokeObjectURL = vi.fn();
+    const alertSpy = vi.spyOn(window, "alert").mockImplementation(() => {});
+
+    const { result } = renderHook(() => useStudio(), { wrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    act(() => {
+      result.current.setProjectTitle("書き出しテスト");
+      result.current.setScenes([testScene]);
+      result.current.setManuscripts({ [testScene.id]: "本文" });
+    });
+
+    act(() => { result.current.exportProjectFile(); });
+
+    expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock");
+    expect(alertSpy).toHaveBeenCalledWith("書き出しテスト.minato-project.json を出力しました。");
+
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+    alertSpy.mockRestore();
+  });
+
+  it("imports project file and switches to imported project", async () => {
+    const { result } = renderHook(() => useStudio(), { wrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    act(() => {
+      result.current.setProjectTitle("現在のプロジェクト");
+      result.current.setScenes([testScene]);
+      result.current.setManuscripts({ [testScene.id]: "現在の本文" });
+    });
+
+    act(() => {
+      result.current.importProjectFile({
+        format: "minato-project",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        project: {
+          id: "imported-1",
+          title: "取込プロジェクト",
+          updatedAt: new Date().toISOString(),
+          scenes: [{ id: 10, chapter: "第一章", title: "導入", synopsis: "", status: "draft" }],
+          manuscripts: { 10: "取込本文" },
+          settings: { world: "世界", characters: "キャラ", theme: "主題" },
+          backups: [],
+          aiHistory: [],
+        },
+      });
+    });
+
+    expect(result.current.activeProjectId).toBe("imported-1");
+    expect(result.current.projectTitle).toBe("取込プロジェクト");
+    expect(result.current.scenes).toHaveLength(1);
+    expect(result.current.manuscripts[10]).toBe("取込本文");
+    expect(result.current.projects.some(p => p.title === "現在のプロジェクト")).toBe(true);
+  });
+
   it("wordCount ignores whitespace", async () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
