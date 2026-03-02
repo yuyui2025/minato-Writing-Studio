@@ -48,6 +48,12 @@ describe("storageGet", () => {
     expect(result).toBe(false);
   });
 
+  it("returns a stored pane-priority string", async () => {
+    await storageSet("minato:aiPanePriority", "right");
+    const result = await storageGet<"left" | "right">("minato:aiPanePriority");
+    expect(result).toBe("right");
+  });
+
   it("returns 0 when numeric zero was stored", async () => {
     await storageSet("test-zero", 0);
     const result = await storageGet<number>("test-zero");

@@ -26,7 +26,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   useEffect(() => {
     (async () => {
       store.setLoaded(false);
-      const [sc, st, ms, pt, bk, es, ah, ab, sf, af, projects, activeProjectId] = await Promise.all([
+      const [sc, st, ms, pt, bk, es, ah, ab, sf, af, app, projects, activeProjectId] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
         storageGet<Manuscripts>("minato:manuscripts"),
@@ -37,6 +37,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
         storageGet<Backup[]>("minato:autoBackups"),
         storageGet<boolean>("minato:sidebarFloat"),
         storageGet<boolean>("minato:aiFloat"),
+        storageGet<"left" | "right">("minato:aiPanePriority"),
         storageGet<ProjectRecord[]>("minato:projects"),
         storageGet<string>("minato:activeProjectId"),
       ]);
@@ -56,6 +57,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
       if (ab) store.setAutoBackups(ab);
       if (sf !== null) store.setSidebarFloat(sf);
       if (af !== null) store.setAiFloat(af);
+      if (app === "left" || app === "right") store.setAiPanePriority(app);
 
       const defaultProject: ProjectRecord = {
         id: activeProjectId || "default",
@@ -83,7 +85,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   }, [user?.id]);
 
   // --- Auto-save (debounced 1 s) ---
-  const { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded, projects, activeProjectId, backups } = store;
+  const { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, aiPanePriority, loaded, projects, activeProjectId, backups } = store;
 
   useEffect(() => {
     if (!loaded) return;
@@ -105,6 +107,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
           storageSet("minato:autoBackups", autoBackups),
           storageSet("minato:sidebarFloat", sidebarFloat),
           storageSet("minato:aiFloat", aiFloat),
+          storageSet("minato:aiPanePriority", aiPanePriority),
           storageSet("minato:activeProjectId", activeProjectId),
           storageSet("minato:projects", (() => {
             const now = new Date().toISOString();
@@ -135,7 +138,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded, projects, activeProjectId, backups]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, aiPanePriority, loaded, projects, activeProjectId, backups]);
 
   // --- Online / offline sync ---
   useEffect(() => {

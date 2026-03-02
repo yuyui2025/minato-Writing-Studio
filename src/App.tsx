@@ -105,7 +105,7 @@ function Studio() {
   const {
     loaded, tab, sidebarOpen, showSettings,
     confirmDelete, showExport, showBackups, showImport, showProjectShelf, setSidebarOpen, setShowSettings,
-    sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
+    sidebarFloat, aiPanePriority, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
     scenes, selectedSceneId, handleSceneSelect, manuscripts, setTab,
   } = useStudio();
   const [showCurrentOnly, setShowCurrentOnly] = useState(false);
@@ -138,7 +138,13 @@ function Studio() {
         )}
         <Sidebar />
 
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <main style={{
+          flex: aiPanePriority === "left" ? 0.8 : 1,
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+          transition: "flex 0.2s ease",
+        }}>
           {tab === "write" && <WriteView />}
           {tab === "structure" && <StructureView />}
           {tab === "settings" && <SettingsView />}
