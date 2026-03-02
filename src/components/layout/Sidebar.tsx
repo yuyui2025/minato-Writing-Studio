@@ -31,6 +31,14 @@ export const Sidebar: React.FC = () => {
 
   // YUY-27: 追記先シーンへ移動してから追記する（表示シーン以外にも正しく適用）
   const onInsertHistory = (item: AiHistoryItem) => {
+    if (item.label === "世界観拡張") {
+      setSettings(prev => ({
+        ...prev,
+        world: prev.world + (prev.world ? "\n" : "") + item.content,
+      }));
+      return;
+    }
+
     if (item.sceneId && item.sceneId !== selectedSceneId) {
       const targetScene = scenes.find(s => s.id === item.sceneId);
       if (targetScene) {
