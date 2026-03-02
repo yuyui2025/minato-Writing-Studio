@@ -1,7 +1,7 @@
 import { useRef, useState, useCallback } from "react";
 import { useStudioStore } from "../../stores/useStudioStore";
 import { parseDocument } from "../../utils/textAnalyzer";
-import { extractImportMetadata } from "../../utils/importExtractor";
+import { extractImportMetadataBySections } from "../../utils/importExtractor";
 import type { ImportData, ParsedSection } from "../../types";
 
 type Step = "pick" | "analyzing" | "preview";
@@ -96,10 +96,11 @@ export function ImportModal() {
       titleFromFile = file.name.replace(/\.(md|txt)$/i, "");
     }
 
-    const [parsed, aiResult] = await Promise.all([
-      parseDocument(combinedText),
-      extractImportMetadata(combinedText.slice(0, 3000)),
-    ]);
+    const parsed = await parseDocument(combinedText);
+    const aiResult = await extractImportMetadataBySections(
+      parsed?.sections ?? [],
+      combinedText
+    );
 
     setProjectTitle(parsed?.title || titleFromFile);
     setSections(parsed?.sections ?? [{ chapter: "", title: "", content: combinedText }]);
