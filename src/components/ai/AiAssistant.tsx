@@ -57,7 +57,6 @@ export const AiAssistant: React.FC = () => {
   if (!selectedScene) return null;
 
   const panelWidth = Math.max(panelMinWidth, Math.min(panelMaxWidth, aiPanelWidth || 360));
-  const isWidePreset = panelWidth >= 480;
 
   useEffect(() => {
     if (!resizing) return;
@@ -121,7 +120,6 @@ export const AiAssistant: React.FC = () => {
             <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #1e2d42", gap: 6, flexShrink: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#4a6fa5", flex: 1 }}>AI アシスト</div>
               <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: !aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={!aiFloat ? "フロート表示に切替" : "固定表示に切替"}>{!aiFloat ? "固" : "浮"}</button>
-              <button onClick={() => setAiPanelWidth(isWidePreset ? 360 : 480)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: isWidePreset ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={isWidePreset ? "標準幅" : "広め幅"}>{isWidePreset ? "標" : "広"}</button>
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
             <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>

@@ -46,6 +46,7 @@ export interface StudioState {
   // sidebar UI
   sidebarOpen: boolean;
   sidebarFloat: boolean;
+  sidebarWidth: number;
 
   // scene editing
   newScene: SceneDraft;
@@ -107,6 +108,7 @@ export interface StudioState {
   setProjectTitle: (v: string) => void;
   setSidebarOpen: (v: boolean) => void;
   setSidebarFloat: (v: boolean) => void;
+  setSidebarWidth: (v: number) => void;
   setNewScene: (v: SceneDraft) => void;
   setAddingScene: (v: boolean) => void;
   setAddingChapter: (v: boolean) => void;
@@ -194,6 +196,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   projectTitle: "",
   sidebarOpen: true,
   sidebarFloat: true,
+  sidebarWidth: 220,
   newScene: { chapter: "", title: "", synopsis: "" },
   addingScene: false,
   addingChapter: false,
@@ -252,6 +255,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setProjectTitle: (v) => set({ projectTitle: v }),
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setSidebarFloat: (v) => set({ sidebarFloat: v }),
+  setSidebarWidth: (v) => set({ sidebarWidth: v }),
   setNewScene: (v) => set({ newScene: v }),
   setAddingScene: (v) => set({ addingScene: v }),
   setAddingChapter: (v) => set({ addingChapter: v }),
@@ -513,6 +517,7 @@ export function resetStudioStore() {
     projectTitle: "",
     sidebarOpen: true,
     sidebarFloat: true,
+    sidebarWidth: 220,
     newScene: { chapter: "", title: "", synopsis: "" },
     addingScene: false,
     addingChapter: false,

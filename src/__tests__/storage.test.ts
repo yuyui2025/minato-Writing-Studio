@@ -54,6 +54,12 @@ describe("storageGet", () => {
     expect(result).toBe(480);
   });
 
+  it("returns a stored sidebar width", async () => {
+    await storageSet("minato:sidebarWidth", 260);
+    const result = await storageGet<number>("minato:sidebarWidth");
+    expect(result).toBe(260);
+  });
+
   it("returns 0 when numeric zero was stored", async () => {
     await storageSet("test-zero", 0);
     const result = await storageGet<number>("test-zero");
