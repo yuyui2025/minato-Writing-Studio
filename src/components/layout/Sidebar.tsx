@@ -152,6 +152,7 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside style={{
+      position: "relative",
       width: sidebarOpen ? effectiveSidebarWidth : 36,
       borderRight: "1px solid #1e2d42",
       background: "#080c16",
@@ -163,7 +164,7 @@ export const Sidebar: React.FC = () => {
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: effectiveSidebarWidth, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
       } : {}),
     }}>
-      {sidebarOpen && (
+      {sidebarOpen && !sidebarFloat && (
         <div
           onPointerDown={(e) => {
             dragStartXRef.current = e.clientX;
