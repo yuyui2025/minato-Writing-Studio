@@ -1,12 +1,13 @@
 import React from "react";
 import { AiPanel } from "../ai/AiPanel";
 import { useStudio } from "../../contexts/StudioContext";
+import { buildSettingExpansionPrompt } from "../../utils/aiPrompts";
 
 export const SettingsView: React.FC = () => {
   const {
     settings, setSettings, settingsTab, setSettingsTab,
     aiResults, setAiResults, aiErrors, setAiErrors,
-    aiLoading, setAiLoading, addAiHistory
+    aiLoading, setAiLoading, addAiHistory, manuscriptText
   } = useStudio();
 
   return (
@@ -37,7 +38,7 @@ export const SettingsView: React.FC = () => {
             loading={aiLoading[resultKey]}
             error={aiErrors[resultKey]}
             onError={t => setAiErrors(e => ({ ...e, [resultKey]: t }))}
-            prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${tabLabel}】\n${settings[settingsTab]}`}
+            prompt={buildSettingExpansionPrompt(settingsTab, settings, manuscriptText)}
             onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
           />
         );
