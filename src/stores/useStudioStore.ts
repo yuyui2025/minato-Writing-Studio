@@ -259,7 +259,12 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     return { manuscripts: next, ...computeDerived(s.scenes, next, s.selectedSceneId) };
   }),
   setSettings: (v) => set((s) => ({ settings: typeof v === "function" ? v(s.settings) : v })),
-  setProjectTitle: (v) => set({ projectTitle: v }),
+  setProjectTitle: (v) => set((s) => ({
+    projectTitle: v,
+    projects: s.projects.map(p =>
+      p.id === s.activeProjectId ? { ...p, title: v } : p
+    ),
+  })),
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setSidebarFloat: (v) => set({ sidebarFloat: v }),
   setSidebarWidth: (v) => set({ sidebarWidth: v }),
@@ -456,9 +461,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
     const currentProjects = s.projects.some(p => p.id === s.activeProjectId)
       ? s.projects.map(p => p.id === s.activeProjectId
-        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }
+        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }
         : p)
-      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }, ...s.projects];
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }, ...s.projects];
     const nextProject: ProjectRecord = {
       id,
       title: "新規プロジェクト",
@@ -467,6 +472,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       manuscripts: {},
       settings: initialSettings,
       backups: [],
+      aiHistory: [],
     };
     return {
       projects: [nextProject, ...currentProjects],
@@ -476,6 +482,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       manuscripts: {},
       settings: initialSettings,
       backups: [],
+      aiHistory: [],
       selectedSceneId: null,
       showProjectShelf: false,
       ...computeDerived(initialScenes, {}, null),
@@ -489,9 +496,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
     const currentProjects = s.projects.some(p => p.id === s.activeProjectId)
       ? s.projects.map(p => p.id === s.activeProjectId
-        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }
+        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }
         : p)
-      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }, ...s.projects];
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }, ...s.projects];
     const firstId = target.scenes[0]?.id ?? null;
     return {
       projects: currentProjects,
@@ -501,6 +508,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       manuscripts: target.manuscripts,
       settings: target.settings,
       backups: target.backups,
+      aiHistory: target.aiHistory ?? [],
       selectedSceneId: firstId,
       showProjectShelf: false,
       ...computeDerived(target.scenes, target.manuscripts, firstId),
