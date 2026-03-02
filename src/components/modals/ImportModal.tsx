@@ -41,6 +41,12 @@ function decodeBuffer(uint8: Uint8Array): string {
   }
 }
 
+const PROJECT_FILE_RE = /\.minato-project(?:\s*\(\d+\))?\.json$/i;
+
+function stripProjectFileSuffix(filename: string): string {
+  return filename.replace(PROJECT_FILE_RE, "");
+}
+
 export function ImportModal() {
   const store = useStudioStore();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -59,7 +65,7 @@ export function ImportModal() {
   const handleFile = useCallback(async (file: File) => {
     const isZip = /\.zip$/i.test(file.name);
     const isText = /\.(md|txt)$/i.test(file.name);
-    const isProjectFile = /\.minato-project\.json$/i.test(file.name);
+    const isProjectFile = PROJECT_FILE_RE.test(file.name);
     if (!isZip && !isText && !isProjectFile) {
       setError(".md / .txt / .zip / .minato-project.json ファイルを選択してください");
       return;
@@ -85,7 +91,7 @@ export function ImportModal() {
       }
       const pf = candidate as ProjectFile;
       setProjectFileData(pf);
-      setProjectTitle(pf.project.title || file.name.replace(/\.minato-project\.json$/i, ""));
+      setProjectTitle(pf.project.title || stripProjectFileSuffix(file.name));
       setSections(pf.project.scenes.map((scene) => ({
         chapter: scene.chapter || "",
         title: scene.title || "",
