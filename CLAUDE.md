@@ -2,6 +2,20 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 作業フロー
+
+### 起動時
+- Linear の Issue を取得して内容を確認・分類する
+
+### 作業開始時
+- 必ず新しいブランチを切ってから作業を開始する
+- ブランチ名は対応する Issue 番号・内容に基づいて命名する
+
+### 作業終了時
+- 作業完了後は PR を作成して提出する
+
+---
+
 ## コマンド
 
 ```bash
