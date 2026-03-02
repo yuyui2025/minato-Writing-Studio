@@ -175,11 +175,11 @@ export const Sidebar: React.FC = () => {
             top: 0,
             right: -5,
             bottom: 0,
-            width: 10,
+            width: 12,
             cursor: "col-resize",
-            background: resizing ? "rgba(74,111,165,0.25)" : "rgba(30,45,66,0.25)",
-            borderLeft: "1px solid #1e2d42",
-            borderRight: "1px solid #1e2d42",
+            background: resizing ? "rgba(74,111,165,0.35)" : "rgba(74,111,165,0.15)",
+            borderLeft: "1px solid #355277",
+            borderRight: "1px solid #355277",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -187,7 +187,7 @@ export const Sidebar: React.FC = () => {
           }}
           title="ドラッグして幅を変更"
         >
-          <span style={{ color: "#3a5570", fontSize: 9, letterSpacing: 0.5, userSelect: "none" }}>⋮⋮</span>
+          <span style={{ color: "#6f95ba", fontSize: 9, letterSpacing: 0.5, userSelect: "none" }}>⋮⋮</span>
         </div>
       )}
       {sidebarOpen ? (
