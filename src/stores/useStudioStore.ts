@@ -77,7 +77,7 @@ export interface StudioState {
   // AI
   aiFloat: boolean;
   aiWide: boolean;
-  aiPanePriority: "left" | "right";
+  aiPanelWidth: number;
   aiResults: AiResults;
   aiErrors: AiErrors;
   aiLoading: AiLoading;
@@ -128,7 +128,7 @@ export interface StudioState {
   setAutoBackups: (v: Backup[] | ((prev: Backup[]) => Backup[])) => void;
   setAiFloat: (v: boolean) => void;
   setAiWide: (v: boolean) => void;
-  setAiPanePriority: (v: "left" | "right") => void;
+  setAiPanelWidth: (v: number) => void;
   setAiResults: (v: AiResults | ((prev: AiResults) => AiResults)) => void;
   setAiErrors: (v: AiErrors | ((prev: AiErrors) => AiErrors)) => void;
   setAiLoading: (v: AiLoading | ((prev: AiLoading) => AiLoading)) => void;
@@ -215,7 +215,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   autoBackups: [],
   aiFloat: false,
   aiWide: false,
-  aiPanePriority: "left",
+  aiPanelWidth: 360,
   aiResults: aiResultsInit,
   aiErrors: aiErrorsInit,
   aiLoading: aiLoadingInit,
@@ -273,7 +273,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAutoBackups: (v) => set((s) => ({ autoBackups: typeof v === "function" ? v(s.autoBackups) : v })),
   setAiFloat: (v) => set({ aiFloat: v }),
   setAiWide: (v) => set({ aiWide: v }),
-  setAiPanePriority: (v) => set({ aiPanePriority: v }),
+  setAiPanelWidth: (v) => set({ aiPanelWidth: v }),
   setAiResults: (v) => set((s) => ({ aiResults: typeof v === "function" ? v(s.aiResults) : v })),
   setAiErrors: (v) => set((s) => ({ aiErrors: typeof v === "function" ? v(s.aiErrors) : v })),
   setAiLoading: (v) => set((s) => ({ aiLoading: typeof v === "function" ? v(s.aiLoading) : v })),
@@ -534,6 +534,7 @@ export function resetStudioStore() {
     autoBackups: [],
     aiFloat: false,
     aiWide: false,
+    aiPanelWidth: 360,
     aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
     aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
     aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false },

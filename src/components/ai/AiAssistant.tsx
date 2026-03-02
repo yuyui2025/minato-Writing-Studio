@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
@@ -20,14 +20,19 @@ export function parsePolishHistoryEntries(result: string): string[] {
 export const AiAssistant: React.FC = () => {
   const {
     showSettings, setShowSettings, aiFloat, setAiFloat,
-    aiWide, setAiWide, aiResults, setAiResults,
-    aiPanePriority, setAiPanePriority,
+    aiResults, setAiResults,
+    aiPanelWidth, setAiPanelWidth,
     aiErrors, setAiErrors,
     aiLoading, setAiLoading, aiApplied, setAiApplied,
     hintApplied, setHintApplied, manuscriptText,
     handleManuscriptChange, settings, selectedScene, addAiHistory
   } = useStudio();
   const [freeText, setFreeText] = useState("");
+  const [resizing, setResizing] = useState(false);
+  const panelMinWidth = 280;
+  const panelMaxWidth = 760;
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(0);
 
   const runFreeInstruct = async () => {
     if (!freeText.trim()) return;
@@ -51,9 +56,24 @@ export const AiAssistant: React.FC = () => {
 
   if (!selectedScene) return null;
 
-  const panelWidth = aiPanePriority === "right"
-    ? (aiWide ? 560 : 420)
-    : (aiWide ? 420 : 300);
+  const panelWidth = Math.max(panelMinWidth, Math.min(panelMaxWidth, aiPanelWidth || 360));
+  const isWidePreset = panelWidth >= 480;
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = dragStartXRef.current - e.clientX;
+      const next = Math.max(panelMinWidth, Math.min(panelMaxWidth, dragStartWidthRef.current + delta));
+      setAiPanelWidth(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [resizing, setAiPanelWidth]);
 
   return (
     <>
@@ -76,20 +96,32 @@ export const AiAssistant: React.FC = () => {
         flexShrink: 0,
         ...(aiFloat && showSettings ? { boxShadow: "-4px 0 20px rgba(0,0,0,0.6)" } : {}),
       }}>
+        {showSettings && !aiFloat && (
+          <div
+            onPointerDown={(e) => {
+              dragStartXRef.current = e.clientX;
+              dragStartWidthRef.current = panelWidth;
+              setResizing(true);
+            }}
+            style={{
+              position: "absolute",
+              left: -3,
+              top: 0,
+              bottom: 0,
+              width: 6,
+              cursor: "col-resize",
+              background: resizing ? "rgba(74,111,165,0.25)" : "transparent",
+            }}
+            title="ドラッグして幅を変更"
+          />
+        )}
         {showSettings && (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: panelWidth }}>
             {/* パネルヘッダー */}
             <div style={{ display: "flex", alignItems: "center", padding: "8px 12px", borderBottom: "1px solid #1e2d42", gap: 6, flexShrink: 0 }}>
               <div style={{ fontSize: 10, letterSpacing: 3, color: "#4a6fa5", flex: 1 }}>AI アシスト</div>
               <button onClick={() => setAiFloat(!aiFloat)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: !aiFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={!aiFloat ? "フロート表示に切替" : "固定表示に切替"}>{!aiFloat ? "固" : "浮"}</button>
-              <button onClick={() => setAiWide(!aiWide)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiWide ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={aiWide ? "幅を狭く" : "幅を広く"}>{aiWide ? "◂" : "▸"}</button>
-              <button
-                onClick={() => setAiPanePriority(aiPanePriority === "left" ? "right" : "left")}
-                style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: aiPanePriority === "right" ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }}
-                title={aiPanePriority === "right" ? "左右バランスを標準に戻す" : "右ペインを広くする"}
-              >
-                {aiPanePriority === "right" ? "右広" : "右優"}
-              </button>
+              <button onClick={() => setAiPanelWidth(isWidePreset ? 360 : 480)} style={{ padding: "3px 8px", background: "transparent", border: "1px solid #1e2d42", color: isWidePreset ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", borderRadius: 3 }} title={isWidePreset ? "標準幅" : "広め幅"}>{isWidePreset ? "標" : "広"}</button>
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
             <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
