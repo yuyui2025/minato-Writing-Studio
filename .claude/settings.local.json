@@ -13,7 +13,11 @@
       "Bash(where git:*)",
       "Bash(\"C:/Program Files/Git/cmd/git.exe\":*)",
       "Bash(powershell:*)",
-      "Bash(cmd:*)"
+      "Bash(cmd:*)",
+      "Bash(gh issue:*)",
+      "Bash(npm run:*)",
+      "Bash(./node_modules/.bin/tsc:*)",
+      "mcp__claude_ai_Linear__save_issue"
     ]
   }
 }
