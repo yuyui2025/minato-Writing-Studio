@@ -17,17 +17,24 @@ export const Header: React.FC = () => {
         {/* アイコン */}
         <button
           onClick={() => setShowProjectShelf(true)}
-          title="本棚を開く"
-          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0, border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
+          title="プロジェクト切替を開く"
+          aria-label="プロジェクト切替を開く"
+          style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, border: "1px solid #1e2d42", borderRadius: 6, background: "rgba(30,45,66,0.2)", padding: "3px 6px", cursor: "pointer" }}
         >
-          <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+            <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
             <rect x="4.5" y="4.5" width="4" height="19" rx="0.8" stroke="#4a6fa5" strokeWidth="1.2"/>
             <rect x="9.8" y="5.4" width="3.6" height="18.1" rx="0.8" stroke="#3d5d8b" strokeWidth="1.2"/>
             <rect x="14.4" y="4.1" width="4.4" height="19.4" rx="0.8" stroke="#5f7fae" strokeWidth="1.2"/>
             <rect x="19.8" y="6" width="3.7" height="17.5" rx="0.8" stroke="#2f4a70" strokeWidth="1.2"/>
             <line x1="3.5" y1="23.5" x2="24.5" y2="23.5" stroke="#1e3050" strokeWidth="1.2"/>
-          </svg>
-          <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textTransform: "lowercase", whiteSpace: "nowrap" }}>minato ws</div>
+            </svg>
+            <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textTransform: "lowercase", whiteSpace: "nowrap" }}>minato ws</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 1 }}>
+            <span style={{ fontSize: 9, color: "#6f8db5", letterSpacing: 0.6, whiteSpace: "nowrap" }}>プロジェクト</span>
+            <span style={{ fontSize: 11, color: "#9cb5d0", whiteSpace: "nowrap" }}>切替</span>
+          </div>
         </button>
         {/* タイトル */}
         {editingTitle ? (

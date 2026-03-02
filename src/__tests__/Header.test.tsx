@@ -44,4 +44,29 @@ describe("Header", () => {
     fireEvent.click(title);
     expect(setEditingTitle).toHaveBeenCalledWith(true);
   });
+
+  test("shows explicit project switcher label on shelf button", () => {
+    (useStudio as any).mockReturnValue({
+      projectTitle: "Project A",
+      setProjectTitle: vi.fn(),
+      editingTitle: false,
+      setEditingTitle: vi.fn(),
+      saveStatus: "saved",
+      lastSavedTime: null,
+      scenes: [],
+      settings: { world: "", characters: "", theme: "" },
+      manuscripts: {},
+      saveWithBackup: vi.fn(),
+      setShowBackups: vi.fn(),
+      setShowImport: vi.fn(),
+      setShowExport: vi.fn(),
+      setShowProjectShelf: vi.fn(),
+    });
+
+    render(<Header />);
+
+    expect(screen.getByRole("button", { name: "プロジェクト切替を開く" })).toBeInTheDocument();
+    expect(screen.getByText("プロジェクト")).toBeInTheDocument();
+    expect(screen.getByText("切替")).toBeInTheDocument();
+  });
 });
