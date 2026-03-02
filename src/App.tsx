@@ -20,14 +20,19 @@ import { StudioProvider, useStudio } from "./contexts/StudioContext";
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [launchMode, setLaunchMode] = useState<"select" | "offline" | "authenticated">("select");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      setLaunchMode(session?.user ? "authenticated" : "select");
       setAuthLoading(false);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        setLaunchMode("authenticated");
+      }
       setAuthLoading(false);
     });
     return () => subscription.unsubscribe();
@@ -40,7 +45,7 @@ export default function App() {
     </div>
   );
 
-  if (!user) return (
+  if (!user && launchMode === "select") return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
       <div>
         <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
@@ -55,12 +60,37 @@ export default function App() {
         <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
       </div>
       <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>minato Writing Studio</div>
-      <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{
-        padding: "10px 28px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5",
-        color: "#7ab3e0", cursor: "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
-      }}>Googleでログイン</button>
+      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+        <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{
+          padding: "10px 28px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5",
+          color: "#7ab3e0", cursor: "pointer", borderRadius: 6, fontSize: 13, fontFamily: "inherit", letterSpacing: 1,
+        }}>Googleでログイン</button>
+        <button
+          onClick={() => setLaunchMode("offline")}
+          style={{
+            padding: "10px 28px", background: "transparent", border: "1px solid #2a4060",
+            color: "#6f8baa", cursor: "pointer", borderRadius: 6, fontSize: 12, fontFamily: "inherit", letterSpacing: 1,
+          }}
+        >
+          オフラインで開始
+        </button>
+      </div>
+      <p style={{ margin: 0, fontSize: 12, color: "#58769a", textAlign: "center", lineHeight: 1.8 }}>
+        DBログインすると端末間でデータを同期できます。<br />
+        オフライン起動時は、この端末のローカル保存のみ利用します。
+      </p>
     </div>
   );
+
+  if (!user && launchMode === "offline") {
+    return (
+      <ErrorBoundary>
+        <StudioProvider user={null}>
+          <Studio />
+        </StudioProvider>
+      </ErrorBoundary>
+    );
+  }
 
   return (
     <ErrorBoundary>

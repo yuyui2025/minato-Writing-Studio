@@ -17,7 +17,7 @@ import { analyzeText } from "../utils/textAnalyzer";
 // Provider: side effects only
 // ---------------------------------------------------------------------------
 
-export function StudioProvider({ children, user }: { children: React.ReactNode; user: User }) {
+export function StudioProvider({ children, user }: { children: React.ReactNode; user: User | null }) {
   const store = useStudioStore();
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
   const skipInitialSaveRef = useRef(true);
