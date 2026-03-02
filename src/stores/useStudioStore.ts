@@ -174,6 +174,16 @@ const aiResultsInit: AiResults = { polish: "", hint: "", check: "", continue: ""
 const aiErrorsInit: AiErrors = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" };
 const aiLoadingInit: AiLoading = { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false };
 
+function resetAiWorkspaceState() {
+  return {
+    aiResults: { ...aiResultsInit },
+    aiErrors: { ...aiErrorsInit },
+    aiLoading: { ...aiLoadingInit },
+    aiApplied: {},
+    hintApplied: {},
+  };
+}
+
 function downloadFile(content: string, filename: string) {
   const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
   const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
@@ -445,6 +455,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      ...resetAiWorkspaceState(),
       ...computeDerived(newScenes, newManuscripts, firstId),
     });
     // Persist to storage asynchronously (best-effort)
@@ -477,6 +488,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      ...resetAiWorkspaceState(),
       ...computeDerived(newScenes, newManuscripts, firstNewId),
     });
     await Promise.all([
@@ -522,6 +534,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      ...resetAiWorkspaceState(),
       ...computeDerived(data.scenes, data.manuscripts, firstId),
     });
   },
@@ -556,6 +569,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       aiHistory: [],
       selectedSceneId: null,
       showProjectShelf: false,
+      ...resetAiWorkspaceState(),
       ...computeDerived(initialScenes, {}, null),
     };
   }),
@@ -582,6 +596,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       aiHistory: target.aiHistory ?? [],
       selectedSceneId: firstId,
       showProjectShelf: false,
+      ...resetAiWorkspaceState(),
       ...computeDerived(target.scenes, target.manuscripts, firstId),
     };
   }),
