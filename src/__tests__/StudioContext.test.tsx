@@ -171,8 +171,8 @@ describe("StudioContext", () => {
       result.current.setAiResults(prev => ({ ...prev, polish: "提案テキスト" }));
       result.current.setAiErrors(prev => ({ ...prev, polish: "error" }));
       result.current.setAiLoading(prev => ({ ...prev, polish: true }));
-      result.current.setAiApplied({ polish: true });
-      result.current.setHintApplied({ hint: true });
+      result.current.setAiApplied({ 1: true });
+      result.current.setHintApplied({ 1: "insert" });
     });
 
     act(() => { result.current.createProject(); });
