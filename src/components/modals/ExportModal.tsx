@@ -5,6 +5,7 @@ export function ExportModal() {
     selectedScene,
     exportScene,
     exportAll,
+    exportProjectFile,
     setShowExport
   } = useStudio();
 
@@ -96,6 +97,26 @@ export function ExportModal() {
             .txt
           </button>
         </div>
+
+        <div style={{ fontSize: 11, color: "#3a5570", marginBottom: 10 }}>プロジェクト丸ごと（圧縮）</div>
+        <button
+          onClick={() => { void exportProjectFile(); }}
+          style={{
+            width: "100%",
+            padding: "8px",
+            background: "rgba(74,111,165,0.15)",
+            border: "1px solid #4a6fa5",
+            color: "#7ab3e0",
+            cursor: "pointer",
+            borderRadius: 4,
+            fontSize: 12,
+            fontFamily: "inherit",
+            marginBottom: 24,
+          }}
+        >
+          .gz
+        </button>
+
         <button
           onClick={() => setShowExport(false)}
           style={{

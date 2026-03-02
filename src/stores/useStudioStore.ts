@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { User } from "@supabase/supabase-js";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord, ProjectFile
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 import { storageSet } from "../utils/storage";
@@ -159,7 +159,9 @@ export interface StudioState {
   handleSaveBackup: (label: string | null) => void;
   exportScene: (fmt: "md" | "txt") => void;
   exportAll: (fmt: "md" | "txt") => void;
+  exportProjectFile: () => Promise<void>;
   importProject: (data: ImportData) => Promise<void>;
+  importProjectFile: (projectFile: ProjectFile) => void;
   appendToProject: (data: ImportData) => Promise<void>;
   createProjectFromImport: (data: ImportData) => void;
   createProject: () => void;
@@ -182,6 +184,41 @@ function resetAiWorkspaceState() {
     aiApplied: {},
     hintApplied: {},
   };
+}
+
+
+function sanitizeFilename(name: string) {
+  const trimmed = name.trim();
+  const base = trimmed.length > 0 ? trimmed : "project";
+  return base.replace(/[\\:*?"<>|/]+/g, "_");
+}
+
+
+async function gzipText(content: string): Promise<Uint8Array> {
+  if (typeof CompressionStream === "undefined") {
+    throw new Error("CompressionStream is not supported");
+  }
+  const stream = new Blob([content], { type: "application/json;charset=utf-8" })
+    .stream()
+    .pipeThrough(new CompressionStream("gzip"));
+  const response = new Response(stream);
+  const buffer = await response.arrayBuffer();
+  return new Uint8Array(buffer);
+}
+
+function downloadBytes(bytes: Uint8Array, filename: string, mime = "application/octet-stream") {
+  const raw = new Uint8Array(bytes.byteLength);
+  raw.set(bytes);
+  const blob = new Blob([raw], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert(`${filename} を出力しました。`);
 }
 
 function downloadFile(content: string, filename: string) {
@@ -424,6 +461,48 @@ export const useStudioStore = create<StudioState>((set, get) => ({
     set({ showExport: false });
   },
 
+
+  exportProjectFile: async () => {
+    const { activeProjectId, projectTitle, scenes, manuscripts, settings, backups, aiHistory, projects } = get();
+    const now = new Date().toISOString();
+    const title = projectTitle.trim() || "無題プロジェクト";
+    const persistedProject = projects.find(p => p.id === activeProjectId);
+    const project: ProjectRecord = {
+      ...(persistedProject ?? {
+        id: activeProjectId,
+        title,
+        updatedAt: now,
+        scenes,
+        manuscripts,
+        settings,
+        backups,
+      }),
+      id: activeProjectId,
+      title,
+      updatedAt: now,
+      scenes,
+      manuscripts,
+      settings,
+      backups,
+      aiHistory,
+    };
+    const payload: ProjectFile = {
+      format: "minato-project",
+      version: 1,
+      exportedAt: now,
+      project,
+    };
+    const filename = `${sanitizeFilename(title)}.gz`;
+    try {
+      const raw = JSON.stringify(payload);
+      const gz = await gzipText(raw);
+      downloadBytes(gz, filename, "application/gzip");
+      set({ showExport: false });
+    } catch {
+      alert("このブラウザは圧縮出力に対応していません。");
+    }
+  },
+
   importProject: async (data) => {
     const { scenes, manuscripts, settings, projectTitle, backups } = get();
     // Create a backup of current state before overwriting
@@ -467,6 +546,53 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       storageSet("minato:backups", newBackups),
     ]).catch(() => {/* ignore storage errors */});
   },
+
+
+  importProjectFile: (projectFile) => set((s) => {
+    const imported = projectFile.project;
+    const now = new Date().toISOString();
+    const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
+    const currentRecord: ProjectRecord = {
+      id: s.activeProjectId,
+      title: currentTitle,
+      updatedAt: now,
+      scenes: s.scenes,
+      manuscripts: s.manuscripts,
+      settings: s.settings,
+      backups: s.backups,
+      aiHistory: s.aiHistory,
+    };
+    const projectsWithoutCurrent = s.projects.filter(p => p.id !== s.activeProjectId);
+    const importedId = imported.id || `project-${Date.now()}`;
+    const importedProject: ProjectRecord = {
+      id: importedId,
+      title: imported.title?.trim() || "インポートプロジェクト",
+      updatedAt: imported.updatedAt || now,
+      scenes: imported.scenes || [],
+      manuscripts: imported.manuscripts || {},
+      settings: imported.settings || initialSettings,
+      backups: imported.backups || [],
+      aiHistory: imported.aiHistory || [],
+    };
+    const firstId = importedProject.scenes[0]?.id ?? null;
+
+    return {
+      projects: [importedProject, currentRecord, ...projectsWithoutCurrent.filter(p => p.id !== importedId)],
+      activeProjectId: importedProject.id,
+      projectTitle: importedProject.title,
+      scenes: importedProject.scenes,
+      manuscripts: importedProject.manuscripts,
+      settings: importedProject.settings,
+      backups: importedProject.backups,
+      aiHistory: importedProject.aiHistory ?? [],
+      selectedSceneId: firstId,
+      showImport: false,
+      tab: "write",
+      textMetrics: null,
+      ...resetAiWorkspaceState(),
+      ...computeDerived(importedProject.scenes, importedProject.manuscripts, firstId),
+    };
+  }),
 
   // YUY-38: 既存プロジェクトにシーンを追加（設定・タイトルは変更しない）
   appendToProject: async (data) => {

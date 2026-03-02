@@ -2,7 +2,7 @@ import { useRef, useState, useCallback } from "react";
 import { useStudioStore } from "../../stores/useStudioStore";
 import { parseDocument } from "../../utils/textAnalyzer";
 import { extractImportMetadataBySections } from "../../utils/importExtractor";
-import type { ImportData, ParsedSection } from "../../types";
+import type { ImportData, ParsedSection, ProjectFile } from "../../types";
 
 type Step = "pick" | "analyzing" | "preview";
 type ImportMode = "new" | "append" | "replace";
@@ -41,6 +41,22 @@ function decodeBuffer(uint8: Uint8Array): string {
   }
 }
 
+const PROJECT_FILE_RE = /(?:\.minato-project(?:\s*\(\d+\))?\.json(?:\.gz)?|\.json|\.gz)$/i;
+
+function stripProjectFileSuffix(filename: string): string {
+  return filename.replace(PROJECT_FILE_RE, "");
+}
+
+async function maybeReadProjectFileText(file: File): Promise<string> {
+  const isGzip = /\.gz$/i.test(file.name);
+  if (!isGzip) return file.text();
+  if (typeof DecompressionStream === "undefined") {
+    throw new Error("DecompressionStream is not supported");
+  }
+  const stream = file.stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+
 export function ImportModal() {
   const store = useStudioStore();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -54,16 +70,55 @@ export function ImportModal() {
   const [characters, setCharacters] = useState("");
   const [world, setWorld] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("new");
+  const [projectFileData, setProjectFileData] = useState<ProjectFile | null>(null);
 
   const handleFile = useCallback(async (file: File) => {
     const isZip = /\.zip$/i.test(file.name);
     const isText = /\.(md|txt)$/i.test(file.name);
-    if (!isZip && !isText) {
-      setError(".md / .txt / .zip ファイルを選択してください");
+    const isProjectFile = PROJECT_FILE_RE.test(file.name);
+    if (!isZip && !isText && !isProjectFile) {
+      setError(".md / .txt / .zip / .json / .gz ファイルを選択してください");
       return;
     }
     setError(null);
     setStep("analyzing");
+
+    if (isProjectFile) {
+      let raw: string;
+      try {
+        raw = await maybeReadProjectFileText(file);
+      } catch {
+        setError("圧縮プロジェクトファイルの展開に失敗しました");
+        setStep("pick");
+        return;
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        setError("プロジェクトファイルの JSON 解析に失敗しました");
+        setStep("pick");
+        return;
+      }
+      const candidate = parsed as Partial<ProjectFile>;
+      if (candidate.format !== "minato-project" || candidate.version !== 1 || !candidate.project) {
+        setError("対応していないプロジェクトファイル形式です");
+        setStep("pick");
+        return;
+      }
+      const pf = candidate as ProjectFile;
+      setProjectFileData(pf);
+      setProjectTitle(pf.project.title || stripProjectFileSuffix(file.name));
+      setSections(pf.project.scenes.map((scene) => ({
+        chapter: scene.chapter || "",
+        title: scene.title || "",
+        content: pf.project.manuscripts[scene.id] || "",
+      })));
+      setCharacters(pf.project.settings?.characters || "");
+      setWorld(pf.project.settings?.world || "");
+      setStep("preview");
+      return;
+    }
 
     let combinedText: string;
     let titleFromFile: string;
@@ -102,6 +157,7 @@ export function ImportModal() {
       combinedText
     );
 
+    setProjectFileData(null);
     setProjectTitle(parsed?.title || titleFromFile);
     setSections(parsed?.sections ?? [{ chapter: "", title: "", content: combinedText }]);
     setCharacters(aiResult?.characters ?? "");
@@ -122,6 +178,11 @@ export function ImportModal() {
   }, [handleFile]);
 
   const handleImport = useCallback(async () => {
+    if (projectFileData) {
+      store.importProjectFile(projectFileData);
+      return;
+    }
+
     const now = Date.now();
     const scenes = sections.map((s, i) => ({
       id: now + i,
@@ -145,7 +206,7 @@ export function ImportModal() {
     } else {
       await store.importProject(data);
     }
-  }, [sections, characters, world, projectTitle, importMode, store]);
+  }, [sections, characters, world, projectTitle, importMode, projectFileData, store]);
 
   const IMPORT_MODES: { mode: ImportMode; label: string; desc: string }[] = [
     { mode: "new", label: "新規プロジェクト", desc: "現在のプロジェクトを残したまま新しいプロジェクトを作成します" },
@@ -205,11 +266,11 @@ export function ImportModal() {
               }}
             >
               <span style={{ fontSize: 28 }}>↑</span>
-              <span>.md / .txt / .zip をドロップ、またはクリックして選択</span>
+              <span>.md / .txt / .zip / .json / .gz をドロップ、またはクリックして選択</span>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".md,.txt,.zip"
+                accept=".md,.txt,.zip,.json,.gz"
                 style={{ display: "none" }}
                 onChange={onFileChange}
               />
@@ -245,7 +306,7 @@ export function ImportModal() {
                 インポート方法
               </label>
               <div style={{ display: "flex", gap: 6 }}>
-                {IMPORT_MODES.map(({ mode, label }) => (
+                {!projectFileData && IMPORT_MODES.map(({ mode, label }) => (
                   <button
                     key={mode}
                     onClick={() => setImportMode(mode)}
@@ -265,9 +326,16 @@ export function ImportModal() {
                   </button>
                 ))}
               </div>
-              <div style={{ marginTop: 4, fontSize: 10, color: "#3a5070" }}>
-                {IMPORT_MODES.find(m => m.mode === importMode)?.desc}
-              </div>
+              {!projectFileData && (
+                <div style={{ marginTop: 4, fontSize: 10, color: "#3a5070" }}>
+                  {IMPORT_MODES.find(m => m.mode === importMode)?.desc}
+                </div>
+              )}
+              {projectFileData && (
+                <div style={{ marginTop: 4, fontSize: 10, color: "#5a8aaa" }}>
+                  プロジェクトファイルは新規プロジェクトとして読み込みます。
+                </div>
+              )}
             </div>
 
             <div style={{ marginBottom: 16 }}>
@@ -306,7 +374,7 @@ export function ImportModal() {
               </div>
             </div>
 
-            {importMode !== "append" && (
+            {importMode !== "append" && !projectFileData && (
               <>
                 <div style={{ marginBottom: 16 }}>
                   <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 4 }}>
@@ -349,9 +417,10 @@ export function ImportModal() {
             </div>
 
             <div style={{ marginTop: 10, fontSize: 10, color: "#2a3f58", textAlign: "center" }}>
-              {importMode === "replace" && "現在のデータはインポート前にバックアップされます"}
-              {importMode === "append" && "現在のシーンの末尾に追加されます"}
-              {importMode === "new" && "現在のプロジェクトはそのまま保持されます"}
+              {projectFileData && "現在のプロジェクトは保持され、インポートしたプロジェクトへ切り替わります"}
+              {!projectFileData && importMode === "replace" && "現在のデータはインポート前にバックアップされます"}
+              {!projectFileData && importMode === "append" && "現在のシーンの末尾に追加されます"}
+              {!projectFileData && importMode === "new" && "現在のプロジェクトはそのまま保持されます"}
             </div>
           </>
         )}

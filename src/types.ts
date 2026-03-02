@@ -100,3 +100,10 @@ export type ProjectRecord = {
   backups: Backup[];
   aiHistory?: AiHistoryItem[];
 };
+
+export type ProjectFile = {
+  format: "minato-project";
+  version: 1;
+  exportedAt: string;
+  project: ProjectRecord;
+};
