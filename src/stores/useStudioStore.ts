@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { User } from "@supabase/supabase-js";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
   AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord
@@ -26,6 +27,9 @@ function computeDerived(
 // ---------------------------------------------------------------------------
 
 export interface StudioState {
+  // auth
+  user: User | null;
+
   // persistence / loading
   loaded: boolean;
   saveStatus: SaveStatus;
@@ -95,6 +99,7 @@ export interface StudioState {
   // ---------------------------------------------------------------------------
   // Setters (plain state updates)
   // ---------------------------------------------------------------------------
+  setUser: (v: User | null) => void;
   setLoaded: (v: boolean) => void;
   setSaveStatus: (v: SaveStatus) => void;
   setLastSavedTime: (v: Date | null) => void;
@@ -183,6 +188,7 @@ function downloadFile(content: string, filename: string) {
 
 export const useStudioStore = create<StudioState>((set, get) => ({
   // Initial state
+  user: null,
   loaded: false,
   saveStatus: "saved",
   lastSavedTime: null,
@@ -233,6 +239,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   // ---------------------------------------------------------------------------
   // Setters
   // ---------------------------------------------------------------------------
+  setUser: (v) => set({ user: v }),
   setLoaded: (v) => set({ loaded: v }),
   setSaveStatus: (v) => set({ saveStatus: v }),
   setLastSavedTime: (v) => set({ lastSavedTime: v }),

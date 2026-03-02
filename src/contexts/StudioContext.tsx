@@ -22,6 +22,12 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
   const skipInitialSaveRef = useRef(true);
 
+  // --- Sync user to store ---
+  useEffect(() => {
+    store.setUser(user);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   // --- Initial load ---
   useEffect(() => {
     (async () => {
