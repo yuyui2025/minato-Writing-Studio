@@ -54,6 +54,7 @@ export type AiHistoryItem = {
   label: string;
   content: string;
   sceneTitle?: string;
+  sceneId?: number;
 };
 
 export type TextMetrics = {

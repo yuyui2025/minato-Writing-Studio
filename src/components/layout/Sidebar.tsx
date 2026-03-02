@@ -3,7 +3,7 @@ import { statusColors } from "../../constants";
 import { useStudio } from "../../contexts/StudioContext";
 import { AiPanel } from "../ai/AiPanel";
 import type {
-  SceneDraft, SidebarTabKey, TabKey, Scene
+  SceneDraft, SidebarTabKey, TabKey, Scene, AiHistoryItem
 } from "../../types";
 
 export const Sidebar: React.FC = () => {
@@ -18,6 +18,7 @@ export const Sidebar: React.FC = () => {
     aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading, addAiHistory,
   } = useStudio();
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
+  const [showCurrentOnly, setShowCurrentOnly] = useState(false);
 
   // Drag-and-drop state for structure tab
   const [sidebarDraggingId, setSidebarDraggingId] = useState<number | null>(null);
@@ -28,8 +29,24 @@ export const Sidebar: React.FC = () => {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  const onInsertHistory = (content: string) => {
-    handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + content);
+  // YUY-27: 追記先シーンへ移動してから追記する（表示シーン以外にも正しく適用）
+  const onInsertHistory = (item: AiHistoryItem) => {
+    if (item.sceneId && item.sceneId !== selectedSceneId) {
+      const targetScene = scenes.find(s => s.id === item.sceneId);
+      if (targetScene) {
+        handleSceneSelect(targetScene);
+        const targetText = manuscripts[item.sceneId] || "";
+        handleManuscriptChange(targetText + (targetText ? "\n" : "") + item.content);
+        return;
+      }
+    }
+    handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + item.content);
+  };
+
+  // YUY-26: 該当シーンへ移動
+  const onNavigateToScene = (sceneId: number) => {
+    const targetScene = scenes.find(s => s.id === sceneId);
+    if (targetScene) handleSceneSelect(targetScene);
   };
 
   // Drag handlers for sidebar structure tab
@@ -347,19 +364,35 @@ export const Sidebar: React.FC = () => {
           {/* AI履歴タブ */}
           {sidebarTab === "ai" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", marginBottom: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
                 <span style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", flex: 1 }}>AI 履歴</span>
+                {/* YUY-25: 現在シーンのみフィルタ */}
+                {selectedSceneId && (
+                  <button
+                    onClick={() => setShowCurrentOnly(v => !v)}
+                    style={{ fontSize: 9, padding: "2px 7px", background: showCurrentOnly ? "rgba(74,111,165,0.2)" : "transparent", border: `1px solid ${showCurrentOnly ? "#4a6fa5" : "#1e2d42"}`, color: showCurrentOnly ? "#7ab3e0" : "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    {showCurrentOnly ? "全表示" : "現在"}
+                  </button>
+                )}
                 {aiHistory.length > 0 && (
                   <button onClick={clearAiHistory} style={{ fontSize: 9, padding: "2px 7px", background: "transparent", border: "1px solid #1e2d42", color: "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}>全クリア</button>
                 )}
               </div>
-              {aiHistory.length === 0 ? (
-                <div style={{ fontSize: 11, color: "#2a4060", textAlign: "center", padding: "20px 0" }}>まだ履歴がありません</div>
-              ) : (
-                aiHistory.map(item => {
+              {(() => {
+                const filtered = showCurrentOnly
+                  ? aiHistory.filter(item => item.sceneId === selectedSceneId)
+                  : aiHistory;
+                if (filtered.length === 0) return (
+                  <div style={{ fontSize: 11, color: "#2a4060", textAlign: "center", padding: "20px 0" }}>
+                    {showCurrentOnly ? "このシーンの履歴はありません" : "まだ履歴がありません"}
+                  </div>
+                );
+                return filtered.map(item => {
                   const d = new Date(item.timestamp);
                   const timeLabel = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
                   const isExpanded = expandedIds.includes(item.id);
+                  const isDifferentScene = item.sceneId && item.sceneId !== selectedSceneId;
                   return (
                     <div key={item.id} style={{ padding: "8px 10px", background: "#0a0f1a", border: "1px solid #1a2535", borderRadius: 4 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 3 }}>
@@ -367,7 +400,7 @@ export const Sidebar: React.FC = () => {
                         <span style={{ fontSize: 9, color: "#2a4060", marginLeft: "auto" }}>{timeLabel}</span>
                       </div>
                       {item.sceneTitle && (
-                        <div style={{ fontSize: 9, color: "#2a4060", marginBottom: 3, fontStyle: "italic" }}>{item.sceneTitle}</div>
+                        <div style={{ fontSize: 9, color: isDifferentScene ? "#3a5570" : "#2a4060", marginBottom: 3, fontStyle: "italic" }}>{item.sceneTitle}</div>
                       )}
                       <div style={{
                         fontSize: 11, color: "#8ab0cc", lineHeight: 1.6, marginBottom: 6,
@@ -375,13 +408,25 @@ export const Sidebar: React.FC = () => {
                       } as React.CSSProperties}>
                         {item.content}
                       </div>
-                      <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                        {/* YUY-27: 追記先シーンへ移動してから追記 */}
                         <button
-                          onClick={() => onInsertHistory(item.content)}
+                          onClick={() => onInsertHistory(item)}
                           style={{ fontSize: 10, padding: "2px 10px", background: "rgba(42,128,96,0.12)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                          title={isDifferentScene ? `「${item.sceneTitle}」へ移動して追記` : "現在のシーンに追記"}
                         >
-                          追記
+                          {isDifferentScene ? "移動+追記" : "追記"}
                         </button>
+                        {/* YUY-26: シーン移動ボタン */}
+                        {item.sceneId && (
+                          <button
+                            onClick={() => onNavigateToScene(item.sceneId!)}
+                            style={{ fontSize: 10, padding: "2px 10px", background: "transparent", border: "1px solid #1e2d42", color: isDifferentScene ? "#4a6fa5" : "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
+                            title={`「${item.sceneTitle}」へ移動`}
+                          >
+                            移動
+                          </button>
+                        )}
                         <button
                           onClick={() => toggleExpand(item.id)}
                           style={{ fontSize: 10, padding: "2px 10px", background: "transparent", border: "1px solid #1e2d42", color: "#3a5570", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
@@ -391,8 +436,8 @@ export const Sidebar: React.FC = () => {
                       </div>
                     </div>
                   );
-                })
-              )}
+                });
+              })()}
             </div>
           )}
         </>

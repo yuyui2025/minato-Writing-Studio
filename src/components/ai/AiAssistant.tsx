@@ -37,7 +37,7 @@ export const AiAssistant: React.FC = () => {
     try {
       const text = await callAnthropic(context);
       setAiResults(r => ({ ...r, freeInstruct: text }));
-      if (text) addAiHistory("自由指示", text, selectedScene?.title);
+      if (text) addAiHistory("自由指示", text, selectedScene?.title, selectedScene?.id);
     } catch (e) {
       if (e instanceof AiError) {
         setAiErrors(er => ({ ...er, freeInstruct: e.message }));
@@ -149,7 +149,7 @@ export const AiAssistant: React.FC = () => {
                   if (t) {
                     try {
                       const entries = parsePolishHistoryEntries(t);
-                      entries.forEach(entry => addAiHistory("推敲提案", entry, selectedScene.title));
+                      entries.forEach(entry => addAiHistory("推敲提案", entry, selectedScene.title, selectedScene.id));
                     } catch(e) {}
                   }
                 }}
@@ -175,7 +175,7 @@ export const AiAssistant: React.FC = () => {
                       const clean = t.replace(/```json|```/g, "").trim();
                       const hints = JSON.parse(clean);
                       const historyText = hints.map((h: any) => `・[${h.reason}] ${h.hint}`).join("\n");
-                      addAiHistory("執筆ヒント", historyText, selectedScene.title);
+                      addAiHistory("執筆ヒント", historyText, selectedScene.title, selectedScene.id);
                     } catch(e) {}
                   }
                 }}
@@ -192,7 +192,7 @@ export const AiAssistant: React.FC = () => {
               <AiPanel
                 label="矛盾チェック"
                 result={aiResults.check}
-                onResult={t => { setAiResults(r => ({ ...r, check: t })); if (t) addAiHistory("矛盾チェック", t, selectedScene.title); }}
+                onResult={t => { setAiResults(r => ({ ...r, check: t })); if (t) addAiHistory("矛盾チェック", t, selectedScene.title, selectedScene.id); }}
                 onLoading={v => setAiLoading(l => ({ ...l, check: v }))}
                 loading={aiLoading.check}
                 error={aiErrors.check}
