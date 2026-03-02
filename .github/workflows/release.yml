@@ -3,59 +3,25 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
-  workflow_dispatch:
-
-permissions:
-  contents: write
+      - "v*" # v1.0.0 のように、vから始まるタグがpushされた時に動く
 
 jobs:
-  release:
+  build:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write # これが重要！GitHubにリリースを作成する権限を与えます
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: npm
+          fetch-depth: 0 # 全ての履歴を取得してリリースノートを正確に生成
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run tests
-        run: npm run test:run
-
-      - name: Build app
-        run: npm run build
-
-      - name: Package build artifact
-        run: |
-          cd dist
-          zip -r ../minato-writing-studio-${{ github.ref_name }}.zip .
-
-      - name: Generate release notes from CHANGELOG
-        run: |
-          VERSION="${GITHUB_REF_NAME#v}"
-          awk -v version="$VERSION" '
-            $0 ~ "^## \\[" version "\\]" {capture=1; next}
-            capture && $0 ~ "^## \\[" {capture=0}
-            capture {print}
-          ' CHANGELOG.md | sed '/^[[:space:]]*$/d' > RELEASE_NOTES.md
-
-          if [ ! -s RELEASE_NOTES.md ]; then
-            {
-              echo "Release ${GITHUB_REF_NAME}"
-              echo
-              echo "See CHANGELOG.md for details."
-            } > RELEASE_NOTES.md
-          fi
-
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          body_path: RELEASE_NOTES.md
-          files: minato-writing-studio-${{ github.ref_name }}.zip
+          generate_release_notes: true # 自動で変更点（PRなど）をまとめてくれる
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # 標準で備わっているトークンを使用
