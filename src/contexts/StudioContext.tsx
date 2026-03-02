@@ -9,7 +9,7 @@
 import React, { useEffect, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
 import { storageGet, storageSet } from "../utils/storage";
-import type { Scene, Settings, Manuscripts, EditorSettings, AiHistoryItem, Backup } from "../types";
+import type { Scene, Settings, Manuscripts, EditorSettings, AiHistoryItem, Backup, ProjectRecord } from "../types";
 import { useStudioStore } from "../stores/useStudioStore";
 import { analyzeText } from "../utils/textAnalyzer";
 
@@ -26,7 +26,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   useEffect(() => {
     (async () => {
       store.setLoaded(false);
-      const [sc, st, ms, pt, bk, es, ah, ab, sf, af] = await Promise.all([
+      const [sc, st, ms, pt, bk, es, ah, ab, sf, af, projects, activeProjectId] = await Promise.all([
         storageGet<Scene[]>("minato:scenes"),
         storageGet<Settings>("minato:settings"),
         storageGet<Manuscripts>("minato:manuscripts"),
@@ -37,7 +37,15 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
         storageGet<Backup[]>("minato:autoBackups"),
         storageGet<boolean>("minato:sidebarFloat"),
         storageGet<boolean>("minato:aiFloat"),
+        storageGet<ProjectRecord[]>("minato:projects"),
+        storageGet<string>("minato:activeProjectId"),
       ]);
+      const resolvedScenes = sc ?? store.scenes;
+      const resolvedSettings = st ?? store.settings;
+      const resolvedManuscripts = ms ?? store.manuscripts;
+      const resolvedTitle = pt ?? store.projectTitle;
+      const resolvedBackups = bk ?? store.backups;
+
       if (sc) store.setScenes(sc);
       if (st) store.setSettings(st);
       if (ms) store.setManuscripts(ms);
@@ -48,13 +56,34 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
       if (ab) store.setAutoBackups(ab);
       if (sf !== null) store.setSidebarFloat(sf);
       if (af !== null) store.setAiFloat(af);
+
+      const defaultProject: ProjectRecord = {
+        id: activeProjectId || "default",
+        title: resolvedTitle?.trim() || "無題プロジェクト",
+        updatedAt: new Date().toISOString(),
+        scenes: resolvedScenes,
+        manuscripts: resolvedManuscripts,
+        settings: resolvedSettings,
+        backups: resolvedBackups,
+      };
+      const loadedProjects = (projects && projects.length > 0) ? projects : [defaultProject];
+      const loadedActiveId = activeProjectId || loadedProjects[0].id;
+      const activeProject = loadedProjects.find(p => p.id === loadedActiveId) ?? loadedProjects[0];
+      store.setProjects(loadedProjects);
+      store.setActiveProjectId(activeProject.id);
+      store.setScenes(activeProject.scenes);
+      store.setManuscripts(activeProject.manuscripts);
+      store.setSettings(activeProject.settings);
+      store.setProjectTitle(activeProject.title);
+      store.setBackups(activeProject.backups);
+
       store.setLoaded(true);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
   // --- Auto-save (debounced 1 s) ---
-  const { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded } = store;
+  const { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded, projects, activeProjectId, backups } = store;
 
   useEffect(() => {
     if (!loaded) return;
@@ -76,6 +105,21 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
           storageSet("minato:autoBackups", autoBackups),
           storageSet("minato:sidebarFloat", sidebarFloat),
           storageSet("minato:aiFloat", aiFloat),
+          storageSet("minato:activeProjectId", activeProjectId),
+          storageSet("minato:projects", (() => {
+            const now = new Date().toISOString();
+            const currentRecord: ProjectRecord = {
+              id: activeProjectId,
+              title: projectTitle.trim() || "無題プロジェクト",
+              updatedAt: now,
+              scenes,
+              manuscripts,
+              settings,
+              backups,
+            };
+            const rest = projects.filter(p => p.id !== activeProjectId);
+            return [currentRecord, ...rest];
+          })()),
         ]);
         if (results.every(r => r)) {
           store.setSaveStatus("saved");
@@ -91,7 +135,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
     const t = setTimeout(syncAll, 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded]);
+  }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, aiFloat, loaded, projects, activeProjectId, backups]);
 
   // --- Online / offline sync ---
   useEffect(() => {

@@ -12,6 +12,7 @@ import { PrefsView } from "./components/views/PrefsView";
 import { BackupModal } from "./components/modals/BackupModal";
 import { ExportModal } from "./components/modals/ExportModal";
 import { ImportModal } from "./components/modals/ImportModal";
+import { ProjectShelfModal } from "./components/modals/ProjectShelfModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StudioProvider, useStudio } from "./contexts/StudioContext";
@@ -73,7 +74,7 @@ export default function App() {
 function Studio() {
   const {
     loaded, tab, sidebarOpen, showSettings,
-    confirmDelete, showExport, showBackups, showImport, setSidebarOpen, setShowSettings,
+    confirmDelete, showExport, showBackups, showImport, showProjectShelf, setSidebarOpen, setShowSettings,
     sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
     scenes, selectedSceneId, handleSceneSelect, manuscripts, setTab,
   } = useStudio();
@@ -96,6 +97,8 @@ function Studio() {
       {showImport && <ImportModal />}
       {/* Backup modal */}
       {showBackups && <BackupModal />}
+      {/* Project shelf */}
+      {showProjectShelf && <ProjectShelfModal />}
       <Header />
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>

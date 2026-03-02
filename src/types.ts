@@ -89,3 +89,13 @@ export type ImportData = {
   settings: Partial<Settings>;
   projectTitle?: string;
 };
+
+export type ProjectRecord = {
+  id: string;
+  title: string;
+  updatedAt: string;
+  scenes: Scene[];
+  manuscripts: Manuscripts;
+  settings: Settings;
+  backups: Backup[];
+};

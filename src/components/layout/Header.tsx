@@ -6,7 +6,7 @@ export const Header: React.FC = () => {
   const {
     projectTitle, setProjectTitle, editingTitle, setEditingTitle,
     saveStatus, lastSavedTime, scenes, settings, manuscripts,
-    saveWithBackup, setShowBackups, setShowExport, setShowImport
+    saveWithBackup, setShowBackups, setShowExport, setShowImport, setShowProjectShelf
   } = useStudio();
   const hasProjectTitle = projectTitle.trim().length > 0;
 
@@ -14,18 +14,20 @@ export const Header: React.FC = () => {
     <header style={{ borderBottom: "1px solid #1e2d42", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(10,14,26,0.95)", position: "sticky", top: 0, zIndex: 100, height: 44 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         {/* アイコン */}
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0 }}>
+        <button
+          onClick={() => setShowProjectShelf(true)}
+          title="本棚を開く"
+          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1, flexShrink: 0, border: "none", background: "transparent", padding: 0, cursor: "pointer" }}
+        >
           <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-            <rect x="4" y="4" width="20" height="20" rx="2" stroke="#1e3050" strokeWidth="1.5"/>
-            <line x1="8" y1="9" x2="20" y2="9" stroke="#2a4060" strokeWidth="1.2"/>
-            <line x1="8" y1="13" x2="20" y2="13" stroke="#2a4060" strokeWidth="1.2"/>
-            <line x1="8" y1="17" x2="16" y2="17" stroke="#1e3050" strokeWidth="1.2"/>
-            <circle cx="22" cy="22" r="5" fill="#0a0e1a" stroke="#4a6fa5" strokeWidth="1"/>
-            <line x1="20" y1="22" x2="24" y2="22" stroke="#4a6fa5" strokeWidth="1"/>
-            <line x1="22" y1="20" x2="22" y2="24" stroke="#4a6fa5" strokeWidth="1"/>
+            <rect x="4.5" y="4.5" width="4" height="19" rx="0.8" stroke="#4a6fa5" strokeWidth="1.2"/>
+            <rect x="9.8" y="5.4" width="3.6" height="18.1" rx="0.8" stroke="#3d5d8b" strokeWidth="1.2"/>
+            <rect x="14.4" y="4.1" width="4.4" height="19.4" rx="0.8" stroke="#5f7fae" strokeWidth="1.2"/>
+            <rect x="19.8" y="6" width="3.7" height="17.5" rx="0.8" stroke="#2f4a70" strokeWidth="1.2"/>
+            <line x1="3.5" y1="23.5" x2="24.5" y2="23.5" stroke="#1e3050" strokeWidth="1.2"/>
           </svg>
           <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textTransform: "lowercase", whiteSpace: "nowrap" }}>minato ws</div>
-        </div>
+        </button>
         {/* タイトル */}
         {editingTitle ? (
           <input
