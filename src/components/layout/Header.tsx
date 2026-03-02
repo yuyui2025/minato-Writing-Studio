@@ -6,7 +6,8 @@ export const Header: React.FC = () => {
   const {
     projectTitle, setProjectTitle, editingTitle, setEditingTitle,
     saveStatus, lastSavedTime, scenes, settings, manuscripts,
-    saveWithBackup, setShowBackups, setShowExport, setShowImport, setShowProjectShelf
+    saveWithBackup, setShowBackups, setShowExport, setShowImport, setShowProjectShelf,
+    user,
   } = useStudio();
   const hasProjectTitle = projectTitle.trim().length > 0;
 
@@ -70,7 +71,11 @@ export const Header: React.FC = () => {
         <button onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
         <button onClick={() => setShowImport(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>取込</button>
         <button onClick={() => setShowExport(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
-        <button onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>退出</button>
+        {user ? (
+          <button onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>退出</button>
+        ) : (
+          <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>ログイン</button>
+        )}
       </div>
     </header>
   );

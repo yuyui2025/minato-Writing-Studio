@@ -30,9 +30,7 @@ export default function App() {
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        setLaunchMode("authenticated");
-      }
+      setLaunchMode(session?.user ? "authenticated" : "select");
       setAuthLoading(false);
     });
     return () => subscription.unsubscribe();
