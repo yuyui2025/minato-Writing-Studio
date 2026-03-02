@@ -151,9 +151,9 @@ export interface StudioState {
 // Store
 // ---------------------------------------------------------------------------
 
-const aiResultsInit: AiResults = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" };
-const aiErrorsInit: AiErrors = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" };
-const aiLoadingInit: AiLoading = { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, freeInstruct: false };
+const aiResultsInit: AiResults = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" };
+const aiErrorsInit: AiErrors = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" };
+const aiLoadingInit: AiLoading = { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false };
 
 function downloadFile(content: string, filename: string) {
   const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
@@ -456,9 +456,9 @@ export function resetStudioStore() {
     autoBackups: [],
     aiFloat: false,
     aiWide: false,
-    aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
-    aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", freeInstruct: "" },
-    aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, freeInstruct: false },
+    aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
+    aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
+    aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false },
     aiApplied: {},
     hintApplied: {},
     aiHistory: [],

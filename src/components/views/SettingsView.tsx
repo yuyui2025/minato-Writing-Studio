@@ -20,20 +20,28 @@ export const SettingsView: React.FC = () => {
         ))}
       </div>
       <textarea value={settings[settingsTab]} onChange={e => setSettings({ ...settings, [settingsTab]: e.target.value })} style={{ width: "100%", minHeight: 280, background: "#070a14", border: "1px solid #1a2535", color: "#8ab0cc", fontFamily: "'Noto Serif JP','Georgia',serif", fontSize: 13, lineHeight: 2, padding: "20px 24px", resize: "vertical", outline: "none", borderRadius: 6, boxSizing: "border-box" }} />
-      <AiPanel
-        label="AIで意味を拡張"
-        result={aiResults.worldExpand || ""}
-        onResult={t => {
-          setAiResults(r => ({ ...r, worldExpand: t }));
-          if (t) addAiHistory("世界観拡張", t);
-        }}
-        onLoading={v => setAiLoading(l => ({ ...l, worldExpand: v }))}
-        loading={aiLoading.worldExpand}
-        error={aiErrors.worldExpand}
-        onError={t => setAiErrors(e => ({ ...e, worldExpand: t }))}
-        prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${settingsTab === "world" ? "世界観" : settingsTab === "characters" ? "キャラクター" : "テーマ"}】\n${settings[settingsTab]}`}
-        onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
-      />
+      {(() => {
+        const tabKeyMap = { world: "worldExpand", characters: "characterExpand", theme: "themeExpand" } as const;
+        const tabLabelMap = { world: "世界観", characters: "キャラクター", theme: "テーマ" } as const;
+        const resultKey = tabKeyMap[settingsTab];
+        const tabLabel = tabLabelMap[settingsTab];
+        return (
+          <AiPanel
+            label="AIで意味を拡張"
+            result={aiResults[resultKey] || ""}
+            onResult={t => {
+              setAiResults(r => ({ ...r, [resultKey]: t }));
+              if (t) addAiHistory(`${tabLabel}拡張`, t);
+            }}
+            onLoading={v => setAiLoading(l => ({ ...l, [resultKey]: v }))}
+            loading={aiLoading[resultKey]}
+            error={aiErrors[resultKey]}
+            onError={t => setAiErrors(e => ({ ...e, [resultKey]: t }))}
+            prompt={`以下の創作設定メモを読んで、含意・伏線の可能性・派生しうる要素・見落とされがちな矛盾を簡潔に指摘してください。箇条書きで3〜5点。\n\n【${tabLabel}】\n${settings[settingsTab]}`}
+            onAppend={text => setSettings(prev => ({ ...prev, [settingsTab]: prev[settingsTab] + "\n\n---AI拡張---\n" + text }))}
+          />
+        );
+      })()}
     </div>
   );
 };

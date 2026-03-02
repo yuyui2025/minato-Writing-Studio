@@ -121,7 +121,7 @@ function Studio() {
                       onClick={() => setShowCurrentOnly(v => !v)}
                       style={{ fontSize: "11px", padding: "4px 12px", background: showCurrentOnly ? "rgba(74,111,165,0.2)" : "transparent", border: `1px solid ${showCurrentOnly ? "#4a6fa5" : "#1e2d42"}`, color: showCurrentOnly ? "#7ab3e0" : "#3a5570", borderRadius: "4px", cursor: "pointer", fontFamily: "inherit" }}
                     >
-                      {showCurrentOnly ? "全て表示" : "現在のシーンのみ"}
+                      {showCurrentOnly ? "現在のシーンのみ" : "全て表示"}
                     </button>
                   )}
                   {aiHistory.length > 0 && (
