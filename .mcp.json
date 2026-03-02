@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "linear-server": {
+      "type": "http",
+      "url": "https://mcp.linear.app/mcp"
+    },
+    "supabase-server": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp"
+    },
+    "vercel-server": {
+      "type": "http",
+      "url": "https://mcp.vercel.com"
+    }
+  }
+}
