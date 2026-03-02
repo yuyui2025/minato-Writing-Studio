@@ -163,7 +163,7 @@ export const Sidebar: React.FC = () => {
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: effectiveSidebarWidth, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
       } : {}),
     }}>
-      {sidebarOpen && !sidebarFloat && (
+      {sidebarOpen && (
         <div
           onPointerDown={(e) => {
             dragStartXRef.current = e.clientX;
