@@ -96,46 +96,35 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
       return;
     }
     const syncAll = async () => {
-      store.setSaveStatus("saving");
-      try {
-        const results = await Promise.all([
-          storageSet("minato:scenes", scenes),
-          storageSet("minato:settings", settings),
-          storageSet("minato:manuscripts", manuscripts),
-          storageSet("minato:title", projectTitle),
-          storageSet("minato:editorSettings", editorSettings),
-          storageSet("minato:backups", useStudioStore.getState().backups),
-          storageSet("minato:aiHistory", aiHistory),
-          storageSet("minato:autoBackups", autoBackups),
-          storageSet("minato:sidebarFloat", sidebarFloat),
-          storageSet("minato:sidebarWidth", sidebarWidth),
-          storageSet("minato:aiFloat", aiFloat),
-          storageSet("minato:aiPanelWidth", aiPanelWidth),
-          storageSet("minato:activeProjectId", activeProjectId),
-          storageSet("minato:projects", (() => {
-            const now = new Date().toISOString();
-            const currentRecord: ProjectRecord = {
-              id: activeProjectId,
-              title: projectTitle.trim() || "無題プロジェクト",
-              updatedAt: now,
-              scenes,
-              manuscripts,
-              settings,
-              backups,
-            };
-            const rest = projects.filter(p => p.id !== activeProjectId);
-            return [currentRecord, ...rest];
-          })()),
-        ]);
-        if (results.every(r => r)) {
-          store.setSaveStatus("saved");
-          store.setLastSavedTime(new Date());
-        } else {
-          store.setSaveStatus(navigator.onLine ? "error" : "offline");
-        }
-      } catch {
-        store.setSaveStatus("error");
-      }
+      await Promise.all([
+        storageSet("minato:scenes", scenes),
+        storageSet("minato:settings", settings),
+        storageSet("minato:manuscripts", manuscripts),
+        storageSet("minato:title", projectTitle),
+        storageSet("minato:editorSettings", editorSettings),
+        storageSet("minato:backups", useStudioStore.getState().backups),
+        storageSet("minato:aiHistory", aiHistory),
+        storageSet("minato:autoBackups", autoBackups),
+        storageSet("minato:sidebarFloat", sidebarFloat),
+        storageSet("minato:sidebarWidth", sidebarWidth),
+        storageSet("minato:aiFloat", aiFloat),
+        storageSet("minato:aiPanelWidth", aiPanelWidth),
+        storageSet("minato:activeProjectId", activeProjectId),
+        storageSet("minato:projects", (() => {
+          const now = new Date().toISOString();
+          const currentRecord: ProjectRecord = {
+            id: activeProjectId,
+            title: projectTitle.trim() || "無題プロジェクト",
+            updatedAt: now,
+            scenes,
+            manuscripts,
+            settings,
+            backups,
+          };
+          const rest = projects.filter(p => p.id !== activeProjectId);
+          return [currentRecord, ...rest];
+        })()),
+      ]).catch(() => {/* ignore storage errors */});
     };
     syncAllRef.current = syncAll;
     const t = setTimeout(syncAll, 1000);
