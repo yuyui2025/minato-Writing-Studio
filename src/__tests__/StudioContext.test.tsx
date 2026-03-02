@@ -161,6 +161,28 @@ describe("StudioContext", () => {
     expect(result.current.projectTitle).toBe("新プロジェクト");
   });
 
+
+
+  it("resets AI generation workspace state when switching projects", async () => {
+    const { result } = renderHook(() => useStudio(), { wrapper });
+    await waitFor(() => expect(result.current.loaded).toBe(true));
+
+    act(() => {
+      result.current.setAiResults(prev => ({ ...prev, polish: "提案テキスト" }));
+      result.current.setAiErrors(prev => ({ ...prev, polish: "error" }));
+      result.current.setAiLoading(prev => ({ ...prev, polish: true }));
+      result.current.setAiApplied({ polish: true });
+      result.current.setHintApplied({ hint: true });
+    });
+
+    act(() => { result.current.createProject(); });
+
+    expect(result.current.aiResults.polish).toBe("");
+    expect(result.current.aiErrors.polish).toBe("");
+    expect(result.current.aiLoading.polish).toBe(false);
+    expect(result.current.aiApplied).toEqual({});
+    expect(result.current.hintApplied).toEqual({});
+  });
   it("wordCount ignores whitespace", async () => {
     const { result } = renderHook(() => useStudio(), { wrapper });
     await waitFor(() => expect(result.current.loaded).toBe(true));
