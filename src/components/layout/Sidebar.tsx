@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { statusColors } from "../../constants";
 import { useStudio } from "../../contexts/StudioContext";
 import { AiPanel } from "../ai/AiPanel";
@@ -8,7 +8,7 @@ import type {
 
 export const Sidebar: React.FC = () => {
   const {
-    sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat,
+    sidebarOpen, setSidebarOpen, sidebarFloat, setSidebarFloat, sidebarWidth, setSidebarWidth,
     sidebarTab, setSidebarTab, tab, setTab, scenes, setScenes, selectedSceneId,
     manuscripts, sceneSearch, setSceneSearch, newScene, setNewScene,
     addingScene, setAddingScene, addingChapter, setAddingChapter,
@@ -19,6 +19,11 @@ export const Sidebar: React.FC = () => {
   } = useStudio();
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [showCurrentOnly, setShowCurrentOnly] = useState(false);
+  const [resizing, setResizing] = useState(false);
+  const sidebarMinWidth = 180;
+  const sidebarMaxWidth = 420;
+  const dragStartXRef = useRef(0);
+  const dragStartWidthRef = useRef(0);
 
   // Drag-and-drop state for structure tab
   const [sidebarDraggingId, setSidebarDraggingId] = useState<number | null>(null);
@@ -127,9 +132,27 @@ export const Sidebar: React.FC = () => {
     setSidebarDropChapter(null);
   };
 
+  const effectiveSidebarWidth = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, sidebarWidth || 220));
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = e.clientX - dragStartXRef.current;
+      const next = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, dragStartWidthRef.current + delta));
+      setSidebarWidth(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [resizing, setSidebarWidth]);
+
   return (
     <aside style={{
-      width: sidebarOpen ? 220 : 36,
+      width: sidebarOpen ? effectiveSidebarWidth : 36,
       borderRight: "1px solid #1e2d42",
       background: "#080c16",
       overflowY: sidebarOpen ? "auto" : "hidden",
@@ -137,9 +160,36 @@ export const Sidebar: React.FC = () => {
       transition: "width 0.2s ease",
       display: "flex", flexDirection: "column",
       ...(sidebarOpen && sidebarFloat ? {
-        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: 220, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
+        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: effectiveSidebarWidth, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
       } : {}),
     }}>
+      {sidebarOpen && !sidebarFloat && (
+        <div
+          onPointerDown={(e) => {
+            dragStartXRef.current = e.clientX;
+            dragStartWidthRef.current = effectiveSidebarWidth;
+            setResizing(true);
+          }}
+          style={{
+            position: "absolute",
+            top: 0,
+            right: -5,
+            bottom: 0,
+            width: 12,
+            cursor: "col-resize",
+            background: resizing ? "rgba(74,111,165,0.35)" : "rgba(74,111,165,0.15)",
+            borderLeft: "1px solid #355277",
+            borderRight: "1px solid #355277",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 52,
+          }}
+          title="ドラッグして幅を変更"
+        >
+          <span style={{ color: "#6f95ba", fontSize: 9, letterSpacing: 0.5, userSelect: "none" }}>⋮⋮</span>
+        </div>
+      )}
       {sidebarOpen ? (
         <>
           {/* Sidebar header: tabs + close */}

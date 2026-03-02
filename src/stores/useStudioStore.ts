@@ -46,6 +46,7 @@ export interface StudioState {
   // sidebar UI
   sidebarOpen: boolean;
   sidebarFloat: boolean;
+  sidebarWidth: number;
 
   // scene editing
   newScene: SceneDraft;
@@ -77,6 +78,7 @@ export interface StudioState {
   // AI
   aiFloat: boolean;
   aiWide: boolean;
+  aiPanelWidth: number;
   aiResults: AiResults;
   aiErrors: AiErrors;
   aiLoading: AiLoading;
@@ -106,6 +108,7 @@ export interface StudioState {
   setProjectTitle: (v: string) => void;
   setSidebarOpen: (v: boolean) => void;
   setSidebarFloat: (v: boolean) => void;
+  setSidebarWidth: (v: number) => void;
   setNewScene: (v: SceneDraft) => void;
   setAddingScene: (v: boolean) => void;
   setAddingChapter: (v: boolean) => void;
@@ -127,6 +130,7 @@ export interface StudioState {
   setAutoBackups: (v: Backup[] | ((prev: Backup[]) => Backup[])) => void;
   setAiFloat: (v: boolean) => void;
   setAiWide: (v: boolean) => void;
+  setAiPanelWidth: (v: number) => void;
   setAiResults: (v: AiResults | ((prev: AiResults) => AiResults)) => void;
   setAiErrors: (v: AiErrors | ((prev: AiErrors) => AiErrors)) => void;
   setAiLoading: (v: AiLoading | ((prev: AiLoading) => AiLoading)) => void;
@@ -192,6 +196,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   projectTitle: "",
   sidebarOpen: true,
   sidebarFloat: true,
+  sidebarWidth: 220,
   newScene: { chapter: "", title: "", synopsis: "" },
   addingScene: false,
   addingChapter: false,
@@ -213,6 +218,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   autoBackups: [],
   aiFloat: false,
   aiWide: false,
+  aiPanelWidth: 360,
   aiResults: aiResultsInit,
   aiErrors: aiErrorsInit,
   aiLoading: aiLoadingInit,
@@ -249,6 +255,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setProjectTitle: (v) => set({ projectTitle: v }),
   setSidebarOpen: (v) => set({ sidebarOpen: v }),
   setSidebarFloat: (v) => set({ sidebarFloat: v }),
+  setSidebarWidth: (v) => set({ sidebarWidth: v }),
   setNewScene: (v) => set({ newScene: v }),
   setAddingScene: (v) => set({ addingScene: v }),
   setAddingChapter: (v) => set({ addingChapter: v }),
@@ -270,6 +277,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAutoBackups: (v) => set((s) => ({ autoBackups: typeof v === "function" ? v(s.autoBackups) : v })),
   setAiFloat: (v) => set({ aiFloat: v }),
   setAiWide: (v) => set({ aiWide: v }),
+  setAiPanelWidth: (v) => set({ aiPanelWidth: v }),
   setAiResults: (v) => set((s) => ({ aiResults: typeof v === "function" ? v(s.aiResults) : v })),
   setAiErrors: (v) => set((s) => ({ aiErrors: typeof v === "function" ? v(s.aiErrors) : v })),
   setAiLoading: (v) => set((s) => ({ aiLoading: typeof v === "function" ? v(s.aiLoading) : v })),
@@ -509,6 +517,7 @@ export function resetStudioStore() {
     projectTitle: "",
     sidebarOpen: true,
     sidebarFloat: true,
+    sidebarWidth: 220,
     newScene: { chapter: "", title: "", synopsis: "" },
     addingScene: false,
     addingChapter: false,
@@ -530,6 +539,7 @@ export function resetStudioStore() {
     autoBackups: [],
     aiFloat: false,
     aiWide: false,
+    aiPanelWidth: 360,
     aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
     aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
     aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false },
