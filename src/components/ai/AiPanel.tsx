@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { callAnthropic, AiError } from "../../utils/ai";
 
 type AiPanelProps = {
@@ -30,6 +30,12 @@ export function AiPanel({
   useEffect(() => {
     onAppendRef.current = onAppend;
   });
+
+  // YUY-34: 「閉じる」で結果をストアから消さず、ローカルで非表示にする
+  const [dismissed, setDismissed] = useState(false);
+  useEffect(() => {
+    if (result) setDismissed(false);
+  }, [result]);
 
   const run = async () => {
     onLoading(true);
@@ -96,7 +102,7 @@ export function AiPanel({
         </div>
       )}
 
-      {result && (
+      {result && !dismissed && (
         <div
           style={{
             marginTop: 8,
@@ -132,7 +138,7 @@ export function AiPanel({
                 追記
               </button>
               <button
-                onClick={() => onResult("")}
+                onClick={() => setDismissed(true)}
                 style={{
                   padding: "3px 10px",
                   background: "transparent",
