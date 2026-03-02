@@ -502,7 +502,7 @@ export const Sidebar: React.FC = () => {
         </>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
-          <button onClick={() => setSidebarOpen(true)} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
+          <button onClick={() => { setSidebarOpen(true); setTab("write"); }} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
           {[
             { key: "write", label: "執筆" },
             { key: "structure", label: "構成" },
