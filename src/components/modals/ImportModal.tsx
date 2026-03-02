@@ -49,7 +49,20 @@ export function ImportModal() {
     setError(null);
     setStep("analyzing");
 
-    const text = await file.text();
+    const buffer = await file.arrayBuffer();
+    const uint8 = new Uint8Array(buffer);
+    let text: string;
+    // UTF-8 BOM チェック
+    if (uint8[0] === 0xEF && uint8[1] === 0xBB && uint8[2] === 0xBF) {
+      text = new TextDecoder("utf-8").decode(buffer);
+    } else {
+      // UTF-8 として厳密に試み、失敗したら Shift-JIS にフォールバック
+      try {
+        text = new TextDecoder("utf-8", { fatal: true }).decode(buffer);
+      } catch {
+        text = new TextDecoder("shift-jis").decode(buffer);
+      }
+    }
 
     const [parsed, aiResult] = await Promise.all([
       parseDocument(text),

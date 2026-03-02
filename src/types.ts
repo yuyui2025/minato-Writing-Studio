@@ -98,4 +98,5 @@ export type ProjectRecord = {
   manuscripts: Manuscripts;
   settings: Settings;
   backups: Backup[];
+  aiHistory?: AiHistoryItem[];
 };

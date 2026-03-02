@@ -86,6 +86,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
       store.setSettings(activeProject.settings);
       store.setProjectTitle(activeProject.title);
       store.setBackups(activeProject.backups);
+      if (activeProject.aiHistory != null) store.setAiHistory(activeProject.aiHistory);
 
       store.setLoaded(true);
     })();
@@ -126,6 +127,7 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
             manuscripts,
             settings,
             backups,
+            aiHistory,
           };
           const rest = projects.filter(p => p.id !== activeProjectId);
           return [currentRecord, ...rest];
