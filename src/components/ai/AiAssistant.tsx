@@ -104,15 +104,22 @@ export const AiAssistant: React.FC = () => {
             }}
             style={{
               position: "absolute",
-              left: -3,
+              left: -5,
               top: 0,
               bottom: 0,
-              width: 6,
+              width: 10,
               cursor: "col-resize",
-              background: resizing ? "rgba(74,111,165,0.25)" : "transparent",
+              background: resizing ? "rgba(74,111,165,0.25)" : "rgba(30,45,66,0.25)",
+              borderLeft: "1px solid #1e2d42",
+              borderRight: "1px solid #1e2d42",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
             }}
             title="ドラッグして幅を変更"
-          />
+          >
+            <span style={{ color: "#3a5570", fontSize: 9, letterSpacing: 0.5, userSelect: "none" }}>⋮⋮</span>
+          </div>
         )}
         {showSettings && (
           <div style={{ display: "flex", flexDirection: "column", height: "100%", width: panelWidth }}>
