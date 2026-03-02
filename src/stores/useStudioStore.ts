@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 import { storageSet } from "../utils/storage";
@@ -63,6 +63,9 @@ export interface StudioState {
   showBackups: boolean;
   showImport: boolean;
   verticalPreview: boolean;
+  showProjectShelf: boolean;
+  activeProjectId: string;
+  projects: ProjectRecord[];
 
   // editor
   editorSettings: EditorSettings;
@@ -116,6 +119,9 @@ export interface StudioState {
   setShowBackups: (v: boolean) => void;
   setShowImport: (v: boolean) => void;
   setVerticalPreview: (v: boolean) => void;
+  setShowProjectShelf: (v: boolean) => void;
+  setActiveProjectId: (v: string) => void;
+  setProjects: (v: ProjectRecord[] | ((prev: ProjectRecord[]) => ProjectRecord[])) => void;
   setEditorSettings: (v: EditorSettings | ((prev: EditorSettings) => EditorSettings)) => void;
   setBackups: (v: Backup[] | ((prev: Backup[]) => Backup[])) => void;
   setAutoBackups: (v: Backup[] | ((prev: Backup[]) => Backup[])) => void;
@@ -145,6 +151,8 @@ export interface StudioState {
   exportScene: (fmt: "md" | "txt") => void;
   exportAll: (fmt: "md" | "txt") => void;
   importProject: (data: ImportData) => Promise<void>;
+  createProject: () => void;
+  switchProject: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,6 +205,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   showBackups: false,
   showImport: false,
   verticalPreview: false,
+  showProjectShelf: false,
+  activeProjectId: "default",
+  projects: [],
   editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "dark" },
   backups: [],
   autoBackups: [],
@@ -251,6 +262,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setShowBackups: (v) => set({ showBackups: v }),
   setShowImport: (v) => set({ showImport: v }),
   setVerticalPreview: (v) => set({ verticalPreview: v }),
+  setShowProjectShelf: (v) => set({ showProjectShelf: v }),
+  setActiveProjectId: (v) => set({ activeProjectId: v }),
+  setProjects: (v) => set((s) => ({ projects: typeof v === "function" ? v(s.projects) : v })),
   setEditorSettings: (v) => set((s) => ({ editorSettings: typeof v === "function" ? v(s.editorSettings) : v })),
   setBackups: (v) => set((s) => ({ backups: typeof v === "function" ? v(s.backups) : v })),
   setAutoBackups: (v) => set((s) => ({ autoBackups: typeof v === "function" ? v(s.autoBackups) : v })),
@@ -420,6 +434,63 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       storageSet("minato:backups", newBackups),
     ]).catch(() => {/* ignore storage errors */});
   },
+
+  createProject: () => set((s) => {
+    const id = `project-${Date.now()}`;
+    const now = new Date().toISOString();
+    const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
+    const currentProjects = s.projects.some(p => p.id === s.activeProjectId)
+      ? s.projects.map(p => p.id === s.activeProjectId
+        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }
+        : p)
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }, ...s.projects];
+    const nextProject: ProjectRecord = {
+      id,
+      title: "新規プロジェクト",
+      updatedAt: now,
+      scenes: initialScenes,
+      manuscripts: {},
+      settings: initialSettings,
+      backups: [],
+    };
+    return {
+      projects: [nextProject, ...currentProjects],
+      activeProjectId: id,
+      projectTitle: "新規プロジェクト",
+      scenes: initialScenes,
+      manuscripts: {},
+      settings: initialSettings,
+      backups: [],
+      selectedSceneId: null,
+      showProjectShelf: false,
+      ...computeDerived(initialScenes, {}, null),
+    };
+  }),
+
+  switchProject: (id) => set((s) => {
+    const target = s.projects.find(p => p.id === id);
+    if (!target) return {};
+    const now = new Date().toISOString();
+    const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
+    const currentProjects = s.projects.some(p => p.id === s.activeProjectId)
+      ? s.projects.map(p => p.id === s.activeProjectId
+        ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }
+        : p)
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups }, ...s.projects];
+    const firstId = target.scenes[0]?.id ?? null;
+    return {
+      projects: currentProjects,
+      activeProjectId: target.id,
+      projectTitle: target.title,
+      scenes: target.scenes,
+      manuscripts: target.manuscripts,
+      settings: target.settings,
+      backups: target.backups,
+      selectedSceneId: firstId,
+      showProjectShelf: false,
+      ...computeDerived(target.scenes, target.manuscripts, firstId),
+    };
+  }),
 }));
 
 // テスト用: ストアを初期状態にリセットする
@@ -451,6 +522,9 @@ export function resetStudioStore() {
     showBackups: false,
     showImport: false,
     verticalPreview: false,
+    showProjectShelf: false,
+    activeProjectId: "default",
+    projects: [],
     editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "dark" },
     backups: [],
     autoBackups: [],

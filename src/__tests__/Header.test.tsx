@@ -31,7 +31,9 @@ describe("Header", () => {
       manuscripts: {},
       saveWithBackup: vi.fn(),
       setShowBackups: vi.fn(),
+      setShowImport: vi.fn(),
       setShowExport: vi.fn(),
+      setShowProjectShelf: vi.fn(),
     });
 
     render(<Header />);
