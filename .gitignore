@@ -3,6 +3,9 @@ dist/
 .env
 *.local
 
+# Claude Code
+.claude/settings.local.json
+
 # Gemini / AI Agents
 .gemini/            # ツールが生成するローカルキャッシュやインデックス
 .gemini_history     # プロンプトの実行履歴（機密情報が含まれる可能性あり）
