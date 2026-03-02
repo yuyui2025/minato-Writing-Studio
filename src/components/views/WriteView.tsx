@@ -118,7 +118,7 @@ export const WriteView: React.FC = () => {
               label="続きを提案"
               compact
               result={aiResults.continue || ""}
-              onResult={t => { setAiResults(r => ({ ...r, continue: t })); if (t) addAiHistory("続きを提案", t, selectedScene.title); }}
+              onResult={t => { setAiResults(r => ({ ...r, continue: t })); if (t) addAiHistory("続きを提案", t, selectedScene.title, selectedScene.id); }}
               onLoading={v => setAiLoading(l => ({ ...l, continue: v }))}
               loading={aiLoading.continue}
               error={aiErrors.continue}
@@ -130,7 +130,7 @@ export const WriteView: React.FC = () => {
               label="概要を自動生成"
               compact
               result={aiResults.synopsis || ""}
-              onResult={t => { setAiResults(r => ({ ...r, synopsis: t })); if (t) addAiHistory("概要を自動生成", t, selectedScene.title); }}
+              onResult={t => { setAiResults(r => ({ ...r, synopsis: t })); if (t) addAiHistory("概要を自動生成", t, selectedScene.title, selectedScene.id); }}
               onLoading={v => setAiLoading(l => ({ ...l, synopsis: v }))}
               loading={aiLoading.synopsis}
               error={aiErrors.synopsis}

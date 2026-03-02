@@ -132,7 +132,7 @@ export interface StudioState {
   // ---------------------------------------------------------------------------
   // Actions (business logic)
   // ---------------------------------------------------------------------------
-  addAiHistory: (label: string, content: string, sceneTitle?: string) => void;
+  addAiHistory: (label: string, content: string, sceneTitle?: string, sceneId?: number) => void;
   clearAiHistory: () => void;
   handleSceneSelect: (scene: Scene) => void;
   handleManuscriptChange: (text: string) => void;
@@ -267,9 +267,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
-  addAiHistory: (label, content, sceneTitle) => {
+  addAiHistory: (label, content, sceneTitle, sceneId) => {
     if (!content.trim()) return;
-    const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle };
+    const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle, sceneId };
     set(s => ({ aiHistory: [item, ...s.aiHistory].slice(0, 30) }));
   },
 
