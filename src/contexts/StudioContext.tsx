@@ -20,6 +20,7 @@ import { analyzeText } from "../utils/textAnalyzer";
 export function StudioProvider({ children, user }: { children: React.ReactNode; user: User }) {
   const store = useStudioStore();
   const syncAllRef = useRef<() => Promise<void>>(async () => {});
+  const skipInitialSaveRef = useRef(true);
 
   // --- Initial load ---
   useEffect(() => {
@@ -57,6 +58,10 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
 
   useEffect(() => {
     if (!loaded) return;
+    if (skipInitialSaveRef.current) {
+      skipInitialSaveRef.current = false;
+      return;
+    }
     const syncAll = async () => {
       store.setSaveStatus("saving");
       try {

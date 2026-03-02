@@ -24,6 +24,8 @@ export type AiResults = {
   continue: string;
   synopsis: string;
   worldExpand: string;
+  characterExpand: string;
+  themeExpand: string;
   freeInstruct: string;
 };
 

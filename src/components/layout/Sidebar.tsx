@@ -372,7 +372,7 @@ export const Sidebar: React.FC = () => {
                     onClick={() => setShowCurrentOnly(v => !v)}
                     style={{ fontSize: 9, padding: "2px 7px", background: showCurrentOnly ? "rgba(74,111,165,0.2)" : "transparent", border: `1px solid ${showCurrentOnly ? "#4a6fa5" : "#1e2d42"}`, color: showCurrentOnly ? "#7ab3e0" : "#2a4060", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
                   >
-                    {showCurrentOnly ? "全表示" : "現在"}
+                    {showCurrentOnly ? "現在" : "全表示"}
                   </button>
                 )}
                 {aiHistory.length > 0 && (
