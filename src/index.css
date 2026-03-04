@@ -20,3 +20,10 @@
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* YUY-58: スマホ時にヘッダーの補助要素を切替 */
+.header-show-sm { display: none !important; }
+@media (max-width: 540px) {
+  .header-hide-sm { display: none !important; }
+  .header-show-sm { display: block !important; }
+}
