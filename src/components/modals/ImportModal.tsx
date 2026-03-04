@@ -4,7 +4,7 @@ import { parseDocument } from "../../utils/textAnalyzer";
 import { extractImportMetadataBySections } from "../../utils/importExtractor";
 import type { ImportData, ParsedSection, ProjectFile } from "../../types";
 
-type Step = "pick" | "analyzing" | "preview";
+type Step = "pick" | "mode" | "analyzing" | "preview";
 type ImportMode = "new" | "append" | "replace";
 
 const BTN: React.CSSProperties = {
@@ -61,6 +61,8 @@ export function ImportModal() {
   const [world, setWorld] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("new");
   const [projectFileData, setProjectFileData] = useState<ProjectFile | null>(null);
+  // YUY-51: ファイル選択後、モード確定前に保持しておく
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const handleFile = useCallback(async (file: File) => {
     const isZip = /\.zip$/i.test(file.name);
@@ -71,6 +73,14 @@ export function ImportModal() {
       return;
     }
     setError(null);
+
+    // .minato-project.json はモード選択不要（常に新規）なので直接解析へ
+    if (!isProjectFile) {
+      setPendingFile(file);
+      setStep("mode");
+      return;
+    }
+
     setStep("analyzing");
 
     if (isProjectFile) {
@@ -103,10 +113,18 @@ export function ImportModal() {
       return;
     }
 
+  }, []);
+
+  // YUY-51: モード確定後にテキスト解析を開始する
+  const handleStartAnalyze = useCallback(async () => {
+    if (!pendingFile) return;
+    const file = pendingFile;
+    setStep("analyzing");
+
     let combinedText: string;
     let titleFromFile: string;
 
-    if (isZip) {
+    if (/\.zip$/i.test(file.name)) {
       // YUY-43: zip 展開
       const buffer = await file.arrayBuffer();
       const { unzipSync } = await import("fflate");
@@ -115,7 +133,7 @@ export function ImportModal() {
         unzipped = unzipSync(new Uint8Array(buffer));
       } catch {
         setError("zip ファイルの展開に失敗しました");
-        setStep("pick");
+        setStep("mode");
         return;
       }
       const textFiles = Object.entries(unzipped)
@@ -123,7 +141,7 @@ export function ImportModal() {
         .sort(([a], [b]) => a.localeCompare(b, "ja"));
       if (textFiles.length === 0) {
         setError("zip 内に .md / .txt ファイルが見つかりませんでした");
-        setStep("pick");
+        setStep("mode");
         return;
       }
       combinedText = textFiles.map(([, data]) => decodeBuffer(data)).join("\n\n");
@@ -135,10 +153,10 @@ export function ImportModal() {
     }
 
     const parsed = await parseDocument(combinedText);
-    const aiResult = await extractImportMetadataBySections(
-      parsed?.sections ?? [],
-      combinedText
-    );
+    // appendモードはAI抽出不要（既存プロジェクトの設定を保持するため）
+    const aiResult = importMode !== "append"
+      ? await extractImportMetadataBySections(parsed?.sections ?? [], combinedText)
+      : null;
 
     setProjectFileData(null);
     setProjectTitle(parsed?.title || titleFromFile);
@@ -146,7 +164,7 @@ export function ImportModal() {
     setCharacters(aiResult?.characters ?? "");
     setWorld(aiResult?.world ?? "");
     setStep("preview");
-  }, []);
+  }, [pendingFile, importMode]);
 
   const onFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -272,7 +290,64 @@ export function ImportModal() {
           </>
         )}
 
-        {/* ── Step 2: Analyzing ── */}
+        {/* ── Step 2: Mode selection (YUY-51) ── */}
+        {step === "mode" && (
+          <>
+            <div style={{ fontSize: 11, color: "#5a8aaa", marginBottom: 8 }}>
+              ファイル: <span style={{ color: "#7ab3e0" }}>{pendingFile?.name}</span>
+            </div>
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ fontSize: 11, color: "#5a8aaa", display: "block", marginBottom: 6 }}>
+                インポート方法を選んでください
+              </label>
+              <div style={{ display: "flex", gap: 6 }}>
+                {IMPORT_MODES.map(({ mode, label }) => (
+                  <button
+                    key={mode}
+                    onClick={() => setImportMode(mode)}
+                    style={{
+                      flex: 1,
+                      padding: "6px 4px",
+                      background: importMode === mode ? "rgba(74,111,165,0.2)" : "transparent",
+                      border: `1px solid ${importMode === mode ? "#4a6fa5" : "#2a3f58"}`,
+                      color: importMode === mode ? "#7ab3e0" : "#4a6080",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      fontSize: 11,
+                      fontFamily: "inherit",
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div style={{ marginTop: 6, fontSize: 10, color: "#3a5070", minHeight: 16 }}>
+                {IMPORT_MODES.find(m => m.mode === importMode)?.desc}
+              </div>
+            </div>
+            {error && (
+              <div style={{ color: "#e07a7a", fontSize: 12, marginBottom: 12, textAlign: "center" }}>
+                {error}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => { setStep("pick"); setError(null); }}
+                style={{ ...BTN, flex: 1, background: "transparent", border: "1px solid #1e2d42", color: "#3a5570" }}
+              >
+                戻る
+              </button>
+              <button
+                onClick={handleStartAnalyze}
+                style={{ ...BTN, flex: 2, background: "rgba(74,111,165,0.2)", border: "1px solid #4a6fa5", color: "#7ab3e0" }}
+              >
+                解析を開始する
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ── Step 3: Analyzing ── */}
         {step === "analyzing" && (
           <div style={{ textAlign: "center", padding: "40px 0", color: "#5a8aaa", fontSize: 13 }}>
             <div style={{ marginBottom: 12 }}>⟳ Rust でシーン構造を解析中…</div>

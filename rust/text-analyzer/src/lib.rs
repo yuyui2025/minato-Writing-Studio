@@ -309,7 +309,7 @@ fn extract_sections(text: &str) -> Vec<Section> {
     for k in 0..splits.len() {
         let start = splits[k].line_idx;
         let end = if k + 1 < splits.len() {
-            splits[k + 1].line_idx.saturating_sub(1)
+            splits[k + 1].header_line_idx
         } else {
             lines.len()
         };
@@ -389,5 +389,26 @@ mod tests {
         let text = "";
         let json = parse_document(text);
         assert!(json.contains("\"sections\":[]"));
+    }
+
+    #[test]
+    fn test_chapter_content_does_not_bleed_into_next() {
+        // YUY-53: 章ヘッダーが前セクションのコンテンツに混入しないことを確認
+        let text = "第一章\nプロローグ\n\n物語の始まりだった。\n\n第二章\n本編\n\n続きの話。";
+        let sections = extract_sections(text);
+        assert_eq!(sections.len(), 2);
+        assert!(!sections[0].content.contains("第二章"), "第二章 must not appear in section 0 content");
+        assert!(!sections[0].content.contains("本編"), "section 1 title must not appear in section 0 content");
+        assert!(sections[0].content.contains("物語の始まりだった"));
+        assert!(sections[1].content.contains("続きの話"));
+    }
+
+    #[test]
+    fn test_h2_content_does_not_include_next_header() {
+        let text = "## 第一幕\n\n最初のシーン内容。\n\n## 第二幕\n\n次のシーン内容。";
+        let sections = extract_sections(text);
+        assert_eq!(sections.len(), 2);
+        assert!(!sections[0].content.contains("第二幕"), "第二幕 must not appear in section 0 content");
+        assert!(sections[0].content.contains("最初のシーン内容"));
     }
 }
