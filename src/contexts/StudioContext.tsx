@@ -158,8 +158,8 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
 
   // --- Theme ---
   useEffect(() => {
-    const theme = editorSettings.colorTheme ?? "dark";
-    const apply = (t: "dark" | "light" | "system") => {
+    const theme = editorSettings.colorTheme ?? "focus";
+    const apply = (t: "dark" | "light" | "focus" | "system") => {
       if (t === "system") {
         document.documentElement.setAttribute("data-theme", window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
       } else {

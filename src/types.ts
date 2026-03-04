@@ -45,7 +45,7 @@ export type HintItem = { hint: string; reason: string; keyword?: string };
 export type PolishSuggestion = { original: string; suggestion: string; reason: string };
 
 export type SceneDraft = Pick<Scene, "chapter" | "title" | "synopsis">;
-export type EditorSettings = { fontSize: number; lineHeight: number; colorTheme: "dark" | "light" | "system" };
+export type EditorSettings = { fontSize: number; lineHeight: number; colorTheme: "dark" | "light" | "system" | "focus" };
 export type TabKey = "write" | "structure" | "settings" | "prefs" | "ai";
 export type SidebarTabKey = TabKey | "ai";
 export type SaveStatus = "saving" | "saved" | "error" | "offline";
