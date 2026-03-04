@@ -617,7 +617,14 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }
         : p)
       : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }, ...s.projects];
-    const newTitle = data.projectTitle || "インポートプロジェクト";
+    const baseTitle = data.projectTitle || "インポートプロジェクト";
+    // YUY-50: 同一タイトルのプロジェクトが既存の場合はサフィックスで一意化する
+    const allTitles = new Set(currentProjects.map(p => p.title));
+    let newTitle = baseTitle;
+    let suffix = 2;
+    while (allTitles.has(newTitle)) {
+      newTitle = `${baseTitle} (${suffix++})`;
+    }
     const mergedSettings: Settings = {
       world: data.settings.world || initialSettings.world,
       characters: data.settings.characters || initialSettings.characters,

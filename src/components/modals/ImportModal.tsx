@@ -62,6 +62,7 @@ export function ImportModal() {
   const [world, setWorld] = useState("");
   const [importMode, setImportMode] = useState<ImportMode>("new");
   const [projectFileData, setProjectFileData] = useState<ProjectFile | null>(null);
+  // YUY-51: ファイル選択後、モード確定前に保持しておく
   const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const analyzeFile = useCallback(async (file: File, mode: ImportMode) => {
@@ -71,7 +72,7 @@ export function ImportModal() {
     let combinedText: string;
     let titleFromFile: string;
 
-    if (isZip) {
+    if (/\.zip$/i.test(file.name)) {
       // YUY-43: zip 展開
       const buffer = await file.arrayBuffer();
       const { unzipSync } = await import("fflate");
@@ -80,7 +81,7 @@ export function ImportModal() {
         unzipped = unzipSync(new Uint8Array(buffer));
       } catch {
         setError("zip ファイルの展開に失敗しました");
-        setStep("pick");
+        setStep("mode");
         return;
       }
       const textFiles = Object.entries(unzipped)
@@ -88,7 +89,7 @@ export function ImportModal() {
         .sort(([a], [b]) => a.localeCompare(b, "ja"));
       if (textFiles.length === 0) {
         setError("zip 内に .md / .txt ファイルが見つかりませんでした");
-        setStep("pick");
+        setStep("mode");
         return;
       }
       combinedText = textFiles.map(([, data]) => decodeBuffer(data)).join("\n\n");
@@ -98,6 +99,8 @@ export function ImportModal() {
       combinedText = decodeBuffer(new Uint8Array(buffer));
       titleFromFile = file.name.replace(/\.(md|txt)$/i, "");
     }
+
+    void isZip; // suppress unused warning
 
     const parsed = await parseDocument(combinedText);
 
@@ -312,6 +315,9 @@ export function ImportModal() {
         {/* ── Step 2: Mode selection (YUY-51) ── */}
         {step === "mode" && (
           <>
+            <div style={{ fontSize: 11, color: "#5a8aaa", marginBottom: 8 }}>
+              ファイル: <span style={{ color: "#7ab3e0" }}>{pendingFile?.name}</span>
+            </div>
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 11, color: "#5a8aaa", marginBottom: 10 }}>インポート方法を選択してください</div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -337,9 +343,14 @@ export function ImportModal() {
                 ))}
               </div>
             </div>
+            {error && (
+              <div style={{ color: "#e07a7a", fontSize: 12, marginBottom: 12, textAlign: "center" }}>
+                {error}
+              </div>
+            )}
             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
               <button
-                onClick={() => { setStep("pick"); setPendingFile(null); }}
+                onClick={() => { setStep("pick"); setPendingFile(null); setError(null); }}
                 style={{ ...BTN, flex: 1, background: "transparent", border: "1px solid #1e2d42", color: "#3a5570" }}
               >
                 戻る
