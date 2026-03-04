@@ -166,6 +166,8 @@ export interface StudioState {
   createProjectFromImport: (data: ImportData) => void;
   createProject: () => void;
   switchProject: (id: string) => void;
+  deleteProject: (id: string) => void;
+  duplicateProject: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -691,6 +693,74 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       ...resetAiWorkspaceState(),
       ...computeDerived(target.scenes, target.manuscripts, firstId),
     };
+  }),
+
+  deleteProject: (id) => set((s) => {
+    if (s.projects.length <= 1) return {}; // 最後の1件は削除不可
+    const now = new Date().toISOString();
+    const currentTitle = s.projectTitle.trim() || "無題プロジェクト";
+    const synced = s.projects.some(p => p.id === s.activeProjectId)
+      ? s.projects.map(p => p.id === s.activeProjectId
+          ? { ...p, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }
+          : p)
+      : [{ id: s.activeProjectId, title: currentTitle, updatedAt: now, scenes: s.scenes, manuscripts: s.manuscripts, settings: s.settings, backups: s.backups, aiHistory: s.aiHistory }, ...s.projects];
+    const remaining = synced.filter(p => p.id !== id);
+    if (remaining.length === 0) return {};
+    if (id === s.activeProjectId) {
+      const target = remaining[0];
+      const firstId = target.scenes[0]?.id ?? null;
+      return {
+        projects: remaining,
+        activeProjectId: target.id,
+        projectTitle: target.title,
+        scenes: target.scenes,
+        manuscripts: target.manuscripts,
+        settings: target.settings,
+        backups: target.backups,
+        aiHistory: target.aiHistory ?? [],
+        selectedSceneId: firstId,
+        ...resetAiWorkspaceState(),
+        ...computeDerived(target.scenes, target.manuscripts, firstId),
+      };
+    }
+    return { projects: remaining };
+  }),
+
+  duplicateProject: (id) => set((s) => {
+    const now = new Date().toISOString();
+    const newId = `project-${Date.now()}`;
+    let source: ProjectRecord | undefined;
+    if (id === s.activeProjectId) {
+      source = {
+        id,
+        title: s.projectTitle.trim() || "無題プロジェクト",
+        updatedAt: now,
+        scenes: s.scenes,
+        manuscripts: s.manuscripts,
+        settings: s.settings,
+        backups: s.backups,
+        aiHistory: s.aiHistory,
+      };
+    } else {
+      source = s.projects.find(p => p.id === id);
+    }
+    if (!source) return {};
+    const newProject: ProjectRecord = {
+      ...source,
+      id: newId,
+      title: `${source.title}のコピー`,
+      updatedAt: now,
+      backups: [],
+      aiHistory: [],
+    };
+    const idx = s.projects.findIndex(p => p.id === id);
+    const newProjects = [...s.projects];
+    if (idx >= 0) {
+      newProjects.splice(idx + 1, 0, newProject);
+    } else {
+      newProjects.unshift(newProject);
+    }
+    return { projects: newProjects };
   }),
 }));
 

@@ -20,3 +20,8 @@
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
+
+/* YUY-58: スマホ時にヘッダーの補助要素を非表示 */
+@media (max-width: 540px) {
+  .header-hide-sm { display: none !important; }
+}
