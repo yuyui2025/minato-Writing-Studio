@@ -93,11 +93,11 @@ body { display:flex; align-items:stretch; padding:20px; }
       editor.style.lineHeight = String(e.data.lineHeight);
     }
   });
-  // YUY-56: マウス縦スクロールを横スクロールに変換
+  // YUY-56: マウス縦スクロールを横スクロールに変換（trackpadのdeltaXはそのまま通す）
   document.addEventListener('wheel', (e) => {
-    if (e.deltaY !== 0) {
+    if (e.deltaY !== 0 && e.deltaX === 0) {
       e.preventDefault();
-      document.documentElement.scrollLeft += e.deltaY;
+      window.scrollBy(e.deltaY, 0);
     }
   }, { passive: false });
 </script></body></html>`;
