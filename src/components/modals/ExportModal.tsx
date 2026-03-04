@@ -114,7 +114,7 @@ export function ExportModal() {
             marginBottom: 24,
           }}
         >
-          .minato-project.json
+          .gz（プロジェクト）
         </button>
 
         <button
