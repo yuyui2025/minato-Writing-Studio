@@ -199,8 +199,8 @@ export const Sidebar: React.FC = () => {
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
               <button key={key} onClick={() => {
                 setSidebarTab(key);
-                // In fixed (non-float) mode, main view stays on write
-                if (sidebarFloat) setTab(key as TabKey);
+                // YUY-59: keep main pane unchanged while sidebar is floating
+                if (!sidebarFloat) setTab(key as TabKey);
               }} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
@@ -511,7 +511,10 @@ export const Sidebar: React.FC = () => {
         </>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
-          <button onClick={() => { setSidebarOpen(true); setTab("write"); }} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
+          <button onClick={() => {
+            setSidebarOpen(true);
+            if (!sidebarFloat) setTab("write");
+          }} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
           {[
             { key: "write", label: "執筆" },
             { key: "structure", label: "構成" },
@@ -520,9 +523,9 @@ export const Sidebar: React.FC = () => {
             { key: "ai", label: "AI履歴" },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => {
-              setTab(key as TabKey);
               setSidebarTab(key as SidebarTabKey);
-              if (sidebarFloat) setSidebarOpen(false);
+              if (sidebarFloat) setSidebarOpen(true);
+              else setTab(key as TabKey);
             }} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
@@ -542,8 +545,9 @@ export const Sidebar: React.FC = () => {
                 <div
                   key={item.id}
                   onClick={() => {
-                    setTab("ai");
-                    if (sidebarFloat) setSidebarOpen(false);
+                    setSidebarTab("ai");
+                    if (sidebarFloat) setSidebarOpen(true);
+                    else setTab("ai");
                     if (!expandedIds.includes(item.id)) toggleExpand(item.id);
                   }}
                   title={`${item.label}: ${item.content.substring(0, 20)}...`}

@@ -15,7 +15,7 @@ vi.mock("../supabase", () => ({
   },
 }));
 
-import { storageGet, storageSet } from "../utils/storage";
+import { storageGet, storageGetMany, storageSet } from "../utils/storage";
 
 describe("storageGet", () => {
   beforeEach(() => {
@@ -94,5 +94,30 @@ describe("storageSet", () => {
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw!);
     expect(parsed.value).toBe("");
+  });
+});
+
+describe("storageGetMany", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    vi.clearAllMocks();
+  });
+
+  it("returns local values for multiple keys in one call", async () => {
+    await storageSet("minato:title", "作品A");
+    await storageSet("minato:sidebarFloat", false);
+    await storageSet("minato:sidebarWidth", 240);
+
+    const result = await storageGetMany([
+      "minato:title",
+      "minato:sidebarFloat",
+      "minato:sidebarWidth",
+      "missing:key",
+    ]);
+
+    expect(result["minato:title"]).toBe("作品A");
+    expect(result["minato:sidebarFloat"]).toBe(false);
+    expect(result["minato:sidebarWidth"]).toBe(240);
+    expect(result["missing:key"]).toBeNull();
   });
 });

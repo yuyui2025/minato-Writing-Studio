@@ -8,7 +8,7 @@
  */
 import React, { useEffect, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
-import { storageGet, storageSet } from "../utils/storage";
+import { storageGetMany, storageSet } from "../utils/storage";
 import type { Scene, Settings, Manuscripts, EditorSettings, AiHistoryItem, Backup, ProjectRecord } from "../types";
 import { useStudioStore } from "../stores/useStudioStore";
 import { analyzeText } from "../utils/textAnalyzer";
@@ -32,22 +32,36 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   useEffect(() => {
     (async () => {
       store.setLoaded(false);
-      const [sc, st, ms, pt, bk, es, ah, ab, sf, sw, af, apw, projects, activeProjectId] = await Promise.all([
-        storageGet<Scene[]>("minato:scenes"),
-        storageGet<Settings>("minato:settings"),
-        storageGet<Manuscripts>("minato:manuscripts"),
-        storageGet<string>("minato:title"),
-        storageGet<Backup[]>("minato:backups"),
-        storageGet<EditorSettings>("minato:editorSettings"),
-        storageGet<AiHistoryItem[]>("minato:aiHistory"),
-        storageGet<Backup[]>("minato:autoBackups"),
-        storageGet<boolean>("minato:sidebarFloat"),
-        storageGet<number>("minato:sidebarWidth"),
-        storageGet<boolean>("minato:aiFloat"),
-        storageGet<number>("minato:aiPanelWidth"),
-        storageGet<ProjectRecord[]>("minato:projects"),
-        storageGet<string>("minato:activeProjectId"),
+      const loaded = await storageGetMany([
+        "minato:scenes",
+        "minato:settings",
+        "minato:manuscripts",
+        "minato:title",
+        "minato:backups",
+        "minato:editorSettings",
+        "minato:aiHistory",
+        "minato:autoBackups",
+        "minato:sidebarFloat",
+        "minato:sidebarWidth",
+        "minato:aiFloat",
+        "minato:aiPanelWidth",
+        "minato:projects",
+        "minato:activeProjectId",
       ]);
+      const sc = loaded["minato:scenes"] as Scene[] | null;
+      const st = loaded["minato:settings"] as Settings | null;
+      const ms = loaded["minato:manuscripts"] as Manuscripts | null;
+      const pt = loaded["minato:title"] as string | null;
+      const bk = loaded["minato:backups"] as Backup[] | null;
+      const es = loaded["minato:editorSettings"] as EditorSettings | null;
+      const ah = loaded["minato:aiHistory"] as AiHistoryItem[] | null;
+      const ab = loaded["minato:autoBackups"] as Backup[] | null;
+      const sf = loaded["minato:sidebarFloat"] as boolean | null;
+      const sw = loaded["minato:sidebarWidth"] as number | null;
+      const af = loaded["minato:aiFloat"] as boolean | null;
+      const apw = loaded["minato:aiPanelWidth"] as number | null;
+      const projects = loaded["minato:projects"] as ProjectRecord[] | null;
+      const activeProjectId = loaded["minato:activeProjectId"] as string | null;
       const resolvedScenes = sc ?? store.scenes;
       const resolvedSettings = st ?? store.settings;
       const resolvedManuscripts = ms ?? store.manuscripts;
