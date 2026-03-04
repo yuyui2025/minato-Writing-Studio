@@ -84,18 +84,18 @@ export const Header: React.FC = () => {
           </div>
         )}
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <div className="header-actions" style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div className="header-hide-sm" style={{ fontSize: 10, color: saveStatus === "saved" ? "#2a4060" : saveStatus === "saving" ? "#4a6fa5" : saveStatus === "offline" ? "#8a6b2d" : "#e05555" }}>
           {saveStatus === "saving" ? "保存中…" :
            saveStatus === "offline" ? "☁ オフライン保存" :
            saveStatus === "error" ? "⚠ エラー" :
            lastSavedTime ? `保存: ${lastSavedTime.getHours()}:${String(lastSavedTime.getMinutes()).padStart(2,"0")}` : "✓"}
         </div>
-        <button onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
-        <button onClick={() => setShowBackups(true)} className="header-hide-sm" style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
+        <button className="header-priority-btn" onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
+        <button className="header-priority-btn" onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
         <button onClick={() => setShowImport(true)} className="header-hide-sm" style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>取込</button>
-        <button onClick={() => setShowExport(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
-        {/* スマホのみ表示: 履歴・取込をまとめた「…」メニュー */}
+        <button onClick={() => setShowExport(true)} className="header-hide-sm" style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
+        {/* スマホのみ表示: 補助操作をまとめた「…」メニュー */}
         <div ref={moreRef} className="header-show-sm" style={{ position: "relative" }}>
           <button
             onClick={() => setMoreOpen(v => !v)}
@@ -103,15 +103,20 @@ export const Header: React.FC = () => {
           >…</button>
           {moreOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#0a0f1a", border: "1px solid #1e2d42", borderRadius: 6, display: "flex", flexDirection: "column", gap: 4, padding: 8, zIndex: 200, minWidth: 80 }}>
-              <button onClick={() => { setShowBackups(true); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>履歴</button>
               <button onClick={() => { setShowImport(true); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>取込</button>
+              <button onClick={() => { setShowExport(true); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>出力</button>
+              {user ? (
+                <button onClick={() => { supabase.auth.signOut(); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>退出</button>
+              ) : (
+                <button onClick={() => { supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } }); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#7ab3e0", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>ログイン</button>
+              )}
             </div>
           )}
         </div>
         {user ? (
-          <button onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>退出</button>
+          <button className="header-hide-sm" onClick={() => supabase.auth.signOut()} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>退出</button>
         ) : (
-          <button onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>ログイン</button>
+          <button className="header-hide-sm" onClick={() => supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } })} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>ログイン</button>
         )}
       </div>
     </header>

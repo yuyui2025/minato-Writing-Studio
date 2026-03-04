@@ -5,9 +5,13 @@ interface StoredData<T> {
   updated_at: string;
 }
 
+function readLocal<T>(key: string): StoredData<T> | null {
+  const raw = localStorage.getItem(key);
+  return raw ? JSON.parse(raw) as StoredData<T> : null;
+}
+
 export async function storageGet<T = unknown>(key: string): Promise<T | null> {
-  const localRaw = localStorage.getItem(key);
-  const localData: StoredData<T> | null = localRaw ? JSON.parse(localRaw) : null;
+  const localData = readLocal<T>(key);
 
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -33,6 +37,46 @@ export async function storageGet<T = unknown>(key: string): Promise<T | null> {
   } catch {
     return localData != null ? localData.value : null;
   }
+}
+
+export async function storageGetMany(keys: string[]): Promise<Record<string, unknown>> {
+  const uniqueKeys = Array.from(new Set(keys));
+  const localMap = new Map<string, StoredData<unknown> | null>();
+  const result: Record<string, unknown> = {};
+
+  for (const key of uniqueKeys) {
+    const localData = readLocal<unknown>(key);
+    localMap.set(key, localData);
+    result[key] = localData != null ? localData.value : null;
+  }
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || uniqueKeys.length === 0) return result;
+
+    const { data, error } = await supabase
+      .from("minato_data")
+      .select("key, value, updated_at")
+      .eq("user_id", user.id)
+      .in("key", uniqueKeys);
+
+    if (error || !data) return result;
+
+    for (const row of data as Array<{ key: string; value: unknown; updated_at: string }>) {
+      const localData = localMap.get(row.key);
+      const remoteData: StoredData<unknown> = { value: row.value, updated_at: row.updated_at };
+      if (!localData || new Date(remoteData.updated_at) > new Date(localData.updated_at)) {
+        localStorage.setItem(row.key, JSON.stringify(remoteData));
+        result[row.key] = remoteData.value;
+      } else {
+        result[row.key] = localData.value;
+      }
+    }
+  } catch {
+    // localStorage fallback already populated in result
+  }
+
+  return result;
 }
 
 export async function storageSet(key: string, value: unknown): Promise<boolean> {

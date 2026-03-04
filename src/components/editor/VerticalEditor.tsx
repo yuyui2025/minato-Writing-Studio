@@ -93,12 +93,14 @@ body { display:flex; align-items:stretch; padding:20px; }
       editor.style.lineHeight = String(e.data.lineHeight);
     }
   });
-  // YUY-56: マウス縦スクロールを横スクロールに変換（trackpadのdeltaXはそのまま通す）
+  // YUY-56: マウス縦スクロールを横スクロールへ変換（trackpadの横スクロールは維持）
   document.addEventListener('wheel', (e) => {
-    if (e.deltaY !== 0 && e.deltaX === 0) {
-      e.preventDefault();
-      window.scrollBy(e.deltaY, 0);
-    }
+    if (e.ctrlKey) return; // pinch-zoom gestures
+    if (e.deltaY === 0 || e.deltaX !== 0) return;
+    const root = document.scrollingElement || document.documentElement;
+    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerWidth : 1;
+    root.scrollLeft += e.deltaY * unit;
+    e.preventDefault();
   }, { passive: false });
 </script></body></html>`;
   }
