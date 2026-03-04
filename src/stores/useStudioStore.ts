@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { gzipSync } from "fflate";
 import type { User } from "@supabase/supabase-js";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
@@ -196,6 +197,20 @@ function sanitizeFilename(name: string) {
 function downloadFile(content: string, filename: string) {
   const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
   const blob = new Blob([bom, content], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  alert(`${filename} を出力しました。`);
+}
+
+function downloadBinaryFile(content: Uint8Array, filename: string) {
+  const buffer = content.buffer.slice(content.byteOffset, content.byteOffset + content.byteLength) as ArrayBuffer;
+  const blob = new Blob([buffer], { type: "application/gzip" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -464,8 +479,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       exportedAt: now,
       project,
     };
-    const filename = `${sanitizeFilename(title)}.minato-project.json`;
-    downloadFile(JSON.stringify(payload, null, 2), filename);
+    const filename = `${sanitizeFilename(title)}.gz`;
+    const compressed = gzipSync(new TextEncoder().encode(JSON.stringify(payload)));
+    downloadBinaryFile(compressed, filename);
     set({ showExport: false });
   },
 

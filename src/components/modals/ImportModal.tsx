@@ -42,9 +42,10 @@ function decodeBuffer(uint8: Uint8Array): string {
 }
 
 const PROJECT_FILE_RE = /\.minato-project(?:\s*\(\d+\))?\.json$/i;
+const PROJECT_GZ_RE = /(?:\.minato-project)?(?:\s*\(\d+\))?\.gz$/i;
 
 function stripProjectFileSuffix(filename: string): string {
-  return filename.replace(PROJECT_FILE_RE, "");
+  return filename.replace(PROJECT_FILE_RE, "").replace(PROJECT_GZ_RE, "");
 }
 
 export function ImportModal() {
@@ -66,15 +67,30 @@ export function ImportModal() {
     const isZip = /\.zip$/i.test(file.name);
     const isText = /\.(md|txt)$/i.test(file.name);
     const isProjectFile = PROJECT_FILE_RE.test(file.name);
-    if (!isZip && !isText && !isProjectFile) {
-      setError(".md / .txt / .zip / .minato-project.json ファイルを選択してください");
+    const isGzProjectFile = PROJECT_GZ_RE.test(file.name);
+    if (!isZip && !isText && !isProjectFile && !isGzProjectFile) {
+      setError(".md / .txt / .zip / .gz / .minato-project.json ファイルを選択してください");
       return;
     }
     setError(null);
     setStep("analyzing");
 
-    if (isProjectFile) {
-      const raw = await file.text();
+    if (isProjectFile || isGzProjectFile) {
+      let raw: string;
+      try {
+        if (isGzProjectFile) {
+          const { gunzipSync } = await import("fflate");
+          const buffer = await file.arrayBuffer();
+          const decompressed = gunzipSync(new Uint8Array(buffer));
+          raw = new TextDecoder().decode(decompressed);
+        } else {
+          raw = await file.text();
+        }
+      } catch {
+        setError("ファイルの読み込みに失敗しました");
+        setStep("pick");
+        return;
+      }
       let parsed: unknown;
       try {
         parsed = JSON.parse(raw);
@@ -249,11 +265,11 @@ export function ImportModal() {
               }}
             >
               <span style={{ fontSize: 28 }}>↑</span>
-              <span>.md / .txt / .zip / .minato-project.json をドロップ、またはクリックして選択</span>
+              <span>.md / .txt / .zip / .gz をドロップ、またはクリックして選択</span>
               <input
                 ref={fileRef}
                 type="file"
-                accept=".md,.txt,.zip,.json"
+                accept=".md,.txt,.zip,.gz,.json"
                 style={{ display: "none" }}
                 onChange={onFileChange}
               />
