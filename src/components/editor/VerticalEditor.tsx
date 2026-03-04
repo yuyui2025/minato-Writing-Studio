@@ -38,6 +38,14 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     }
   }, [initialText]);
 
+  // YUY-57: fontSize / lineHeight 変更をリアルタイムで反映
+  useEffect(() => {
+    const iframe = iframeRef.current;
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: 'vertical-style', fontSize, lineHeight }, '*');
+    }
+  }, [fontSize, lineHeight]);
+
   const srcDocRef = useRef<string | null>(null);
   if (!srcDocRef.current) {
     const escaped = initialText
@@ -62,6 +70,12 @@ body { display:flex; align-items:stretch; padding:20px; }
   min-height: calc(100% - 0px); min-width: max-content;
   outline: none; caret-color: #7ab3e0;
 }
+/* YUY-55: 縦組み専用スクロールバー */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1e2d42; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2a4060; }
+::-webkit-scrollbar-corner { background: transparent; }
 </style></head>
 <body><div id="editor" contenteditable="true">${escaped}</div>
 <script>
@@ -73,7 +87,19 @@ body { display:flex; align-items:stretch; padding:20px; }
     if (e.data?.type === 'vertical-update') {
       editor.innerText = e.data.text;
     }
+    // YUY-57: フォントサイズ・行間のリアルタイム更新
+    if (e.data?.type === 'vertical-style') {
+      editor.style.fontSize = e.data.fontSize + 'px';
+      editor.style.lineHeight = String(e.data.lineHeight);
+    }
   });
+  // YUY-56: マウス縦スクロールを横スクロールに変換
+  document.addEventListener('wheel', (e) => {
+    if (e.deltaY !== 0) {
+      e.preventDefault();
+      document.documentElement.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
 </script></body></html>`;
   }
 
