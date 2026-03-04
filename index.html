@@ -19,6 +19,16 @@
         overflow: hidden;
       }
       #root { height: 100dvh; display: flex; flex-direction: column; }
+      /* ダークテーマ: 明るさを上げてシステムUIを読みやすく */
+      html[data-theme="dark"] #root {
+        filter: brightness(2);
+      }
+      html[data-theme="dark"] img,
+      html[data-theme="dark"] video {
+        filter: brightness(0.5);
+      }
+      /* 集中テーマ: 超ダーク（フィルターなし・デフォルトの外観） */
+      /* html[data-theme="focus"] #root {} */
       /* ライトテーマ: フィルターベース変換 */
       html[data-theme="light"] #root {
         filter: invert(1) hue-rotate(180deg);

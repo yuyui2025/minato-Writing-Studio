@@ -23,25 +23,27 @@ export const PrefsView: React.FC = () => {
         <div>
           <div style={{ fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 }}>テーマ</div>
           <div style={{ display: "flex", gap: 8 }}>
-            {(["dark", "light", "system"] as const).map(t => (
+            {(["focus", "dark", "light", "system"] as const).map(t => (
               <button
                 key={t}
                 onClick={() => setEditorSettings(s => ({ ...s, colorTheme: t }))}
                 style={{
                   flex: 1, padding: "8px 4px",
-                  background: (editorSettings.colorTheme ?? "dark") === t ? "rgba(74,111,165,0.2)" : "transparent",
+                  background: (editorSettings.colorTheme ?? "focus") === t ? "rgba(74,111,165,0.2)" : "transparent",
                   border: "1px solid",
-                  borderColor: (editorSettings.colorTheme ?? "dark") === t ? "#4a6fa5" : "#1e2d42",
-                  color: (editorSettings.colorTheme ?? "dark") === t ? "#7ab3e0" : "#3a5570",
+                  borderColor: (editorSettings.colorTheme ?? "focus") === t ? "#4a6fa5" : "#1e2d42",
+                  color: (editorSettings.colorTheme ?? "focus") === t ? "#7ab3e0" : "#3a5570",
                   cursor: "pointer", fontSize: 12, borderRadius: 4, fontFamily: "inherit",
                 }}
               >
-                {t === "dark" ? "ダーク" : t === "light" ? "ライト" : "システム"}
+                {t === "focus" ? "集中" : t === "dark" ? "ダーク" : t === "light" ? "ライト" : "システム"}
               </button>
             ))}
           </div>
           <div style={{ fontSize: 10, color: "#2a4060", marginTop: 6 }}>
-            {(editorSettings.colorTheme ?? "dark") === "system" ? "OSの設定に従います" : ""}
+            {(editorSettings.colorTheme ?? "focus") === "system" ? "OSの設定に従います" :
+             (editorSettings.colorTheme ?? "focus") === "focus" ? "執筆に集中できる超ダークモード" :
+             (editorSettings.colorTheme ?? "focus") === "dark" ? "システムUIが読みやすいダークモード" : ""}
           </div>
         </div>
       </div>
