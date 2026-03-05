@@ -127,11 +127,17 @@ body { display:flex; align-items:stretch; padding:20px; }
       const nextText = typeof e.data.text === 'string' ? e.data.text : '';
       // YUY-73: 同一内容の再代入を避け、キャレットが文末へ飛ぶ副作用を防ぐ
       if (!isEquivalentText(editor.innerText, nextText)) {
+        const root = document.scrollingElement || document.documentElement;
+        const prevLeft = root.scrollLeft;
+        const prevTop = root.scrollTop;
         const caret = getCaretOffset(editor);
         editor.innerText = nextText;
         if (caret !== null) {
           setCaretOffset(editor, Math.min(caret, nextText.length));
         }
+        // YUY-73: 同期反映後も表示位置（特に横スクロール）を維持
+        root.scrollLeft = prevLeft;
+        root.scrollTop = prevTop;
       }
     }
     // YUY-57: フォントサイズ・行間のリアルタイム更新
