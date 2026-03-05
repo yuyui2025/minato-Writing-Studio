@@ -83,6 +83,41 @@ body { display:flex; align-items:stretch; padding:20px; }
 <script>
   const normalizeText = (value) => value.replace(/\r\n/g, '\n');
   const isEquivalentText = (a, b) => normalizeText(a) === normalizeText(b);
+  const getCaretOffset = (root) => {
+    const sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0) return null;
+    const range = sel.getRangeAt(0);
+    if (!root.contains(range.startContainer)) return null;
+    const pre = range.cloneRange();
+    pre.selectNodeContents(root);
+    pre.setEnd(range.startContainer, range.startOffset);
+    return pre.toString().length;
+  };
+  const setCaretOffset = (root, offset) => {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let remain = offset;
+    let node = walker.nextNode();
+    while (node) {
+      const len = node.textContent ? node.textContent.length : 0;
+      if (remain <= len) {
+        const r = document.createRange();
+        r.setStart(node, Math.max(0, remain));
+        r.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(r);
+        return;
+      }
+      remain -= len;
+      node = walker.nextNode();
+    }
+    const tail = document.createRange();
+    tail.selectNodeContents(root);
+    tail.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(tail);
+  };
   const editor = document.getElementById('editor');
   editor.addEventListener('input', () => {
     window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '${parentOrigin}');
@@ -92,7 +127,11 @@ body { display:flex; align-items:stretch; padding:20px; }
       const nextText = typeof e.data.text === 'string' ? e.data.text : '';
       // YUY-73: 同一内容の再代入を避け、キャレットが文末へ飛ぶ副作用を防ぐ
       if (!isEquivalentText(editor.innerText, nextText)) {
+        const caret = getCaretOffset(editor);
         editor.innerText = nextText;
+        if (caret !== null) {
+          setCaretOffset(editor, Math.min(caret, nextText.length));
+        }
       }
     }
     // YUY-57: フォントサイズ・行間のリアルタイム更新
@@ -104,21 +143,25 @@ body { display:flex; align-items:stretch; padding:20px; }
   // YUY-56: マウス縦スクロールを横スクロールへ変換（trackpadの横スクロールは維持）
   document.addEventListener('wheel', (e) => {
     if (e.ctrlKey) return; // pinch-zoom gestures
-    if (e.deltaY === 0 || e.deltaX !== 0) return;
+    if (e.deltaY === 0) return;
+    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5) return;
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerWidth : 1;
+    const delta = e.deltaY * unit;
     const beforeWindowX = window.scrollX;
-    window.scrollBy({ left: e.deltaY * unit, top: 0, behavior: 'auto' });
+    window.scrollBy({ left: delta, top: 0, behavior: 'auto' });
     if (window.scrollX !== beforeWindowX) {
       e.preventDefault();
+      e.stopPropagation();
       return;
     }
     const root = document.scrollingElement || document.documentElement;
     const beforeRoot = root.scrollLeft;
-    root.scrollLeft += e.deltaY * unit;
+    root.scrollLeft += delta;
     if (root.scrollLeft !== beforeRoot) {
       e.preventDefault();
+      e.stopPropagation();
     }
-  }, { passive: false });
+  }, { passive: false, capture: true });
 </script></body></html>`;
   }
 
