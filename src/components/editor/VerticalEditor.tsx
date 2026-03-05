@@ -79,13 +79,19 @@ body { display:flex; align-items:stretch; padding:20px; }
 </style></head>
 <body><div id="editor" contenteditable="true">${escaped}</div>
 <script>
+  const normalizeText = (value) => value.replace(/\r\n/g, '\n');
+  const isEquivalentText = (a, b) => normalizeText(a) === normalizeText(b);
   const editor = document.getElementById('editor');
   editor.addEventListener('input', () => {
     window.parent.postMessage({ type: 'vertical-input', text: editor.innerText }, '${parentOrigin}');
   });
   window.addEventListener('message', (e) => {
     if (e.data?.type === 'vertical-update') {
-      editor.innerText = e.data.text;
+      const nextText = typeof e.data.text === 'string' ? e.data.text : '';
+      // YUY-73: 同一内容の再代入を避け、キャレットが文末へ飛ぶ副作用を防ぐ
+      if (!isEquivalentText(editor.innerText, nextText)) {
+        editor.innerText = nextText;
+      }
     }
     // YUY-57: フォントサイズ・行間のリアルタイム更新
     if (e.data?.type === 'vertical-style') {
@@ -99,8 +105,12 @@ body { display:flex; align-items:stretch; padding:20px; }
     if (e.deltaY === 0 || e.deltaX !== 0) return;
     const root = document.scrollingElement || document.documentElement;
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerWidth : 1;
+    const before = root.scrollLeft;
     root.scrollLeft += e.deltaY * unit;
-    e.preventDefault();
+    // 実際に横移動できた時だけデフォルト抑止する
+    if (root.scrollLeft !== before) {
+      e.preventDefault();
+    }
   }, { passive: false });
 </script></body></html>`;
   }
