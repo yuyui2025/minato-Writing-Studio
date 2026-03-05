@@ -11,6 +11,7 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   const onChangeRef = useRef(onChange);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const lastTextRef = useRef(initialText);
+  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n");
 
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -19,8 +20,9 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   useEffect(() => {
     const handler = (e: MessageEvent) => {
       if (e.data?.type === "vertical-input") {
-        lastTextRef.current = e.data.text;
-        onChangeRef.current(e.data.text);
+        const nextText = typeof e.data.text === "string" ? e.data.text : "";
+        lastTextRef.current = normalizeText(nextText);
+        onChangeRef.current(nextText);
       }
     };
     window.addEventListener("message", handler);
@@ -29,8 +31,8 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
 
   // Update iframe when initialText changes from outside
   useEffect(() => {
-    if (initialText !== lastTextRef.current) {
-      lastTextRef.current = initialText;
+    if (normalizeText(initialText) !== lastTextRef.current) {
+      lastTextRef.current = normalizeText(initialText);
       const iframe = iframeRef.current;
       if (iframe && iframe.contentWindow) {
         iframe.contentWindow.postMessage({ type: 'vertical-update', text: initialText }, '*');
@@ -103,12 +105,17 @@ body { display:flex; align-items:stretch; padding:20px; }
   document.addEventListener('wheel', (e) => {
     if (e.ctrlKey) return; // pinch-zoom gestures
     if (e.deltaY === 0 || e.deltaX !== 0) return;
-    const root = document.scrollingElement || document.documentElement;
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerWidth : 1;
-    const before = root.scrollLeft;
+    const beforeWindowX = window.scrollX;
+    window.scrollBy({ left: e.deltaY * unit, top: 0, behavior: 'auto' });
+    if (window.scrollX !== beforeWindowX) {
+      e.preventDefault();
+      return;
+    }
+    const root = document.scrollingElement || document.documentElement;
+    const beforeRoot = root.scrollLeft;
     root.scrollLeft += e.deltaY * unit;
-    // 実際に横移動できた時だけデフォルト抑止する
-    if (root.scrollLeft !== before) {
+    if (root.scrollLeft !== beforeRoot) {
       e.preventDefault();
     }
   }, { passive: false });
