@@ -57,10 +57,9 @@ export const Sidebar: React.FC = () => {
     setTab("write");
   };
 
-  /** サイドバーを閉じる：メインペインをサイドバーの表示内容に同期 */
+  /** サイドバーを閉じる：メインペインは変更しない */
   const closeSidebar = () => {
     setSidebarOpen(false);
-    setTab(sidebarTab as TabKey);
   };
 
   // ============================================================
