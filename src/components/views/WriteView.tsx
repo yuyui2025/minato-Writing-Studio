@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { VerticalEditor } from "../editor/VerticalEditor";
 import { AiPanel } from "../ai/AiPanel";
 import { statusColors, statusLabels } from "../../constants";
@@ -13,9 +13,38 @@ export const WriteView: React.FC = () => {
     handleDeleteScene, manuscriptText, handleManuscriptChange,
     editorSettings, handleSceneSelect, wordCount, textMetrics,
     aiResults, setAiResults, aiErrors, setAiErrors,
-    aiLoading, setAiLoading, settings, addAiHistory
+    aiLoading, setAiLoading, settings, addAiHistory,
+    historyPast, historyFuture, undo, redo
   } = useStudio();
   const [footerOpen, setFooterOpen] = useState(true);
+  const canUndo = historyPast.length > 0;
+  const canRedo = historyFuture.length > 0;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (!mod) return;
+      if (e.key.toLowerCase() === "z" && e.shiftKey) {
+        if (!canRedo) return;
+        e.preventDefault();
+        redo();
+        return;
+      }
+      if (e.key.toLowerCase() === "z") {
+        if (!canUndo) return;
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if (e.key.toLowerCase() === "y") {
+        if (!canRedo) return;
+        e.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [canRedo, canUndo, redo, undo]);
 
   if (!selectedScene) {
     return (
@@ -66,6 +95,42 @@ export const WriteView: React.FC = () => {
             {(["empty", "draft", "done"] as const).map(s => (
               <button key={s} onClick={() => handleStatusChange(selectedScene.id, s)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: selectedScene.status === s ? statusColors[s] : "#1e2d42", background: selectedScene.status === s ? `${statusColors[s]}22` : "transparent", color: selectedScene.status === s ? statusColors[s] : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>{statusLabels[s]}</button>
             ))}
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              title="元に戻す (Ctrl/Cmd+Z)"
+              style={{
+                padding: "4px 10px",
+                borderRadius: 3,
+                border: "1px solid",
+                borderColor: canUndo ? "#2a4060" : "#0f1725",
+                background: canUndo ? "rgba(74,111,165,0.1)" : "transparent",
+                color: canUndo ? "#5b7ea7" : "#1a2535",
+                cursor: canUndo ? "pointer" : "default",
+                fontSize: 10,
+                fontFamily: "inherit",
+              }}
+            >
+              Undo
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              title="やり直し (Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y)"
+              style={{
+                padding: "4px 10px",
+                borderRadius: 3,
+                border: "1px solid",
+                borderColor: canRedo ? "#2a4060" : "#0f1725",
+                background: canRedo ? "rgba(74,111,165,0.1)" : "transparent",
+                color: canRedo ? "#5b7ea7" : "#1a2535",
+                cursor: canRedo ? "pointer" : "default",
+                fontSize: 10,
+                fontFamily: "inherit",
+              }}
+            >
+              Redo
+            </button>
             <button onClick={() => setVerticalPreview(!verticalPreview)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: verticalPreview ? "#4a6fa5" : "#1e2d42", background: verticalPreview ? "rgba(74,111,165,0.15)" : "transparent", color: verticalPreview ? "#7ab3e0" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>縦組</button>
             <button onClick={() => handleDeleteScene(selectedScene.id)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid #1e2d42", background: "transparent", color: "#3a2020", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>削除</button>
           </div>

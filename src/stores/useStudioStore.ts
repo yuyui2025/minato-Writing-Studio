@@ -11,6 +11,21 @@ import { storageSet } from "../utils/storage";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+const HISTORY_LIMIT = 120;
+
+type EditorSnapshot = {
+  scenes: Scene[];
+  manuscripts: Manuscripts;
+  selectedSceneId: number | null;
+};
+
+function createEditorSnapshot(state: Pick<StudioState, "scenes" | "manuscripts" | "selectedSceneId">): EditorSnapshot {
+  return {
+    scenes: state.scenes,
+    manuscripts: state.manuscripts,
+    selectedSceneId: state.selectedSceneId,
+  };
+}
 
 function computeDerived(
   scenes: Scene[],
@@ -90,6 +105,9 @@ export interface StudioState {
   aiApplied: AppliedState;
   hintApplied: AppliedState;
   aiHistory: AiHistoryItem[];
+  historyPast: EditorSnapshot[];
+  historyFuture: EditorSnapshot[];
+  historyLocked: boolean;
 
   // derived (kept in store for fast access)
   selectedScene: Scene | null;
@@ -144,10 +162,13 @@ export interface StudioState {
   setHintApplied: (v: AppliedState | ((prev: AppliedState) => AppliedState)) => void;
   setAiHistory: (v: AiHistoryItem[] | ((prev: AiHistoryItem[]) => AiHistoryItem[])) => void;
   setTextMetrics: (v: TextMetrics | null) => void;
+  setHistoryLocked: (v: boolean) => void;
 
   // ---------------------------------------------------------------------------
   // Actions (business logic)
   // ---------------------------------------------------------------------------
+  undo: () => void;
+  redo: () => void;
   addAiHistory: (label: string, content: string, sceneTitle?: string, sceneId?: number) => void;
   clearAiHistory: () => void;
   handleSceneSelect: (scene: Scene) => void;
@@ -269,6 +290,9 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   aiApplied: {},
   hintApplied: {},
   aiHistory: [],
+  historyPast: [],
+  historyFuture: [],
+  historyLocked: false,
   selectedScene: null,
   manuscriptText: "",
   wordCount: 0,
@@ -286,7 +310,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setSettingsTab: (v) => set({ settingsTab: v }),
   setScenes: (v) => set((s) => {
     const next = typeof v === "function" ? v(s.scenes) : v;
-    return { scenes: next, ...computeDerived(next, s.manuscripts, s.selectedSceneId) };
+    if (Object.is(next, s.scenes)) return {};
+    const update: Partial<StudioState> = {
+      scenes: next,
+      ...computeDerived(next, s.manuscripts, s.selectedSceneId),
+    };
+    if (!s.historyLocked) {
+      update.historyPast = [...s.historyPast, createEditorSnapshot(s)].slice(-HISTORY_LIMIT);
+      update.historyFuture = [];
+    }
+    return update;
   }),
   setSelectedSceneId: (v) => set((s) => ({
     selectedSceneId: v,
@@ -294,7 +327,16 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   })),
   setManuscripts: (v) => set((s) => {
     const next = typeof v === "function" ? v(s.manuscripts) : v;
-    return { manuscripts: next, ...computeDerived(s.scenes, next, s.selectedSceneId) };
+    if (Object.is(next, s.manuscripts)) return {};
+    const update: Partial<StudioState> = {
+      manuscripts: next,
+      ...computeDerived(s.scenes, next, s.selectedSceneId),
+    };
+    if (!s.historyLocked) {
+      update.historyPast = [...s.historyPast, createEditorSnapshot(s)].slice(-HISTORY_LIMIT);
+      update.historyFuture = [];
+    }
+    return update;
   }),
   setSettings: (v) => set((s) => ({ settings: typeof v === "function" ? v(s.settings) : v })),
   setProjectTitle: (v) => set((s) => ({
@@ -335,10 +377,37 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setHintApplied: (v) => set((s) => ({ hintApplied: typeof v === "function" ? v(s.hintApplied) : v })),
   setAiHistory: (v) => set((s) => ({ aiHistory: typeof v === "function" ? v(s.aiHistory) : v })),
   setTextMetrics: (v) => set({ textMetrics: v }),
+  setHistoryLocked: (v) => set({ historyLocked: v }),
 
   // ---------------------------------------------------------------------------
   // Actions
   // ---------------------------------------------------------------------------
+  undo: () => set((s) => {
+    if (s.historyPast.length === 0) return {};
+    const prev = s.historyPast[s.historyPast.length - 1];
+    return {
+      historyPast: s.historyPast.slice(0, -1),
+      historyFuture: [createEditorSnapshot(s), ...s.historyFuture].slice(0, HISTORY_LIMIT),
+      scenes: prev.scenes,
+      manuscripts: prev.manuscripts,
+      selectedSceneId: prev.selectedSceneId,
+      ...computeDerived(prev.scenes, prev.manuscripts, prev.selectedSceneId),
+    };
+  }),
+
+  redo: () => set((s) => {
+    if (s.historyFuture.length === 0) return {};
+    const [next, ...rest] = s.historyFuture;
+    return {
+      historyPast: [...s.historyPast, createEditorSnapshot(s)].slice(-HISTORY_LIMIT),
+      historyFuture: rest,
+      scenes: next.scenes,
+      manuscripts: next.manuscripts,
+      selectedSceneId: next.selectedSceneId,
+      ...computeDerived(next.scenes, next.manuscripts, next.selectedSceneId),
+    };
+  }),
+
   addAiHistory: (label, content, sceneTitle, sceneId) => {
     if (!content.trim()) return;
     const item: AiHistoryItem = { id: Date.now(), timestamp: new Date().toISOString(), label, content, sceneTitle, sceneId };
@@ -357,16 +426,18 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   })),
 
   handleManuscriptChange: (text) => {
-    const { selectedSceneId, manuscripts, scenes } = get();
+    const { selectedSceneId, manuscripts, setManuscripts } = get();
     if (selectedSceneId === null) return;
-    const next = { ...manuscripts, [selectedSceneId]: text };
-    set({ manuscripts: next, ...computeDerived(scenes, next, selectedSceneId) });
+    if ((manuscripts[selectedSceneId] ?? "") === text) return;
+    setManuscripts({ ...manuscripts, [selectedSceneId]: text });
   },
 
-  handleStatusChange: (id, status) => set((s) => {
-    const next = s.scenes.map(sc => sc.id === id ? { ...sc, status } : sc);
-    return { scenes: next, ...computeDerived(next, s.manuscripts, s.selectedSceneId) };
-  }),
+  handleStatusChange: (id, status) => {
+    const { scenes, setScenes } = get();
+    const current = scenes.find(sc => sc.id === id);
+    if (!current || current.status === status) return;
+    setScenes(scenes.map(sc => sc.id === id ? { ...sc, status } : sc));
+  },
 
   handleAddScene: () => set((s) => {
     const scene: Scene = { ...s.newScene, id: Date.now(), status: "empty" };
@@ -375,6 +446,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       scenes: next,
       newScene: { chapter: "", title: "", synopsis: "" },
       addingScene: false,
+      historyPast: [...s.historyPast, createEditorSnapshot(s)].slice(-HISTORY_LIMIT),
+      historyFuture: [],
       ...computeDerived(next, s.manuscripts, s.selectedSceneId),
     };
   }),
@@ -393,6 +466,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       manuscripts: nextManuscripts,
       selectedSceneId: nextSelectedId,
       confirmDelete: null,
+      historyPast: [...s.historyPast, createEditorSnapshot(s)].slice(-HISTORY_LIMIT),
+      historyFuture: [],
       ...computeDerived(nextScenes, nextManuscripts, nextSelectedId),
     };
   }),
@@ -518,6 +593,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(newScenes, newManuscripts, firstId),
     });
@@ -573,6 +650,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(importedProject.scenes, importedProject.manuscripts, firstId),
     };
@@ -598,6 +677,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(newScenes, newManuscripts, firstNewId),
     });
@@ -651,6 +732,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       showImport: false,
       tab: "write",
       textMetrics: null,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(data.scenes, data.manuscripts, firstId),
     });
@@ -686,6 +769,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       aiHistory: [],
       selectedSceneId: null,
       showProjectShelf: false,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(initialScenes, {}, null),
     };
@@ -713,6 +798,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
       aiHistory: target.aiHistory ?? [],
       selectedSceneId: firstId,
       showProjectShelf: false,
+      historyPast: [],
+      historyFuture: [],
       ...resetAiWorkspaceState(),
       ...computeDerived(target.scenes, target.manuscripts, firstId),
     };
@@ -742,6 +829,8 @@ export const useStudioStore = create<StudioState>((set, get) => ({
         backups: target.backups,
         aiHistory: target.aiHistory ?? [],
         selectedSceneId: firstId,
+        historyPast: [],
+        historyFuture: [],
         ...resetAiWorkspaceState(),
         ...computeDerived(target.scenes, target.manuscripts, firstId),
       };
@@ -832,6 +921,9 @@ export function resetStudioStore() {
     aiApplied: {},
     hintApplied: {},
     aiHistory: [],
+    historyPast: [],
+    historyFuture: [],
+    historyLocked: false,
     selectedScene: null,
     manuscriptText: "",
     wordCount: 0,
