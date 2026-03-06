@@ -11,6 +11,7 @@ export const Header: React.FC = () => {
   } = useStudio();
   const hasProjectTitle = projectTitle.trim().length > 0;
   const [moreOpen, setMoreOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(Boolean(document.fullscreenElement));
   const moreRef = useRef<HTMLDivElement>(null);
 
   // 外側クリックでメニューを閉じる
@@ -24,6 +25,24 @@ export const Header: React.FC = () => {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [moreOpen]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => document.removeEventListener("fullscreenchange", onFullscreenChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else {
+        await document.documentElement.requestFullscreen();
+      }
+    } catch {
+      alert("フルスクリーンに切り替えできませんでした。");
+    }
+  };
 
   return (
     <header style={{ borderBottom: "1px solid #1e2d42", padding: "0 16px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(10,14,26,0.95)", position: "sticky", top: 0, zIndex: 100, height: 44 }}>
@@ -93,6 +112,7 @@ export const Header: React.FC = () => {
         </div>
         <button className="header-priority-btn" onClick={() => saveWithBackup(scenes, settings, manuscripts, projectTitle)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #2a4060", background: "rgba(74,111,165,0.1)", color: "#4a6fa5", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>保存</button>
         <button className="header-priority-btn" onClick={() => setShowBackups(true)} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>履歴</button>
+        <button className="header-priority-btn" onClick={toggleFullscreen} style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: isFullscreen ? "rgba(74,111,165,0.12)" : "transparent", color: isFullscreen ? "#7ab3e0" : "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>{isFullscreen ? "全画面解除" : "全画面"}</button>
         <button onClick={() => setShowImport(true)} className="header-hide-sm" style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>取込</button>
         <button onClick={() => setShowExport(true)} className="header-hide-sm" style={{ padding: "4px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>出力</button>
         {/* スマホのみ表示: 補助操作をまとめた「…」メニュー */}
@@ -103,6 +123,7 @@ export const Header: React.FC = () => {
           >…</button>
           {moreOpen && (
             <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: "#0a0f1a", border: "1px solid #1e2d42", borderRadius: 6, display: "flex", flexDirection: "column", gap: 4, padding: 8, zIndex: 200, minWidth: 80 }}>
+              <button onClick={() => { toggleFullscreen(); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>{isFullscreen ? "全画面解除" : "全画面"}</button>
               <button onClick={() => { setShowImport(true); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>取込</button>
               <button onClick={() => { setShowExport(true); setMoreOpen(false); }} style={{ padding: "6px 10px", borderRadius: 4, border: "1px solid #1e2d42", background: "transparent", color: "#c8d8e8", cursor: "pointer", fontSize: 12, fontFamily: "inherit", textAlign: "left" }}>出力</button>
               {user ? (
