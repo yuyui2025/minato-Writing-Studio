@@ -18,24 +18,79 @@ export const Sidebar: React.FC = () => {
     aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
     aiResults, setAiResults, aiErrors, setAiErrors, aiLoading, setAiLoading, addAiHistory,
   } = useStudio();
+
   const [expandedIds, setExpandedIds] = useState<number[]>([]);
   const [showCurrentOnly, setShowCurrentOnly] = useState(false);
   const [resizing, setResizing] = useState(false);
-  const sidebarMinWidth = 180;
-  const sidebarMaxWidth = 420;
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(0);
 
-  // Drag-and-drop state for structure tab
+  // 構成タブのドラッグ&ドロップ
   const [sidebarDraggingId, setSidebarDraggingId] = useState<number | null>(null);
   const [sidebarDropTarget, setSidebarDropTarget] = useState<{ id: number; position: "before" | "after" } | null>(null);
   const [sidebarDropChapter, setSidebarDropChapter] = useState<string | null>(null);
+
+  const sidebarMinWidth = 180;
+  const sidebarMaxWidth = 420;
+  const effectiveSidebarWidth = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, sidebarWidth || 220));
+
+  // ============================================================
+  // ナビゲーション制御
+  //   折りたたみ時 → 縦タブ扱い（メインペインで表示）
+  //   展開時       → 左ペインのみ表示（メインペインは執筆のまま）
+  // ============================================================
+
+  /** 折りたたみ時のタブ選択：メインペインに反映 */
+  const selectCollapsedTab = (key: SidebarTabKey) => {
+    setSidebarTab(key);
+    setTab(key as TabKey);
+  };
+
+  /** 展開時のタブ選択：左ペインのみ変更 */
+  const selectExpandedTab = (key: SidebarTabKey) => {
+    setSidebarTab(key);
+  };
+
+  /** サイドバーを開く：メインペインを執筆に戻す */
+  const openSidebar = () => {
+    setSidebarOpen(true);
+    setTab("write");
+  };
+
+  /** サイドバーを閉じる：メインペインをサイドバーの表示内容に同期 */
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+    setTab(sidebarTab as TabKey);
+  };
+
+  // ============================================================
+  // リサイズ
+  // ============================================================
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: PointerEvent) => {
+      const delta = e.clientX - dragStartXRef.current;
+      const next = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, dragStartWidthRef.current + delta));
+      setSidebarWidth(next);
+    };
+    const onUp = () => setResizing(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+  }, [resizing, setSidebarWidth]);
+
+  // ============================================================
+  // AI履歴
+  // ============================================================
 
   const toggleExpand = (id: number) => {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   };
 
-  // YUY-27: 追記先シーンへ移動してから追記する（表示シーン以外にも正しく適用）
   const onInsertHistory = (item: AiHistoryItem) => {
     if (item.label === "世界観拡張") {
       setSettings(prev => ({
@@ -44,7 +99,6 @@ export const Sidebar: React.FC = () => {
       }));
       return;
     }
-
     if (item.sceneId && item.sceneId !== selectedSceneId) {
       const targetScene = scenes.find(s => s.id === item.sceneId);
       if (targetScene) {
@@ -57,13 +111,15 @@ export const Sidebar: React.FC = () => {
     handleManuscriptChange(manuscriptText + (manuscriptText ? "\n" : "") + item.content);
   };
 
-  // YUY-26: 該当シーンへ移動
   const onNavigateToScene = (sceneId: number) => {
     const targetScene = scenes.find(s => s.id === sceneId);
     if (targetScene) handleSceneSelect(targetScene);
   };
 
-  // Drag handlers for sidebar structure tab
+  // ============================================================
+  // 構成タブ ドラッグ&ドロップ
+  // ============================================================
+
   const handleStructureDragStart = (e: React.DragEvent, sceneId: number) => {
     setSidebarDraggingId(sceneId);
     e.dataTransfer.effectAllowed = "move";
@@ -105,11 +161,7 @@ export const Sidebar: React.FC = () => {
     const rest = scenes.filter(s => s.id !== sidebarDraggingId);
     const targetIdx = rest.findIndex(s => s.id === targetId);
     const insertIdx = position === "before" ? targetIdx : targetIdx + 1;
-    setScenes([
-      ...rest.slice(0, insertIdx),
-      { ...draggedScene, chapter: targetChapter },
-      ...rest.slice(insertIdx),
-    ]);
+    setScenes([...rest.slice(0, insertIdx), { ...draggedScene, chapter: targetChapter }, ...rest.slice(insertIdx)]);
     setSidebarDraggingId(null);
     setSidebarDropTarget(null);
   };
@@ -124,32 +176,14 @@ export const Sidebar: React.FC = () => {
     const insertIdx = chapterIndices.length > 0
       ? chapterIndices[chapterIndices.length - 1].i + 1
       : rest.length;
-    setScenes([
-      ...rest.slice(0, insertIdx),
-      { ...draggedScene, chapter },
-      ...rest.slice(insertIdx),
-    ]);
+    setScenes([...rest.slice(0, insertIdx), { ...draggedScene, chapter }, ...rest.slice(insertIdx)]);
     setSidebarDraggingId(null);
     setSidebarDropChapter(null);
   };
 
-  const effectiveSidebarWidth = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, sidebarWidth || 220));
-
-  useEffect(() => {
-    if (!resizing) return;
-    const onMove = (e: PointerEvent) => {
-      const delta = e.clientX - dragStartXRef.current;
-      const next = Math.max(sidebarMinWidth, Math.min(sidebarMaxWidth, dragStartWidthRef.current + delta));
-      setSidebarWidth(next);
-    };
-    const onUp = () => setResizing(false);
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    return () => {
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-    };
-  }, [resizing, setSidebarWidth]);
+  // ============================================================
+  // レンダリング
+  // ============================================================
 
   return (
     <aside style={{
@@ -162,9 +196,12 @@ export const Sidebar: React.FC = () => {
       transition: "width 0.2s ease",
       display: "flex", flexDirection: "column",
       ...(sidebarOpen && sidebarFloat ? {
-        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51, width: effectiveSidebarWidth, boxShadow: "4px 0 20px rgba(0,0,0,0.6)"
+        position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51,
+        width: effectiveSidebarWidth, boxShadow: "4px 0 20px rgba(0,0,0,0.6)",
       } : {}),
     }}>
+
+      {/* リサイズハンドル（固定モード展開時のみ） */}
       {sidebarOpen && !sidebarFloat && (
         <div
           onPointerDown={(e) => {
@@ -173,34 +210,25 @@ export const Sidebar: React.FC = () => {
             setResizing(true);
           }}
           style={{
-            position: "absolute",
-            top: 0,
-            right: -5,
-            bottom: 0,
-            width: 12,
+            position: "absolute", top: 0, right: -5, bottom: 0, width: 12,
             cursor: "col-resize",
             background: resizing ? "rgba(74,111,165,0.35)" : "rgba(74,111,165,0.15)",
-            borderLeft: "1px solid #355277",
-            borderRight: "1px solid #355277",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 52,
+            borderLeft: "1px solid #355277", borderRight: "1px solid #355277",
+            display: "flex", alignItems: "center", justifyContent: "center", zIndex: 52,
           }}
           title="ドラッグして幅を変更"
         >
           <span style={{ color: "#6f95ba", fontSize: 9, letterSpacing: 0.5, userSelect: "none" }}>⋮⋮</span>
         </div>
       )}
+
       {sidebarOpen ? (
+        /* ====== 展開状態 ====== */
         <>
-          {/* Sidebar header: tabs + close */}
+          {/* ヘッダー：タブ + フロート切替 + 閉じる */}
           <div style={{ display: "flex", alignItems: "center", borderBottom: "1px solid #1e2d42", flexShrink: 0 }}>
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
-              <button key={key} onClick={() => {
-                setSidebarTab(key);
-                // サイドバータブ切り替えはメインペインに影響させない（固定・フロート共通）
-              }} style={{
+              <button key={key} onClick={() => selectExpandedTab(key)} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
                 color: sidebarTab === key ? "#7ab3e0" : "#2a4060",
@@ -208,10 +236,10 @@ export const Sidebar: React.FC = () => {
               }}>{label}</button>
             ))}
             <button onClick={() => setSidebarFloat(!sidebarFloat)} style={{ padding: "8px 8px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: sidebarFloat ? "#4a6fa5" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit", flexShrink: 0 }} title={sidebarFloat ? "固定表示に切替" : "フロート表示に切替"}>{sidebarFloat ? "浮" : "固"}</button>
-            <button onClick={() => setSidebarOpen(false)} style={{ padding: "8px 10px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: "#2a4060", cursor: "pointer", fontSize: 11, fontFamily: "inherit", flexShrink: 0 }}>◀</button>
+            <button onClick={closeSidebar} style={{ padding: "8px 10px", background: "transparent", border: "none", borderLeft: "1px solid #1e2d42", color: "#2a4060", cursor: "pointer", fontSize: 11, fontFamily: "inherit", flexShrink: 0 }}>◀</button>
           </div>
 
-          {/* Sidebar content: 執筆 = scene list */}
+          {/* 執筆タブ：シーン一覧 */}
           {sidebarTab === "write" && <>
             <div style={{ padding: "8px 12px 4px" }}>
               <input
@@ -249,7 +277,7 @@ export const Sidebar: React.FC = () => {
             </div>
           </>}
 
-          {/* Sidebar content: 構成 = chapter tree with drag-and-drop */}
+          {/* 構成タブ：チャプターツリー＋ドラッグ&ドロップ */}
           {sidebarTab === "structure" && (() => {
             const chapters = scenes.reduce((acc, scene) => {
               const ch = scene.chapter || "未分類";
@@ -275,8 +303,7 @@ export const Sidebar: React.FC = () => {
                         display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingBottom: 4,
                         borderBottom: `1px solid ${isChapterDropTarget ? "#4a6fa5" : "#1a2535"}`,
                         background: isChapterDropTarget ? "rgba(74,111,165,0.06)" : "transparent",
-                        borderRadius: isChapterDropTarget ? 3 : 0,
-                        transition: "background 0.1s",
+                        borderRadius: isChapterDropTarget ? 3 : 0, transition: "background 0.1s",
                       }}>
                         <span style={{ width: 7, height: 7, borderRadius: "50%", flexShrink: 0, background: chColor, boxShadow: `0 0 5px ${chColor}66` }} />
                         <span style={{ fontSize: 11, color: "#c8d8e8", fontWeight: 600, flex: 1 }}>{chapter || "未分類"}</span>
@@ -289,9 +316,7 @@ export const Sidebar: React.FC = () => {
                           const isDragging = sidebarDraggingId === scene.id;
                           return (
                             <div key={scene.id}>
-                              {isDropBefore && (
-                                <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginBottom: 2 }} />
-                              )}
+                              {isDropBefore && <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginBottom: 2 }} />}
                               <div
                                 draggable
                                 onDragStart={e => handleStructureDragStart(e, scene.id)}
@@ -304,18 +329,14 @@ export const Sidebar: React.FC = () => {
                                   cursor: "grab",
                                   background: selectedSceneId === scene.id ? "rgba(74,111,165,0.1)" : "transparent",
                                   border: "1px solid", borderColor: selectedSceneId === scene.id ? "#4a6fa5" : "transparent",
-                                  opacity: isDragging ? 0.4 : 1,
-                                  transition: "opacity 0.15s",
-                                  userSelect: "none",
+                                  opacity: isDragging ? 0.4 : 1, transition: "opacity 0.15s", userSelect: "none",
                                 }}
                               >
                                 <span style={{ fontSize: 9, color: "#2a4060", flexShrink: 0 }}>⠿</span>
                                 <span style={{ width: 5, height: 5, borderRadius: "50%", flexShrink: 0, background: statusColors[scene.status] }} />
                                 <span style={{ fontSize: 11, color: "#8ab0cc", flex: 1 }}>{scene.title ? scene.title : <span style={{ color: "#2a4060", fontStyle: "italic" }}>無題</span>}</span>
                               </div>
-                              {isDropAfter && (
-                                <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginTop: 2 }} />
-                              )}
+                              {isDropAfter && <div style={{ height: 2, background: "#4a6fa5", borderRadius: 1, marginTop: 2 }} />}
                             </div>
                           );
                         })}
@@ -348,7 +369,7 @@ export const Sidebar: React.FC = () => {
             );
           })()}
 
-          {/* Sidebar content: 設定 */}
+          {/* 世界観タブ */}
           {sidebarTab === "settings" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 4, marginBottom: 4 }}>
@@ -394,6 +415,8 @@ export const Sidebar: React.FC = () => {
               })()}
             </div>
           )}
+
+          {/* 環境タブ */}
           {sidebarTab === "prefs" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
@@ -433,7 +456,6 @@ export const Sidebar: React.FC = () => {
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
                 <span style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", flex: 1 }}>AI 履歴</span>
-                {/* YUY-25: 現在シーンのみフィルタ */}
                 {selectedSceneId && (
                   <button
                     onClick={() => setShowCurrentOnly(v => !v)}
@@ -476,7 +498,6 @@ export const Sidebar: React.FC = () => {
                         {item.content}
                       </div>
                       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                        {/* YUY-27: 追記先シーンへ移動してから追記 */}
                         <button
                           onClick={() => onInsertHistory(item)}
                           style={{ fontSize: 10, padding: "2px 10px", background: "rgba(42,128,96,0.12)", border: "1px solid #2a6050", color: "#5ab090", borderRadius: 3, cursor: "pointer", fontFamily: "inherit" }}
@@ -484,7 +505,6 @@ export const Sidebar: React.FC = () => {
                         >
                           {isDifferentScene ? "移動+追記" : "追記"}
                         </button>
-                        {/* YUY-26: シーン移動ボタン */}
                         {item.sceneId && (
                           <button
                             onClick={() => onNavigateToScene(item.sceneId!)}
@@ -509,22 +529,17 @@ export const Sidebar: React.FC = () => {
           )}
         </>
       ) : (
+        /* ====== 折りたたみ状態：縦タブとして機能 ====== */
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
-          <button onClick={() => {
-            setSidebarOpen(true);
-            setTab("write"); // 展開時はメインペインを執筆に戻す
-          }} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
-          {[
-            { key: "write", label: "執筆" },
-            { key: "structure", label: "構成" },
-            { key: "settings", label: "世界観" },
-            { key: "prefs", label: "環境" },
-            { key: "ai", label: "AI履歴" },
-          ].map(({ key, label }) => (
-            <button key={key} onClick={() => {
-              setSidebarTab(key as SidebarTabKey);
-              setTab(key as TabKey); // 折りたたみ時は縦タブ扱い：メインペインに表示
-            }} style={{
+          {/* 展開ボタン */}
+          <button
+            onClick={openSidebar}
+            style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}
+          >▶</button>
+
+          {/* 縦タブ */}
+          {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI履歴"]] as [SidebarTabKey, string][]).map(([key, label]) => (
+            <button key={key} onClick={() => selectCollapsedTab(key)} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
               color: tab === key ? "#7ab3e0" : "#2a4060",
@@ -535,7 +550,7 @@ export const Sidebar: React.FC = () => {
             }}>{label}</button>
           ))}
 
-          {/* 折りたたみ時の簡易履歴表示 */}
+          {/* 簡易AI履歴 */}
           {aiHistory.length > 0 && (
             <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
               <div style={{ fontSize: 8, color: "#1a2535", writingMode: "vertical-rl", letterSpacing: 1 }}>RECENT AI</div>
@@ -543,15 +558,14 @@ export const Sidebar: React.FC = () => {
                 <div
                   key={item.id}
                   onClick={() => {
-                    setSidebarTab("ai");
-                    setTab("ai"); // 折りたたみ時は縦タブ扱い：メインペインに表示
+                    selectCollapsedTab("ai");
                     if (!expandedIds.includes(item.id)) toggleExpand(item.id);
                   }}
                   title={`${item.label}: ${item.content.substring(0, 20)}...`}
                   style={{
                     width: 20, height: 20, borderRadius: "50%", background: "#0a0f1a", border: "1px solid #1a2535",
                     display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer",
-                    fontSize: 10, color: "#4a6fa5", fontWeight: "bold"
+                    fontSize: 10, color: "#4a6fa5", fontWeight: "bold",
                   }}
                 >
                   {item.label.substring(0, 1)}
