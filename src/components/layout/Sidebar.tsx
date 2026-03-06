@@ -199,8 +199,7 @@ export const Sidebar: React.FC = () => {
             {([["write","執筆"],["structure","構成"],["settings","世界観"],["prefs","環境"],["ai","AI"]] as [SidebarTabKey, string][]).map(([key, label]) => (
               <button key={key} onClick={() => {
                 setSidebarTab(key);
-                // YUY-59: keep main pane unchanged while sidebar is floating
-                if (!sidebarFloat) setTab(key as TabKey);
+                // サイドバータブ切り替えはメインペインに影響させない（固定・フロート共通）
               }} style={{
                 flex: 1, padding: "8px 0", background: "transparent", border: "none",
                 borderBottom: sidebarTab === key ? "2px solid #4a6fa5" : "2px solid transparent",
@@ -513,7 +512,6 @@ export const Sidebar: React.FC = () => {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", paddingTop: 4 }}>
           <button onClick={() => {
             setSidebarOpen(true);
-            if (!sidebarFloat) setTab("write");
           }} style={{ padding: "8px 0", width: "100%", background: "transparent", border: "none", borderBottom: "1px solid #1e2d42", color: "#3a5570", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>▶</button>
           {[
             { key: "write", label: "執筆" },
@@ -524,8 +522,7 @@ export const Sidebar: React.FC = () => {
           ].map(({ key, label }) => (
             <button key={key} onClick={() => {
               setSidebarTab(key as SidebarTabKey);
-              if (sidebarFloat) setSidebarOpen(true);
-              else setTab(key as TabKey);
+              setSidebarOpen(true);
             }} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
