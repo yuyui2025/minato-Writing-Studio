@@ -522,7 +522,7 @@ export const Sidebar: React.FC = () => {
           ].map(({ key, label }) => (
             <button key={key} onClick={() => {
               setSidebarTab(key as SidebarTabKey);
-              setSidebarOpen(true);
+              setTab(key as TabKey); // 折りたたみ時は縦タブ扱い：メインペインに表示
             }} style={{
               padding: "14px 0", width: "100%", border: "none",
               borderBottom: "1px solid #0e1520",
@@ -543,7 +543,7 @@ export const Sidebar: React.FC = () => {
                   key={item.id}
                   onClick={() => {
                     setSidebarTab("ai");
-                    setSidebarOpen(true);
+                    setTab("ai"); // 折りたたみ時は縦タブ扱い：メインペインに表示
                     if (!expandedIds.includes(item.id)) toggleExpand(item.id);
                   }}
                   title={`${item.label}: ${item.content.substring(0, 20)}...`}
