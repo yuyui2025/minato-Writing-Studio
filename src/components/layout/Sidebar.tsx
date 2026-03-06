@@ -543,8 +543,7 @@ export const Sidebar: React.FC = () => {
                   key={item.id}
                   onClick={() => {
                     setSidebarTab("ai");
-                    if (sidebarFloat) setSidebarOpen(true);
-                    else setTab("ai");
+                    setSidebarOpen(true);
                     if (!expandedIds.includes(item.id)) toggleExpand(item.id);
                   }}
                   title={`${item.label}: ${item.content.substring(0, 20)}...`}
