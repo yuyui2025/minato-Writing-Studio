@@ -144,14 +144,14 @@ function Studio() {
       {showProjectShelf && <ProjectShelfModal />}
       <Header />
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
+      <div id="studio-main-shell" style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
         {/* フロートオーバーレイ背景 */}
         {((sidebarOpen && sidebarFloat) || (showSettings && tab === "write")) && (
           <div onClick={() => { setSidebarOpen(false); setShowSettings(false); }} style={{ position: "absolute", inset: 0, zIndex: 50, background: "rgba(0,0,0,0.4)" }} />
         )}
         <Sidebar />
 
-        <main style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <main id={tab === "write" ? "studio-write-stage" : undefined} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: "#0a0e1a" }}>
           {tab === "write" && <WriteView />}
           {tab === "structure" && <StructureView />}
           {tab === "settings" && <SettingsView />}
