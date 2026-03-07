@@ -19,8 +19,6 @@ export const WriteView: React.FC = () => {
   const [footerOpen, setFooterOpen] = useState(true);
   const canUndo = historyPast.length > 0;
   const canRedo = historyFuture.length > 0;
-  const currentStatusIndex = sceneStatusOrder.indexOf(selectedScene.status);
-  const nextStatus = sceneStatusOrder[(currentStatusIndex + 1) % sceneStatusOrder.length];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,6 +53,9 @@ export const WriteView: React.FC = () => {
       </div>
     );
   }
+
+  const currentStatusIndex = sceneStatusOrder.indexOf(selectedScene.status);
+  const nextStatus = sceneStatusOrder[(currentStatusIndex + 1) % sceneStatusOrder.length];
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
