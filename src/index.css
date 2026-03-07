@@ -29,3 +29,41 @@
   .header-actions { gap: 6px !important; }
   .header-priority-btn { padding: 4px 8px !important; font-size: 10px !important; }
 }
+
+.write-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.write-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .write-toolbar {
+    align-items: stretch;
+  }
+
+  .write-toolbar-group {
+    width: 100%;
+  }
+
+  .write-toolbar-group-secondary {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 540px) {
+  .write-toolbar-group-primary > button,
+  .write-toolbar-group-secondary > button {
+    flex: 1 1 120px;
+    justify-content: center;
+  }
+}

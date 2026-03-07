@@ -7,7 +7,7 @@ export const Header: React.FC = () => {
     projectTitle, setProjectTitle, editingTitle, setEditingTitle,
     saveStatus, lastSavedTime, scenes, settings, manuscripts,
     saveWithBackup, setShowBackups, setShowExport, setShowImport, setShowProjectShelf,
-    user,
+    user, tab,
   } = useStudio();
   const hasProjectTitle = projectTitle.trim().length > 0;
   const [moreOpen, setMoreOpen] = useState(false);
@@ -37,7 +37,11 @@ export const Header: React.FC = () => {
       if (document.fullscreenElement) {
         await document.exitFullscreen();
       } else {
-        await document.documentElement.requestFullscreen();
+        const fullscreenTarget =
+          (tab === "write" ? document.getElementById("studio-write-stage") : null) ??
+          document.getElementById("studio-main-shell") ??
+          document.documentElement;
+        await fullscreenTarget.requestFullscreen();
       }
     } catch {
       alert("フルスクリーンに切り替えできませんでした。");

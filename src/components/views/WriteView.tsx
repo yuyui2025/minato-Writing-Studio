@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { VerticalEditor } from "../editor/VerticalEditor";
 import { AiPanel } from "../ai/AiPanel";
-import { statusColors, statusLabels } from "../../constants";
+import { sceneStatusOrder, statusColors, statusLabels } from "../../constants";
 import { useStudio } from "../../contexts/StudioContext";
 
 export const WriteView: React.FC = () => {
@@ -19,6 +19,8 @@ export const WriteView: React.FC = () => {
   const [footerOpen, setFooterOpen] = useState(true);
   const canUndo = historyPast.length > 0;
   const canRedo = historyFuture.length > 0;
+  const currentStatusIndex = sceneStatusOrder.indexOf(selectedScene.status);
+  const nextStatus = sceneStatusOrder[(currentStatusIndex + 1) % sceneStatusOrder.length];
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -58,7 +60,7 @@ export const WriteView: React.FC = () => {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* Scrollable writing area */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 12px", display: "flex", flexDirection: "column" }}>
-        <div style={{ position: "relative", marginBottom: 12 }}>
+        <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 10 }}>
           <div style={{ paddingRight: 0 }}>
             <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: 4 }}>{selectedScene.chapter}</div>
             {editingSceneTitle ? (
@@ -91,48 +93,73 @@ export const WriteView: React.FC = () => {
               </div>
             )}
           </div>
-          <div style={{ position: "absolute", top: 0, right: 0, display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            {(["empty", "draft", "done"] as const).map(s => (
-              <button key={s} onClick={() => handleStatusChange(selectedScene.id, s)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: selectedScene.status === s ? statusColors[s] : "#1e2d42", background: selectedScene.status === s ? `${statusColors[s]}22` : "transparent", color: selectedScene.status === s ? statusColors[s] : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>{statusLabels[s]}</button>
-            ))}
-            <button
-              onClick={undo}
-              disabled={!canUndo}
-              title="元に戻す (Ctrl/Cmd+Z)"
-              style={{
-                padding: "4px 10px",
-                borderRadius: 3,
-                border: "1px solid",
-                borderColor: canUndo ? "#2a4060" : "#0f1725",
-                background: canUndo ? "rgba(74,111,165,0.1)" : "transparent",
-                color: canUndo ? "#5b7ea7" : "#1a2535",
-                cursor: canUndo ? "pointer" : "default",
-                fontSize: 10,
-                fontFamily: "inherit",
-              }}
-            >
-              Undo
-            </button>
-            <button
-              onClick={redo}
-              disabled={!canRedo}
-              title="やり直し (Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y)"
-              style={{
-                padding: "4px 10px",
-                borderRadius: 3,
-                border: "1px solid",
-                borderColor: canRedo ? "#2a4060" : "#0f1725",
-                background: canRedo ? "rgba(74,111,165,0.1)" : "transparent",
-                color: canRedo ? "#5b7ea7" : "#1a2535",
-                cursor: canRedo ? "pointer" : "default",
-                fontSize: 10,
-                fontFamily: "inherit",
-              }}
-            >
-              Redo
-            </button>
-            <button onClick={() => setVerticalPreview(!verticalPreview)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid", borderColor: verticalPreview ? "#4a6fa5" : "#1e2d42", background: verticalPreview ? "rgba(74,111,165,0.15)" : "transparent", color: verticalPreview ? "#7ab3e0" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>縦組</button>
-            <button onClick={() => handleDeleteScene(selectedScene.id)} style={{ padding: "4px 10px", borderRadius: 3, border: "1px solid #1e2d42", background: "transparent", color: "#3a2020", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>削除</button>
+          <div className="write-toolbar">
+            <div className="write-toolbar-group write-toolbar-group-primary">
+              <button
+                onClick={() => handleStatusChange(selectedScene.id, nextStatus)}
+                title={`現在: ${statusLabels[selectedScene.status]} / クリックで ${statusLabels[nextStatus]} に切替`}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  border: `1px solid ${statusColors[selectedScene.status]}`,
+                  background: `${statusColors[selectedScene.status]}18`,
+                  color: statusColors[selectedScene.status],
+                  cursor: "pointer",
+                  fontSize: 11,
+                  fontFamily: "inherit",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: statusColors[selectedScene.status], boxShadow: `0 0 8px ${statusColors[selectedScene.status]}88` }} />
+                {statusLabels[selectedScene.status]}
+                <span style={{ color: "#6f8db5", fontSize: 10 }}>→ {statusLabels[nextStatus]}</span>
+              </button>
+              <button
+                onClick={undo}
+                disabled={!canUndo}
+                title="元に戻す (Ctrl/Cmd+Z)"
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid",
+                  borderColor: canUndo ? "#2a4060" : "#0f1725",
+                  background: canUndo ? "rgba(74,111,165,0.1)" : "transparent",
+                  color: canUndo ? "#5b7ea7" : "#1a2535",
+                  cursor: canUndo ? "pointer" : "default",
+                  fontSize: 10,
+                  fontFamily: "inherit",
+                  minWidth: 68,
+                }}
+              >
+                Undo
+              </button>
+              <button
+                onClick={redo}
+                disabled={!canRedo}
+                title="やり直し (Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y)"
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 999,
+                  border: "1px solid",
+                  borderColor: canRedo ? "#2a4060" : "#0f1725",
+                  background: canRedo ? "rgba(74,111,165,0.1)" : "transparent",
+                  color: canRedo ? "#5b7ea7" : "#1a2535",
+                  cursor: canRedo ? "pointer" : "default",
+                  fontSize: 10,
+                  fontFamily: "inherit",
+                  minWidth: 68,
+                }}
+              >
+                Redo
+              </button>
+            </div>
+            <div className="write-toolbar-group write-toolbar-group-secondary">
+              <button onClick={() => setVerticalPreview(!verticalPreview)} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid", borderColor: verticalPreview ? "#4a6fa5" : "#1e2d42", background: verticalPreview ? "rgba(74,111,165,0.15)" : "transparent", color: verticalPreview ? "#7ab3e0" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>縦組</button>
+              <button onClick={() => handleDeleteScene(selectedScene.id)} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid #1e2d42", background: "transparent", color: "#3a2020", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>削除</button>
+            </div>
           </div>
         </div>
         {verticalPreview ? (

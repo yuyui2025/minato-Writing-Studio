@@ -34,6 +34,8 @@ describe("Header", () => {
       setShowImport: vi.fn(),
       setShowExport: vi.fn(),
       setShowProjectShelf: vi.fn(),
+      user: null,
+      tab: "write",
     });
 
     render(<Header />);
@@ -61,6 +63,8 @@ describe("Header", () => {
       setShowImport: vi.fn(),
       setShowExport: vi.fn(),
       setShowProjectShelf: vi.fn(),
+      user: null,
+      tab: "write",
     });
 
     render(<Header />);
@@ -68,5 +72,38 @@ describe("Header", () => {
     expect(screen.getByRole("button", { name: "プロジェクト切替を開く" })).toBeInTheDocument();
     expect(screen.getByText("プロジェクト")).toBeInTheDocument();
     expect(screen.getByText("切替")).toBeInTheDocument();
+  });
+
+  test("requests fullscreen for the write stage instead of the whole document", () => {
+    const requestFullscreen = vi.fn().mockResolvedValue(undefined);
+    const writeStage = document.createElement("main");
+    writeStage.id = "studio-write-stage";
+    (writeStage as any).requestFullscreen = requestFullscreen;
+    document.body.appendChild(writeStage);
+
+    (useStudio as any).mockReturnValue({
+      projectTitle: "Project A",
+      setProjectTitle: vi.fn(),
+      editingTitle: false,
+      setEditingTitle: vi.fn(),
+      saveStatus: "saved",
+      lastSavedTime: null,
+      scenes: [],
+      settings: { world: "", characters: "", theme: "" },
+      manuscripts: {},
+      saveWithBackup: vi.fn(),
+      setShowBackups: vi.fn(),
+      setShowImport: vi.fn(),
+      setShowExport: vi.fn(),
+      setShowProjectShelf: vi.fn(),
+      user: null,
+      tab: "write",
+    });
+
+    render(<Header />);
+    fireEvent.click(screen.getByRole("button", { name: "全画面" }));
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1);
+    writeStage.remove();
   });
 });
