@@ -1,6 +1,7 @@
 import React from "react";
 import { renderHook, act, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { User } from "@supabase/supabase-js";
 import type { Scene } from "../types";
 
@@ -27,9 +28,14 @@ const mockUser = { id: "user-1" } as User;
 // テスト用の汎用シーン（作品内容に依存しない）
 const testScene: Scene = { id: 1, chapter: "第一章", title: "テストシーン", status: "empty", synopsis: "" };
 
-const wrapper = ({ children }: { children: React.ReactNode }) => (
-  <StudioProvider user={mockUser}>{children}</StudioProvider>
-);
+const wrapper = ({ children }: { children: React.ReactNode }) => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+  return (
+    <QueryClientProvider client={client}>
+      <StudioProvider user={mockUser}>{children}</StudioProvider>
+    </QueryClientProvider>
+  );
+};
 
 describe("StudioContext", () => {
   beforeEach(() => {

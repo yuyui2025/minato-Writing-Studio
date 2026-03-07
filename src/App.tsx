@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "./supabase";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+      refetchOnWindowFocus: false,
+      retry: false,
+    },
+  },
+});
 
 import { AiAssistant } from "./components/ai/AiAssistant";
 import { Header } from "./components/layout/Header";
@@ -82,20 +93,24 @@ export default function App() {
 
   if (!user && launchMode === "offline") {
     return (
-      <ErrorBoundary>
-        <StudioProvider user={null}>
-          <Studio />
-        </StudioProvider>
-      </ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <StudioProvider user={null}>
+            <Studio />
+          </StudioProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
     );
   }
 
   return (
-    <ErrorBoundary>
-      <StudioProvider user={user}>
-        <Studio />
-      </StudioProvider>
-    </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <StudioProvider user={user}>
+          <Studio />
+        </StudioProvider>
+      </ErrorBoundary>
+    </QueryClientProvider>
   );
 }
 

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { callAnthropic, AiError } from "../../utils/ai";
 
 type AiPanelProps = {
@@ -37,28 +38,30 @@ export function AiPanel({
     if (result) setDismissed(false);
   }, [result]);
 
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    onError("");
-    try {
-      const text = await callAnthropic(prompt);
-      onResult(text);
-    } catch (e) {
-      if (e instanceof AiError) {
-        onError(e.message);
-      } else {
-        onError("不明なエラーが発生しました");
-      }
-    }
-    onLoading(false);
-  };
+  const mutation = useMutation({
+    mutationFn: () => callAnthropic(prompt),
+    onMutate: () => {
+      onResult("");
+      onError("");
+      onLoading(true);
+    },
+    onSuccess: (text) => onResult(text),
+    onError: (e) => {
+      onError(e instanceof AiError ? e.message : "不明なエラーが発生しました");
+    },
+    onSettled: () => onLoading(false),
+    retry: (count, e) => {
+      if (e instanceof AiError) return false;
+      return count < 2;
+    },
+    retryDelay: (attempt) => [1000, 2000][attempt] ?? 2000,
+  });
 
   return (
     <div style={{ marginTop: compact ? 0 : 12 }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
-          onClick={run}
+          onClick={() => mutation.mutate()}
           disabled={loading}
           style={{
             padding: compact ? "4px 10px" : "6px 16px",

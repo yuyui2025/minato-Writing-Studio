@@ -1,6 +1,13 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { PolishPanel } from "../components/ai/PolishPanel";
+
+function renderWithQuery(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 vi.mock("../utils/ai", () => ({
   callAnthropic: vi.fn(),
@@ -33,22 +40,22 @@ describe("PolishPanel", () => {
   });
 
   it("renders the run button", () => {
-    render(<PolishPanel {...defaultProps} />);
+    renderWithQuery(<PolishPanel {...defaultProps} />);
     expect(screen.getByRole("button", { name: /文章を推敲/ })).toBeInTheDocument();
   });
 
   it("button shows '生成中…' when loading", () => {
-    render(<PolishPanel {...defaultProps} loading={true} />);
+    renderWithQuery(<PolishPanel {...defaultProps} loading={true} />);
     expect(screen.getByText("生成中…")).toBeInTheDocument();
   });
 
   it("button shows '再試行' when there is an error", () => {
-    render(<PolishPanel {...defaultProps} error="エラー発生" />);
+    renderWithQuery(<PolishPanel {...defaultProps} error="エラー発生" />);
     expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
   });
 
   it("displays error message when error prop is set", () => {
-    render(<PolishPanel {...defaultProps} error="接続エラーが発生しました" />);
+    renderWithQuery(<PolishPanel {...defaultProps} error="接続エラーが発生しました" />);
     expect(screen.getByText(/接続エラーが発生しました/)).toBeInTheDocument();
   });
 
@@ -56,14 +63,14 @@ describe("PolishPanel", () => {
     const suggestions = [
       { original: "元の表現", suggestion: "改善案", reason: "理由" },
     ];
-    render(<PolishPanel {...defaultProps} result={JSON.stringify(suggestions)} />);
+    renderWithQuery(<PolishPanel {...defaultProps} result={JSON.stringify(suggestions)} />);
     expect(screen.getByText("元の表現")).toBeInTheDocument();
     expect(screen.getByText("→ 改善案")).toBeInTheDocument();
     expect(screen.getByText("理由")).toBeInTheDocument();
   });
 
   it("shows parse failure message when result is invalid JSON", () => {
-    render(<PolishPanel {...defaultProps} result="invalid json {" />);
+    renderWithQuery(<PolishPanel {...defaultProps} result="invalid json {" />);
     expect(screen.getByText(/パース失敗/)).toBeInTheDocument();
   });
 
@@ -71,7 +78,7 @@ describe("PolishPanel", () => {
     const mockResult = JSON.stringify([{ original: "a", suggestion: "b", reason: "c" }]);
     vi.mocked(callAnthropic).mockResolvedValueOnce(mockResult);
 
-    render(<PolishPanel {...defaultProps} />);
+    renderWithQuery(<PolishPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /文章を推敲/ }));
 
     await waitFor(() => {
@@ -84,7 +91,7 @@ describe("PolishPanel", () => {
   it("calls onError when callAnthropic throws AiError", async () => {
     vi.mocked(callAnthropic).mockRejectedValueOnce(new AiError("API制限エラー"));
 
-    render(<PolishPanel {...defaultProps} />);
+    renderWithQuery(<PolishPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /文章を推敲/ }));
 
     await waitFor(() => {
@@ -96,7 +103,7 @@ describe("PolishPanel", () => {
     const suggestions = [
       { original: "元テキスト", suggestion: "改善テキスト", reason: "理由" },
     ];
-    render(
+    renderWithQuery(
       <PolishPanel
         {...defaultProps}
         result={JSON.stringify(suggestions)}
@@ -112,7 +119,7 @@ describe("PolishPanel", () => {
     const suggestions = [
       { original: "元テキスト", suggestion: "改善テキスト", reason: "理由" },
     ];
-    render(
+    renderWithQuery(
       <PolishPanel
         {...defaultProps}
         result={JSON.stringify(suggestions)}
@@ -130,7 +137,7 @@ describe("PolishPanel", () => {
     const suggestions = [
       { original: "元テキスト", suggestion: "改善テキスト", reason: "理由" },
     ];
-    render(
+    renderWithQuery(
       <PolishPanel
         {...defaultProps}
         result={JSON.stringify(suggestions)}
