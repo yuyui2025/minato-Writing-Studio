@@ -50,9 +50,11 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   const { data: loadedData, isFetching: isInitLoading } = useQuery({
     queryKey: ["studio-init", user?.id ?? "offline"],
     queryFn: () => storageGetMany(STORAGE_KEYS as unknown as string[]),
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnMount: false,
+    // gcTime: 0 でアンマウント時にキャッシュを即破棄する。
+    // これにより offline→authenticated→offline や user-A→user-B→user-A のように
+    // 同じキーが再利用された場合でも、必ず localStorage から再読み込みされる。
+    gcTime: 0,
+    staleTime: 0,
     refetchOnWindowFocus: false,
   });
 
