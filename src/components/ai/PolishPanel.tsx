@@ -1,4 +1,5 @@
 import { useMemo, Dispatch, SetStateAction } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { PolishSuggestion, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -37,29 +38,33 @@ export function PolishPanel({
     }
   }, [result]);
 
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    onError("");
-    onApplied({});
-    try {
+  const mutation = useMutation({
+    mutationFn: () => {
       const prompt = `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}`;
-      const text = await callAnthropic(prompt);
-      onResult(text);
-    } catch (e) {
-      if (e instanceof AiError) {
-        onError(e.message);
-      } else {
-        onError("不明なエラーが発生しました");
-      }
-    }
-    onLoading(false);
-  };
+      return callAnthropic(prompt);
+    },
+    onMutate: () => {
+      onResult("");
+      onError("");
+      onApplied({});
+      onLoading(true);
+    },
+    onSuccess: (text) => onResult(text),
+    onError: (e) => {
+      onError(e instanceof AiError ? e.message : "不明なエラーが発生しました");
+    },
+    onSettled: () => onLoading(false),
+    retry: (count, e) => {
+      if (e instanceof AiError) return false;
+      return count < 2;
+    },
+    retryDelay: (attempt) => [1000, 2000][attempt] ?? 2000,
+  });
 
   return (
     <div>
       <button
-        onClick={run}
+        onClick={() => mutation.mutate()}
         disabled={loading}
         style={{
           padding: "6px 16px",

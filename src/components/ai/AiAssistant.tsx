@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
@@ -34,24 +35,34 @@ export const AiAssistant: React.FC = () => {
   const dragStartXRef = useRef(0);
   const dragStartWidthRef = useRef(0);
 
-  const runFreeInstruct = async () => {
-    if (!freeText.trim()) return;
-    setAiLoading(l => ({ ...l, freeInstruct: true }));
-    setAiResults(r => ({ ...r, freeInstruct: "" }));
-    setAiErrors(e => ({ ...e, freeInstruct: "" }));
-    const context = `【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene ? `${selectedScene.chapter} / ${selectedScene.title}` : "未選択"}\n【本文末尾】${manuscriptText.slice(-300)}\n\n【指示】${freeText}`;
-    try {
-      const text = await callAnthropic(context);
+  const freeInstructMutation = useMutation({
+    mutationFn: () => {
+      const context = `【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene ? `${selectedScene.chapter} / ${selectedScene.title}` : "未選択"}\n【本文末尾】${manuscriptText.slice(-300)}\n\n【指示】${freeText}`;
+      return callAnthropic(context);
+    },
+    onMutate: () => {
+      setAiResults(r => ({ ...r, freeInstruct: "" }));
+      setAiErrors(e => ({ ...e, freeInstruct: "" }));
+      setAiLoading(l => ({ ...l, freeInstruct: true }));
+    },
+    onSuccess: (text) => {
       setAiResults(r => ({ ...r, freeInstruct: text }));
       if (text) addAiHistory("自由指示", text, selectedScene?.title, selectedScene?.id);
-    } catch (e) {
-      if (e instanceof AiError) {
-        setAiErrors(er => ({ ...er, freeInstruct: e.message }));
-      } else {
-        setAiErrors(er => ({ ...er, freeInstruct: "不明なエラーが発生しました" }));
-      }
-    }
-    setAiLoading(l => ({ ...l, freeInstruct: false }));
+    },
+    onError: (e) => {
+      setAiErrors(er => ({ ...er, freeInstruct: e instanceof AiError ? e.message : "不明なエラーが発生しました" }));
+    },
+    onSettled: () => setAiLoading(l => ({ ...l, freeInstruct: false })),
+    retry: (count, e) => {
+      if (e instanceof AiError) return false;
+      return count < 2;
+    },
+    retryDelay: (attempt) => [1000, 2000][attempt] ?? 2000,
+  });
+
+  const runFreeInstruct = () => {
+    if (!freeText.trim()) return;
+    freeInstructMutation.mutate();
   };
 
   if (!selectedScene) return null;

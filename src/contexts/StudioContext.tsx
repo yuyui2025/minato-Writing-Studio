@@ -8,6 +8,7 @@
  */
 import React, { useEffect, useRef } from "react";
 import type { User } from "@supabase/supabase-js";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { storageGetMany, storageSet } from "../utils/storage";
 import type { Scene, Settings, Manuscripts, EditorSettings, AiHistoryItem, Backup, ProjectRecord } from "../types";
 import { useStudioStore } from "../stores/useStudioStore";
@@ -19,7 +20,7 @@ import { analyzeText } from "../utils/textAnalyzer";
 
 export function StudioProvider({ children, user }: { children: React.ReactNode; user: User | null }) {
   const store = useStudioStore();
-  const syncAllRef = useRef<() => Promise<void>>(async () => {});
+  const syncAllRef = useRef<() => void>(() => {});
   const skipInitialSaveRef = useRef(true);
 
   // --- Sync user to store ---
@@ -28,87 +29,153 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  // --- Initial load ---
+  // --- Initial load via useQuery ---
+  const STORAGE_KEYS = [
+    "minato:scenes",
+    "minato:settings",
+    "minato:manuscripts",
+    "minato:title",
+    "minato:backups",
+    "minato:editorSettings",
+    "minato:aiHistory",
+    "minato:autoBackups",
+    "minato:sidebarFloat",
+    "minato:sidebarWidth",
+    "minato:aiFloat",
+    "minato:aiPanelWidth",
+    "minato:projects",
+    "minato:activeProjectId",
+  ] as const;
+
+  const { data: loadedData, isFetching: isInitLoading } = useQuery({
+    queryKey: ["studio-init", user?.id ?? "offline"],
+    queryFn: () => storageGetMany(STORAGE_KEYS as unknown as string[]),
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  // Apply loaded data to store
   useEffect(() => {
-    (async () => {
-      store.setLoaded(false);
-      const loaded = await storageGetMany([
-        "minato:scenes",
-        "minato:settings",
-        "minato:manuscripts",
-        "minato:title",
-        "minato:backups",
-        "minato:editorSettings",
-        "minato:aiHistory",
-        "minato:autoBackups",
-        "minato:sidebarFloat",
-        "minato:sidebarWidth",
-        "minato:aiFloat",
-        "minato:aiPanelWidth",
-        "minato:projects",
-        "minato:activeProjectId",
-      ]);
-      const sc = loaded["minato:scenes"] as Scene[] | null;
-      const st = loaded["minato:settings"] as Settings | null;
-      const ms = loaded["minato:manuscripts"] as Manuscripts | null;
-      const pt = loaded["minato:title"] as string | null;
-      const bk = loaded["minato:backups"] as Backup[] | null;
-      const es = loaded["minato:editorSettings"] as EditorSettings | null;
-      const ah = loaded["minato:aiHistory"] as AiHistoryItem[] | null;
-      const ab = loaded["minato:autoBackups"] as Backup[] | null;
-      const sf = loaded["minato:sidebarFloat"] as boolean | null;
-      const sw = loaded["minato:sidebarWidth"] as number | null;
-      const af = loaded["minato:aiFloat"] as boolean | null;
-      const apw = loaded["minato:aiPanelWidth"] as number | null;
-      const projects = loaded["minato:projects"] as ProjectRecord[] | null;
-      const activeProjectId = loaded["minato:activeProjectId"] as string | null;
-      const resolvedScenes = sc ?? store.scenes;
-      const resolvedSettings = st ?? store.settings;
-      const resolvedManuscripts = ms ?? store.manuscripts;
-      const resolvedTitle = pt ?? store.projectTitle;
-      const resolvedBackups = bk ?? store.backups;
-
-      if (sc) store.setScenes(sc);
-      if (st) store.setSettings(st);
-      if (ms) store.setManuscripts(ms);
-      if (pt !== null) store.setProjectTitle(pt);
-      if (bk) store.setBackups(bk);
-      if (es) store.setEditorSettings(es);
-      if (ah) store.setAiHistory(ah);
-      if (ab) store.setAutoBackups(ab);
-      if (sf !== null) store.setSidebarFloat(sf);
-      if (typeof sw === "number") store.setSidebarWidth(sw);
-      if (af !== null) store.setAiFloat(af);
-      if (typeof apw === "number") store.setAiPanelWidth(apw);
-
-      const defaultProject: ProjectRecord = {
-        id: activeProjectId || "default",
-        title: resolvedTitle?.trim() || "無題プロジェクト",
-        updatedAt: new Date().toISOString(),
-        scenes: resolvedScenes,
-        manuscripts: resolvedManuscripts,
-        settings: resolvedSettings,
-        backups: resolvedBackups,
-      };
-      const loadedProjects = (projects && projects.length > 0) ? projects : [defaultProject];
-      const loadedActiveId = activeProjectId || loadedProjects[0].id;
-      const activeProject = loadedProjects.find(p => p.id === loadedActiveId) ?? loadedProjects[0];
-      store.setProjects(loadedProjects);
-      store.setActiveProjectId(activeProject.id);
-      store.setScenes(activeProject.scenes);
-      store.setManuscripts(activeProject.manuscripts);
-      store.setSettings(activeProject.settings);
-      store.setProjectTitle(activeProject.title);
-      store.setBackups(activeProject.backups);
-      if (activeProject.aiHistory != null) store.setAiHistory(activeProject.aiHistory);
-
-      store.setLoaded(true);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    store.setLoaded(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  // --- Auto-save (debounced 1 s) ---
+  useEffect(() => {
+    if (isInitLoading || !loadedData) return;
+
+    const sc = loadedData["minato:scenes"] as Scene[] | null;
+    const st = loadedData["minato:settings"] as Settings | null;
+    const ms = loadedData["minato:manuscripts"] as Manuscripts | null;
+    const pt = loadedData["minato:title"] as string | null;
+    const bk = loadedData["minato:backups"] as Backup[] | null;
+    const es = loadedData["minato:editorSettings"] as EditorSettings | null;
+    const ah = loadedData["minato:aiHistory"] as AiHistoryItem[] | null;
+    const ab = loadedData["minato:autoBackups"] as Backup[] | null;
+    const sf = loadedData["minato:sidebarFloat"] as boolean | null;
+    const sw = loadedData["minato:sidebarWidth"] as number | null;
+    const af = loadedData["minato:aiFloat"] as boolean | null;
+    const apw = loadedData["minato:aiPanelWidth"] as number | null;
+    const projects = loadedData["minato:projects"] as ProjectRecord[] | null;
+    const activeProjectId = loadedData["minato:activeProjectId"] as string | null;
+
+    const resolvedScenes = sc ?? store.scenes;
+    const resolvedSettings = st ?? store.settings;
+    const resolvedManuscripts = ms ?? store.manuscripts;
+    const resolvedTitle = pt ?? store.projectTitle;
+    const resolvedBackups = bk ?? store.backups;
+
+    if (sc) store.setScenes(sc);
+    if (st) store.setSettings(st);
+    if (ms) store.setManuscripts(ms);
+    if (pt !== null) store.setProjectTitle(pt);
+    if (bk) store.setBackups(bk);
+    if (es) store.setEditorSettings(es);
+    if (ah) store.setAiHistory(ah);
+    if (ab) store.setAutoBackups(ab);
+    if (sf !== null) store.setSidebarFloat(sf);
+    if (typeof sw === "number") store.setSidebarWidth(sw);
+    if (af !== null) store.setAiFloat(af);
+    if (typeof apw === "number") store.setAiPanelWidth(apw);
+
+    const defaultProject: ProjectRecord = {
+      id: activeProjectId || "default",
+      title: resolvedTitle?.trim() || "無題プロジェクト",
+      updatedAt: new Date().toISOString(),
+      scenes: resolvedScenes,
+      manuscripts: resolvedManuscripts,
+      settings: resolvedSettings,
+      backups: resolvedBackups,
+    };
+    const loadedProjects = (projects && projects.length > 0) ? projects : [defaultProject];
+    const loadedActiveId = activeProjectId || loadedProjects[0].id;
+    const activeProject = loadedProjects.find(p => p.id === loadedActiveId) ?? loadedProjects[0];
+    store.setProjects(loadedProjects);
+    store.setActiveProjectId(activeProject.id);
+    store.setScenes(activeProject.scenes);
+    store.setManuscripts(activeProject.manuscripts);
+    store.setSettings(activeProject.settings);
+    store.setProjectTitle(activeProject.title);
+    store.setBackups(activeProject.backups);
+    if (activeProject.aiHistory != null) store.setAiHistory(activeProject.aiHistory);
+
+    skipInitialSaveRef.current = true;
+    store.setLoaded(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadedData, isInitLoading]);
+
+  // --- Auto-save mutation ---
   const { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, sidebarWidth, aiFloat, aiPanelWidth, loaded, projects, activeProjectId, backups } = store;
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: {
+      scenes: typeof scenes;
+      settings: typeof settings;
+      manuscripts: typeof manuscripts;
+      projectTitle: typeof projectTitle;
+      editorSettings: typeof editorSettings;
+      aiHistory: typeof aiHistory;
+      autoBackups: typeof autoBackups;
+      sidebarFloat: typeof sidebarFloat;
+      sidebarWidth: typeof sidebarWidth;
+      aiFloat: typeof aiFloat;
+      aiPanelWidth: typeof aiPanelWidth;
+      projects: typeof projects;
+      activeProjectId: typeof activeProjectId;
+      backups: typeof backups;
+    }) => {
+      const now = new Date().toISOString();
+      const currentRecord: ProjectRecord = {
+        id: data.activeProjectId,
+        title: data.projectTitle.trim() || "無題プロジェクト",
+        updatedAt: now,
+        scenes: data.scenes,
+        manuscripts: data.manuscripts,
+        settings: data.settings,
+        backups: data.backups,
+        aiHistory: data.aiHistory,
+      };
+      const updatedProjects = [currentRecord, ...data.projects.filter(p => p.id !== data.activeProjectId)];
+
+      await Promise.all([
+        storageSet("minato:scenes", data.scenes),
+        storageSet("minato:settings", data.settings),
+        storageSet("minato:manuscripts", data.manuscripts),
+        storageSet("minato:title", data.projectTitle),
+        storageSet("minato:editorSettings", data.editorSettings),
+        storageSet("minato:backups", useStudioStore.getState().backups),
+        storageSet("minato:aiHistory", data.aiHistory),
+        storageSet("minato:autoBackups", data.autoBackups),
+        storageSet("minato:sidebarFloat", data.sidebarFloat),
+        storageSet("minato:sidebarWidth", data.sidebarWidth),
+        storageSet("minato:aiFloat", data.aiFloat),
+        storageSet("minato:aiPanelWidth", data.aiPanelWidth),
+        storageSet("minato:activeProjectId", data.activeProjectId),
+        storageSet("minato:projects", updatedProjects),
+      ]);
+    },
+  });
 
   useEffect(() => {
     if (!loaded) return;
@@ -116,40 +183,9 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
       skipInitialSaveRef.current = false;
       return;
     }
-    const syncAll = async () => {
-      await Promise.all([
-        storageSet("minato:scenes", scenes),
-        storageSet("minato:settings", settings),
-        storageSet("minato:manuscripts", manuscripts),
-        storageSet("minato:title", projectTitle),
-        storageSet("minato:editorSettings", editorSettings),
-        storageSet("minato:backups", useStudioStore.getState().backups),
-        storageSet("minato:aiHistory", aiHistory),
-        storageSet("minato:autoBackups", autoBackups),
-        storageSet("minato:sidebarFloat", sidebarFloat),
-        storageSet("minato:sidebarWidth", sidebarWidth),
-        storageSet("minato:aiFloat", aiFloat),
-        storageSet("minato:aiPanelWidth", aiPanelWidth),
-        storageSet("minato:activeProjectId", activeProjectId),
-        storageSet("minato:projects", (() => {
-          const now = new Date().toISOString();
-          const currentRecord: ProjectRecord = {
-            id: activeProjectId,
-            title: projectTitle.trim() || "無題プロジェクト",
-            updatedAt: now,
-            scenes,
-            manuscripts,
-            settings,
-            backups,
-            aiHistory,
-          };
-          const rest = projects.filter(p => p.id !== activeProjectId);
-          return [currentRecord, ...rest];
-        })()),
-      ]).catch(() => {/* ignore storage errors */});
-    };
-    syncAllRef.current = syncAll;
-    const t = setTimeout(syncAll, 1000);
+    const snapshot = { scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, sidebarWidth, aiFloat, aiPanelWidth, projects, activeProjectId, backups };
+    syncAllRef.current = () => saveMutation.mutate(snapshot);
+    const t = setTimeout(() => saveMutation.mutate(snapshot), 1000);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenes, settings, manuscripts, projectTitle, editorSettings, aiHistory, autoBackups, sidebarFloat, sidebarWidth, aiFloat, aiPanelWidth, loaded, projects, activeProjectId, backups]);

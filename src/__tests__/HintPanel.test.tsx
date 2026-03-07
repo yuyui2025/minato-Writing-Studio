@@ -1,6 +1,13 @@
+import React from "react";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HintPanel } from "../components/ai/HintPanel";
+
+function renderWithQuery(ui: React.ReactElement) {
+  const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
 
 vi.mock("../utils/ai", () => ({
   callAnthropic: vi.fn(),
@@ -34,22 +41,22 @@ describe("HintPanel", () => {
   });
 
   it("renders the run button", () => {
-    render(<HintPanel {...defaultProps} />);
+    renderWithQuery(<HintPanel {...defaultProps} />);
     expect(screen.getByRole("button", { name: /執筆ヒント/ })).toBeInTheDocument();
   });
 
   it("button shows '生成中…' when loading", () => {
-    render(<HintPanel {...defaultProps} loading={true} />);
+    renderWithQuery(<HintPanel {...defaultProps} loading={true} />);
     expect(screen.getByText("生成中…")).toBeInTheDocument();
   });
 
   it("button shows '再試行' when error is present", () => {
-    render(<HintPanel {...defaultProps} error="エラー発生" />);
+    renderWithQuery(<HintPanel {...defaultProps} error="エラー発生" />);
     expect(screen.getByRole("button", { name: "再試行" })).toBeInTheDocument();
   });
 
   it("displays error message when error prop is set", () => {
-    render(<HintPanel {...defaultProps} error="タイムアウトしました" />);
+    renderWithQuery(<HintPanel {...defaultProps} error="タイムアウトしました" />);
     expect(screen.getByText(/タイムアウトしました/)).toBeInTheDocument();
   });
 
@@ -57,7 +64,7 @@ describe("HintPanel", () => {
     const hints = [
       { hint: "感情表現を増やす", reason: "読者の共感を得るため", keyword: "波" },
     ];
-    render(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
+    renderWithQuery(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
     expect(screen.getByText("感情表現を増やす")).toBeInTheDocument();
     expect(screen.getByText("読者の共感を得るため")).toBeInTheDocument();
     expect(screen.getByText(/波/)).toBeInTheDocument();
@@ -65,7 +72,7 @@ describe("HintPanel", () => {
 
   it("renders hints without keyword", () => {
     const hints = [{ hint: "視点を変える", reason: "新鮮さのため" }];
-    render(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
+    renderWithQuery(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
     expect(screen.getByText("視点を変える")).toBeInTheDocument();
   });
 
@@ -73,7 +80,7 @@ describe("HintPanel", () => {
     const mockResult = JSON.stringify([{ hint: "ヒント", reason: "理由" }]);
     vi.mocked(callAnthropic).mockResolvedValueOnce(mockResult);
 
-    render(<HintPanel {...defaultProps} />);
+    renderWithQuery(<HintPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /執筆ヒント/ }));
 
     await waitFor(() => {
@@ -86,7 +93,7 @@ describe("HintPanel", () => {
   it("calls onError when callAnthropic throws AiError", async () => {
     vi.mocked(callAnthropic).mockRejectedValueOnce(new AiError("AI通信エラー"));
 
-    render(<HintPanel {...defaultProps} />);
+    renderWithQuery(<HintPanel {...defaultProps} />);
     fireEvent.click(screen.getByRole("button", { name: /執筆ヒント/ }));
 
     await waitFor(() => {
@@ -96,7 +103,7 @@ describe("HintPanel", () => {
 
   it("inserts hint comment near keyword in manuscript", () => {
     const hints = [{ hint: "もっと詳細に", reason: "臨場感のため", keyword: "波" }];
-    render(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
+    renderWithQuery(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
 
     fireEvent.click(screen.getByRole("button", { name: "参考にした" }));
 
@@ -107,7 +114,7 @@ describe("HintPanel", () => {
 
   it("appends hint comment at end when keyword not found", () => {
     const hints = [{ hint: "もっと詳細に", reason: "臨場感のため", keyword: "存在しないキーワード" }];
-    render(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
+    renderWithQuery(<HintPanel {...defaultProps} result={JSON.stringify(hints)} />);
 
     fireEvent.click(screen.getByRole("button", { name: "参考にした" }));
 
@@ -118,7 +125,7 @@ describe("HintPanel", () => {
 
   it("shows applied state after hint is applied", () => {
     const hints = [{ hint: "ヒント内容", reason: "理由" }];
-    render(<HintPanel {...defaultProps} result={JSON.stringify(hints)} applied={{ 0: true }} />);
+    renderWithQuery(<HintPanel {...defaultProps} result={JSON.stringify(hints)} applied={{ 0: true }} />);
     expect(screen.getByText("✓ 済")).toBeInTheDocument();
   });
 });

@@ -1,4 +1,5 @@
 import { useMemo, Dispatch, SetStateAction } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { HintItem, AppliedState } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
@@ -39,24 +40,28 @@ export function HintPanel({
     }
   }, [result]);
 
-  const run = async () => {
-    onLoading(true);
-    onResult("");
-    onError("");
-    onApplied({});
-    try {
+  const mutation = useMutation({
+    mutationFn: () => {
       const finalPrompt = prompt + "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]";
-      const text = await callAnthropic(finalPrompt);
-      onResult(text);
-    } catch (e) {
-      if (e instanceof AiError) {
-        onError(e.message);
-      } else {
-        onError("不明なエラーが発生しました");
-      }
-    }
-    onLoading(false);
-  };
+      return callAnthropic(finalPrompt);
+    },
+    onMutate: () => {
+      onResult("");
+      onError("");
+      onApplied({});
+      onLoading(true);
+    },
+    onSuccess: (text) => onResult(text),
+    onError: (e) => {
+      onError(e instanceof AiError ? e.message : "不明なエラーが発生しました");
+    },
+    onSettled: () => onLoading(false),
+    retry: (count, e) => {
+      if (e instanceof AiError) return false;
+      return count < 2;
+    },
+    retryDelay: (attempt) => [1000, 2000][attempt] ?? 2000,
+  });
 
   const handleApply = (h: HintItem, i: number) => {
     const comment = `\n※[ヒント: ${h.hint}]`;
@@ -74,7 +79,7 @@ export function HintPanel({
   return (
     <div>
       <button
-        onClick={run}
+        onClick={() => mutation.mutate()}
         disabled={loading}
         style={{
           padding: "6px 16px",
