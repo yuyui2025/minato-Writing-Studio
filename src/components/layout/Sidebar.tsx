@@ -428,23 +428,29 @@ export const Sidebar: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>テーマ</div>
-                <div style={{ display: "flex", gap: 4 }}>
-                  {(["dark", "light", "system"] as const).map(t => (
+                <div style={{ display: "grid", gap: 4, gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
+                  {(["focus", "dark", "light", "system"] as const).map(t => (
                     <button
                       key={t}
                       onClick={() => setEditorSettings(s => ({ ...s, colorTheme: t }))}
                       style={{
-                        flex: 1, padding: "4px 2px",
-                        background: (editorSettings.colorTheme ?? "dark") === t ? "rgba(74,111,165,0.2)" : "transparent",
+                        padding: "4px 2px",
+                        background: (editorSettings.colorTheme ?? "focus") === t ? "rgba(74,111,165,0.2)" : "transparent",
                         border: "1px solid",
-                        borderColor: (editorSettings.colorTheme ?? "dark") === t ? "#4a6fa5" : "#1e2d42",
-                        color: (editorSettings.colorTheme ?? "dark") === t ? "#7ab3e0" : "#3a5570",
+                        borderColor: (editorSettings.colorTheme ?? "focus") === t ? "#4a6fa5" : "#1e2d42",
+                        color: (editorSettings.colorTheme ?? "focus") === t ? "#7ab3e0" : "#3a5570",
                         cursor: "pointer", fontSize: 9, borderRadius: 3, fontFamily: "inherit",
                       }}
                     >
-                      {t === "dark" ? "暗" : t === "light" ? "明" : "自動"}
+                      {t === "focus" ? "集中" : t === "dark" ? "暗" : t === "light" ? "明" : "自動"}
                     </button>
                   ))}
+                </div>
+                <div style={{ fontSize: 9, color: "#2a4060", marginTop: 6 }}>
+                  {(editorSettings.colorTheme ?? "focus") === "focus" ? "執筆向けの集中テーマ" :
+                   (editorSettings.colorTheme ?? "focus") === "system" ? "OS設定に追従" :
+                   (editorSettings.colorTheme ?? "focus") === "dark" ? "UI重視のダークテーマ" :
+                   "明るい配色テーマ"}
                 </div>
               </div>
             </div>

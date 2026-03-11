@@ -46,6 +46,19 @@
   min-width: 0;
 }
 
+.write-half-buttons {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid #2a4060;
+  border-radius: 999px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.write-half-buttons > button:hover:not(:disabled) {
+  background: rgba(74,111,165,0.18) !important;
+}
+
 @media (max-width: 720px) {
   .write-toolbar {
     align-items: stretch;
@@ -62,8 +75,12 @@
 
 @media (max-width: 540px) {
   .write-toolbar-group-primary > button,
-  .write-toolbar-group-secondary > button {
+  .write-toolbar-group-secondary > button,
+  .write-half-buttons {
     flex: 1 1 120px;
-    justify-content: center;
+  }
+
+  .write-half-buttons > button {
+    flex: 1 1 50%;
   }
 }
