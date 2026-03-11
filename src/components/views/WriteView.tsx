@@ -17,6 +17,7 @@ export const WriteView: React.FC = () => {
     historyPast, historyFuture, undo, redo
   } = useStudio();
   const [footerOpen, setFooterOpen] = useState(true);
+  const [topPanelCollapsed, setTopPanelCollapsed] = useState(false);
   const canUndo = historyPast.length > 0;
   const canRedo = historyFuture.length > 0;
 
@@ -62,39 +63,55 @@ export const WriteView: React.FC = () => {
       {/* Scrollable writing area */}
       <div style={{ flex: 1, overflowY: "auto", padding: "16px 12px", display: "flex", flexDirection: "column" }}>
         <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ paddingRight: 0 }}>
-            <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: 4 }}>{selectedScene.chapter}</div>
-            {editingSceneTitle ? (
-              <input
-                autoFocus
-                value={selectedScene.title}
-                onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, title: e.target.value } : s))}
-                onBlur={() => setEditingSceneTitle(false)}
-                onKeyDown={e => e.key === "Enter" && setEditingSceneTitle(false)}
-                style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "#c8d8e8", background: "transparent", border: "none", borderBottom: "1px solid #4a6fa5", outline: "none", fontFamily: "'Noto Serif JP','Georgia',serif", width: "100%", letterSpacing: 1 }}
-              />
-            ) : (
-              <h2 onClick={() => setEditingSceneTitle(true)} style={{ margin: 0, fontSize: 20, color: "#c8d8e8", fontWeight: 600, cursor: "text" }} title="クリックで編集">
-                {selectedScene.title ? selectedScene.title : <span style={{ fontStyle: "italic", color: "#3a5570" }}>無題</span>}
-              </h2>
-            )}
-            {editingSceneSynopsis ? (
-              <input
-                autoFocus
-                value={selectedScene.synopsis || ""}
-                onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, synopsis: e.target.value } : s))}
-                onBlur={() => setEditingSceneSynopsis(false)}
-                onKeyDown={e => e.key === "Enter" && setEditingSceneSynopsis(false)}
-                placeholder="概要を入力…"
-                style={{ marginTop: 4, fontSize: 12, color: "#8ab0cc", background: "transparent", border: "none", borderBottom: "1px solid #2a4060", outline: "none", fontFamily: "inherit", width: "100%", fontStyle: "italic" }}
-              />
-            ) : (
-              <div onClick={() => setEditingSceneSynopsis(true)} style={{ marginTop: 4, fontSize: 12, color: selectedScene.synopsis ? "#3a5570" : "#1e2d42", fontStyle: "italic", cursor: "text", minHeight: 18 }}>
-                {selectedScene.synopsis || "概要を追加…"}
-              </div>
-            )}
+          <div style={{ display: "flex", alignItems: topPanelCollapsed ? "center" : "flex-start", justifyContent: "space-between", gap: 12 }}>
+            <div style={{ paddingRight: 0, flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, color: "#3a5570", letterSpacing: 2, marginBottom: topPanelCollapsed ? 0 : 4 }}>{selectedScene.chapter}</div>
+              {topPanelCollapsed ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                  <h2 style={{ margin: 0, fontSize: 16, color: "#c8d8e8", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {selectedScene.title || "無題"}
+                  </h2>
+                  <span style={{ fontSize: 10, color: statusColors[selectedScene.status], whiteSpace: "nowrap" }}>{statusLabels[selectedScene.status]}</span>
+                </div>
+              ) : editingSceneTitle ? (
+                <input
+                  autoFocus
+                  value={selectedScene.title}
+                  onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, title: e.target.value } : s))}
+                  onBlur={() => setEditingSceneTitle(false)}
+                  onKeyDown={e => e.key === "Enter" && setEditingSceneTitle(false)}
+                  style={{ margin: 0, fontSize: 20, fontWeight: 600, color: "#c8d8e8", background: "transparent", border: "none", borderBottom: "1px solid #4a6fa5", outline: "none", fontFamily: "'Noto Serif JP','Georgia',serif", width: "100%", letterSpacing: 1 }}
+                />
+              ) : (
+                <h2 onClick={() => setEditingSceneTitle(true)} style={{ margin: 0, fontSize: 20, color: "#c8d8e8", fontWeight: 600, cursor: "text" }} title="クリックで編集">
+                  {selectedScene.title ? selectedScene.title : <span style={{ fontStyle: "italic", color: "#3a5570" }}>無題</span>}
+                </h2>
+              )}
+              {!topPanelCollapsed && (editingSceneSynopsis ? (
+                <input
+                  autoFocus
+                  value={selectedScene.synopsis || ""}
+                  onChange={e => setScenes(scenes.map(s => s.id === selectedSceneId ? { ...s, synopsis: e.target.value } : s))}
+                  onBlur={() => setEditingSceneSynopsis(false)}
+                  onKeyDown={e => e.key === "Enter" && setEditingSceneSynopsis(false)}
+                  placeholder="概要を入力…"
+                  style={{ marginTop: 4, fontSize: 12, color: "#8ab0cc", background: "transparent", border: "none", borderBottom: "1px solid #2a4060", outline: "none", fontFamily: "inherit", width: "100%", fontStyle: "italic" }}
+                />
+              ) : (
+                <div onClick={() => setEditingSceneSynopsis(true)} style={{ marginTop: 4, fontSize: 12, color: selectedScene.synopsis ? "#3a5570" : "#1e2d42", fontStyle: "italic", cursor: "text", minHeight: 18 }}>
+                  {selectedScene.synopsis || "概要を追加…"}
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setTopPanelCollapsed(v => !v)}
+              style={{ padding: "5px 10px", borderRadius: 999, border: "1px solid #1e2d42", background: topPanelCollapsed ? "rgba(74,111,165,0.12)" : "transparent", color: topPanelCollapsed ? "#7ab3e0" : "#3a5570", cursor: "pointer", fontSize: 10, fontFamily: "inherit", whiteSpace: "nowrap" }}
+              title={topPanelCollapsed ? "上部情報を展開" : "上部情報を折りたたむ"}
+            >
+              {topPanelCollapsed ? "情報を表示" : "情報を隠す"}
+            </button>
           </div>
-          <div className="write-toolbar">
+          <div className="write-toolbar" style={{ display: topPanelCollapsed ? "none" : undefined }}>
             <div className="write-toolbar-group write-toolbar-group-primary">
               <button
                 onClick={() => handleStatusChange(selectedScene.id, nextStatus)}
@@ -118,44 +135,44 @@ export const WriteView: React.FC = () => {
                 {statusLabels[selectedScene.status]}
                 <span style={{ color: "#6f8db5", fontSize: 10 }}>→ {statusLabels[nextStatus]}</span>
               </button>
-              <button
-                onClick={undo}
-                disabled={!canUndo}
-                title="元に戻す (Ctrl/Cmd+Z)"
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  border: "1px solid",
-                  borderColor: canUndo ? "#2a4060" : "#0f1725",
-                  background: canUndo ? "rgba(74,111,165,0.1)" : "transparent",
-                  color: canUndo ? "#5b7ea7" : "#1a2535",
-                  cursor: canUndo ? "pointer" : "default",
-                  fontSize: 10,
-                  fontFamily: "inherit",
-                  minWidth: 68,
-                }}
-              >
-                Undo
-              </button>
-              <button
-                onClick={redo}
-                disabled={!canRedo}
-                title="やり直し (Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y)"
-                style={{
-                  padding: "6px 10px",
-                  borderRadius: 999,
-                  border: "1px solid",
-                  borderColor: canRedo ? "#2a4060" : "#0f1725",
-                  background: canRedo ? "rgba(74,111,165,0.1)" : "transparent",
-                  color: canRedo ? "#5b7ea7" : "#1a2535",
-                  cursor: canRedo ? "pointer" : "default",
-                  fontSize: 10,
-                  fontFamily: "inherit",
-                  minWidth: 68,
-                }}
-              >
-                Redo
-              </button>
+              <div className="write-half-buttons" role="group" aria-label="Undo Redo">
+                <button
+                  onClick={undo}
+                  disabled={!canUndo}
+                  title="元に戻す (Ctrl/Cmd+Z)"
+                  style={{
+                    padding: "6px 12px",
+                    border: "none",
+                    borderRight: "1px solid",
+                    borderRightColor: canUndo ? "#2a4060" : "#0f1725",
+                    background: canUndo ? "rgba(74,111,165,0.1)" : "transparent",
+                    color: canUndo ? "#5b7ea7" : "#1a2535",
+                    cursor: canUndo ? "pointer" : "default",
+                    fontSize: 10,
+                    fontFamily: "inherit",
+                    minWidth: 58,
+                  }}
+                >
+                  Undo
+                </button>
+                <button
+                  onClick={redo}
+                  disabled={!canRedo}
+                  title="やり直し (Ctrl/Cmd+Shift+Z / Ctrl/Cmd+Y)"
+                  style={{
+                    padding: "6px 12px",
+                    border: "none",
+                    background: canRedo ? "rgba(74,111,165,0.1)" : "transparent",
+                    color: canRedo ? "#5b7ea7" : "#1a2535",
+                    cursor: canRedo ? "pointer" : "default",
+                    fontSize: 10,
+                    fontFamily: "inherit",
+                    minWidth: 58,
+                  }}
+                >
+                  Redo
+                </button>
+              </div>
             </div>
             <div className="write-toolbar-group write-toolbar-group-secondary">
               <button onClick={() => setVerticalPreview(!verticalPreview)} style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid", borderColor: verticalPreview ? "#4a6fa5" : "#1e2d42", background: verticalPreview ? "rgba(74,111,165,0.15)" : "transparent", color: verticalPreview ? "#7ab3e0" : "#2a4060", cursor: "pointer", fontSize: 10, fontFamily: "inherit" }}>縦組</button>
