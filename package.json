@@ -7,7 +7,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "build:wasm": "wasm-pack build rust/text-analyzer --target bundler --out-dir ../../src/wasm/text_analyzer && rm -f src/wasm/text_analyzer/.gitignore",
+    "build:wasm": "wasm-pack build rust/text-analyzer --target bundler --out-dir ../../src/wasm/text_analyzer && node -e \"try{require('fs').unlinkSync('src/wasm/text_analyzer/.gitignore')}catch(e){if(e.code!=='ENOENT')throw e}\"",
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",

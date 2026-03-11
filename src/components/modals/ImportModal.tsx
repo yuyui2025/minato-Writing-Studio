@@ -48,6 +48,20 @@ function stripProjectFileSuffix(filename: string): string {
   return filename.replace(PROJECT_FILE_RE, "").replace(PROJECT_GZ_RE, "");
 }
 
+async function parseImportedText(text: string): Promise<{ title: string; sections: ParsedSection[] }> {
+  const parsed = await parseDocument(text);
+  if (parsed?.sections?.length) {
+    return {
+      title: parsed.title || "",
+      sections: parsed.sections,
+    };
+  }
+  return {
+    title: "",
+    sections: [{ chapter: "", title: "", content: text }],
+  };
+}
+
 export function ImportModal() {
   const store = useStudioStore();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -71,6 +85,8 @@ export function ImportModal() {
 
     let combinedText: string;
     let titleFromFile: string;
+    let parsedSections: ParsedSection[] = [];
+    let detectedTitle = "";
 
     if (/\.zip$/i.test(file.name)) {
       // YUY-43: zip 展開
@@ -92,30 +108,51 @@ export function ImportModal() {
         setStep("mode");
         return;
       }
-      combinedText = textFiles.map(([, data]) => decodeBuffer(data)).join("\n\n");
+      const decodedFiles = textFiles.map(([name, data]) => ({
+        name,
+        text: decodeBuffer(data),
+      }));
+      combinedText = decodedFiles.map(({ text }) => text).join("\n\n---\n\n");
+      const parsedByFile = await Promise.all(
+        decodedFiles.map(async ({ name, text }) => {
+          const parsed = await parseImportedText(text);
+          const fallbackLabel = stripProjectFileSuffix(name);
+          const shouldUseFileLabel =
+            parsed.sections.length === 1 &&
+            !parsed.sections[0]?.chapter &&
+            !parsed.sections[0]?.title;
+          return parsed.sections.map((section) => ({
+            chapter: shouldUseFileLabel ? fallbackLabel : section.chapter,
+            title: section.title,
+            content: section.content,
+          }));
+        })
+      );
+      parsedSections = parsedByFile.flat();
       titleFromFile = file.name.replace(/\.zip$/i, "");
     } else {
       const buffer = await file.arrayBuffer();
       combinedText = decodeBuffer(new Uint8Array(buffer));
       titleFromFile = file.name.replace(/\.(md|txt)$/i, "");
+      const parsed = await parseImportedText(combinedText);
+      detectedTitle = parsed.title;
+      parsedSections = parsed.sections;
     }
 
     void isZip; // suppress unused warning
-
-    const parsed = await parseDocument(combinedText);
 
     // appendモードはAI抽出をスキップしてトークン節約
     let aiResult: { characters?: string; world?: string } | null = null;
     if (mode !== "append") {
       aiResult = await extractImportMetadataBySections(
-        parsed?.sections ?? [],
+        parsedSections,
         combinedText
       );
     }
 
     setProjectFileData(null);
-    setProjectTitle(parsed?.title || titleFromFile);
-    setSections(parsed?.sections ?? [{ chapter: "", title: "", content: combinedText }]);
+    setProjectTitle(detectedTitle || titleFromFile);
+    setSections(parsedSections);
     setCharacters(aiResult?.characters ?? "");
     setWorld(aiResult?.world ?? "");
     setStep("preview");

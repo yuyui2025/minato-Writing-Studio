@@ -107,6 +107,14 @@ struct Section {
     content: String,
 }
 
+struct SplitPoint {
+    header_line_idx: usize,
+    line_idx: usize,
+    chapter: String,
+    title: String,
+    score: u8,
+}
+
 /// Escape a Rust string into a JSON string literal (with surrounding quotes).
 fn json_str(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 2);
@@ -168,17 +176,129 @@ fn detect_chapter_label(line: &str) -> Option<String> {
     None
 }
 
+fn is_blank(line: &str) -> bool {
+    line.trim().is_empty()
+}
+
+fn looks_like_markdown_title(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    if let Some(title) = trimmed.strip_prefix("## ") {
+        return Some(title.trim().to_string());
+    }
+    if let Some(title) = trimmed.strip_prefix("### ") {
+        return Some(title.trim().to_string());
+    }
+    None
+}
+
+fn looks_like_standalone_scene_title(line: &str) -> bool {
+    let t = line.trim();
+    if t.is_empty() || t.len() > 40 {
+        return false;
+    }
+    if t.starts_with('#') || detect_chapter_label(t).is_some() || is_scene_break(t) {
+        return false;
+    }
+    if t.contains('。') || t.contains('、') || t.contains('！') || t.contains('？') {
+        return false;
+    }
+    let non_space = t.chars().filter(|c| !c.is_whitespace()).count();
+    if non_space == 0 || non_space > 24 {
+        return false;
+    }
+    true
+}
+
+fn next_non_empty_line(lines: &[&str], start: usize) -> Option<usize> {
+    let mut i = start;
+    while i < lines.len() {
+        if !is_blank(lines[i]) {
+            return Some(i);
+        }
+        i += 1;
+    }
+    None
+}
+
+fn prev_non_empty_line(lines: &[&str], start: usize) -> Option<usize> {
+    if start == 0 {
+        return None;
+    }
+    let mut i = start - 1;
+    loop {
+        if !is_blank(lines[i]) {
+            return Some(i);
+        }
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+    }
+    None
+}
+
+fn is_strong_scene_cue(line: &str) -> bool {
+    let t = line.trim();
+    let lower = t.to_lowercase();
+    lower.starts_with("scene ")
+        || lower.starts_with("scene:")
+        || t.starts_with("シーン")
+        || t.starts_with("場面")
+        || (t.starts_with('【') && t.ends_with('】'))
+}
+
+fn detect_standalone_scene_heading(lines: &[&str], idx: usize) -> Option<(String, usize, u8)> {
+    let line = lines[idx].trim();
+    if !looks_like_standalone_scene_title(line) {
+        return None;
+    }
+
+    let prev_is_blank = idx == 0 || is_blank(lines[idx - 1]);
+    let next_idx = next_non_empty_line(lines, idx + 1)?;
+    let next_line = lines[next_idx].trim();
+    if next_line.is_empty() || looks_like_standalone_scene_title(next_line) {
+        return None;
+    }
+
+    let prev_non_empty = prev_non_empty_line(lines, idx);
+    if let Some(prev) = prev_non_empty {
+        if idx.saturating_sub(prev) <= 1 && !prev_is_blank {
+            return None;
+        }
+    }
+
+    let mut score = 0;
+    if prev_is_blank {
+        score += 35;
+    }
+    let has_trailing_blank = next_idx > idx + 1;
+    if has_trailing_blank {
+        score += 15;
+    }
+    if is_strong_scene_cue(line) {
+        score += 40;
+    } else {
+        score += 20;
+    }
+    if !line.chars().any(|c| c.is_ascii_lowercase()) {
+        score += 10;
+    }
+
+    if !has_trailing_blank && !is_strong_scene_cue(line) {
+        return None;
+    }
+
+    if score < 55 {
+        return None;
+    }
+
+    Some((line.to_string(), next_idx, score))
+}
+
 fn extract_sections(text: &str) -> Vec<Section> {
     let lines: Vec<&str> = text.lines().collect();
     if lines.is_empty() {
         return vec![];
-    }
-
-    struct SplitPoint {
-        header_line_idx: usize, // line index of the heading/separator itself
-        line_idx: usize,        // first line of the section's content
-        chapter: String,
-        title: String,
     }
 
     let mut splits: Vec<SplitPoint> = Vec::new();
@@ -194,27 +314,13 @@ fn extract_sections(text: &str) -> Vec<Section> {
             continue;
         }
 
-        // H2 → new scene
-        if line.starts_with("## ") {
-            let section_title = line[3..].trim().to_string();
+        if let Some(section_title) = looks_like_markdown_title(line) {
             splits.push(SplitPoint {
                 header_line_idx: i,
                 line_idx: i + 1,
                 chapter: current_chapter.clone(),
                 title: section_title,
-            });
-            i += 1;
-            continue;
-        }
-
-        // H3 → sub-scene
-        if line.starts_with("### ") {
-            let section_title = line[4..].trim().to_string();
-            splits.push(SplitPoint {
-                header_line_idx: i,
-                line_idx: i + 1,
-                chapter: current_chapter.clone(),
-                title: section_title,
+                score: 95,
             });
             i += 1;
             continue;
@@ -224,15 +330,13 @@ fn extract_sections(text: &str) -> Vec<Section> {
         if let Some(chapter_label) = detect_chapter_label(line) {
             current_chapter = chapter_label;
             let header_at = i;
-            let mut j = i + 1;
-            while j < lines.len() && lines[j].trim().is_empty() {
-                j += 1;
-            }
+            let mut j = next_non_empty_line(&lines, i + 1).unwrap_or(lines.len());
             let section_title = if j < lines.len() {
                 let next = lines[j].trim();
                 if !next.starts_with('#')
                     && detect_chapter_label(next).is_none()
                     && !is_scene_break(next)
+                    && looks_like_standalone_scene_title(next)
                 {
                     j += 1;
                     next.to_string()
@@ -247,6 +351,7 @@ fn extract_sections(text: &str) -> Vec<Section> {
                 line_idx: j,
                 chapter: current_chapter.clone(),
                 title: section_title,
+                score: 90,
             });
             i = j;
             continue;
@@ -259,8 +364,21 @@ fn extract_sections(text: &str) -> Vec<Section> {
                 line_idx: i + 1,
                 chapter: current_chapter.clone(),
                 title: String::new(),
+                score: 80,
             });
             i += 1;
+            continue;
+        }
+
+        if let Some((section_title, line_idx, score)) = detect_standalone_scene_heading(&lines, i) {
+            splits.push(SplitPoint {
+                header_line_idx: i,
+                line_idx,
+                chapter: current_chapter.clone(),
+                title: section_title,
+                score,
+            });
+            i = line_idx;
             continue;
         }
 
@@ -317,11 +435,13 @@ fn extract_sections(text: &str) -> Vec<Section> {
             .join("\n")
             .trim()
             .to_string();
-        sections.push(Section {
-            chapter: splits[k].chapter.clone(),
-            title: splits[k].title.clone(),
-            content,
-        });
+        if splits[k].score >= 55 {
+            sections.push(Section {
+                chapter: splits[k].chapter.clone(),
+                title: splits[k].title.clone(),
+                content,
+            });
+        }
     }
 
     // Drop trailing empty sections
@@ -367,6 +487,23 @@ mod tests {
         let text = "シーンAの内容。\n\n---\n\nシーンBの内容。";
         let sections = extract_sections(text);
         assert_eq!(sections.len(), 2);
+    }
+
+    #[test]
+    fn test_plain_text_standalone_title_splits() {
+        let text = "導入\n\n朝の街は静かだった。\n\n対決\n\n二人は剣を構えた。";
+        let sections = extract_sections(text);
+        assert_eq!(sections.len(), 2);
+        assert_eq!(sections[0].title, "導入");
+        assert_eq!(sections[1].title, "対決");
+    }
+
+    #[test]
+    fn test_regular_sentence_line_does_not_split_as_title() {
+        let text = "これは説明文です\n次の行も本文です。";
+        let sections = extract_sections(text);
+        assert_eq!(sections.len(), 1);
+        assert!(sections[0].title.is_empty());
     }
 
     #[test]
