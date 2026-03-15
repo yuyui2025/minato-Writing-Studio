@@ -22,6 +22,17 @@ export const WriteView: React.FC = () => {
   const canRedo = historyFuture.length > 0;
 
   useEffect(() => {
+    const onFS = () => {
+      if (document.fullscreenElement) {
+        setTopPanelCollapsed(true);
+        setFooterOpen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", onFS);
+    return () => document.removeEventListener("fullscreenchange", onFS);
+  }, []);
+
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;

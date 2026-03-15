@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ClipboardEvent, WheelEvent } from "react";
+import type { ClipboardEvent } from "react";
 
 type VerticalEditorProps = {
   initialText: string;
@@ -22,7 +22,7 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   const composingRef = useRef(false);
   const debounceTimerRef = useRef<number | null>(null);
 
-  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n");
+  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n").replace(/\n+$/, "");
   const readEditorText = () => editorRef.current?.innerText ?? "";
 
   const flushChange = (text: string) => {
@@ -117,19 +117,24 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     scheduleChange(readEditorText());
   };
 
-  const handleWheelCapture = (e: WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey) return;
-    if (e.deltaY === 0) return;
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5) return;
-    const el = e.currentTarget;
-    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientWidth : 1;
-    const delta = e.deltaY * unit;
-    const before = el.scrollLeft;
-    el.scrollLeft += delta;
-    if (el.scrollLeft !== before) {
-      e.preventDefault();
-    }
-  };
+  // #140: native addEventListener with {passive:false} to ensure preventDefault() works
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const handler = (e: globalThis.WheelEvent) => {
+      if (e.ctrlKey) return;
+      if (e.deltaY === 0) return;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5) return;
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? editor.clientWidth : 1;
+      const before = editor.scrollLeft;
+      editor.scrollLeft += e.deltaY * unit;
+      if (editor.scrollLeft !== before) {
+        e.preventDefault();
+      }
+    };
+    editor.addEventListener("wheel", handler, { passive: false });
+    return () => editor.removeEventListener("wheel", handler);
+  }, []);
 
   return (
     <div
@@ -143,7 +148,6 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
       onCompositionStart={handleCompositionStart}
       onCompositionEnd={handleCompositionEnd}
       onPaste={handlePaste}
-      onWheelCapture={handleWheelCapture}
       style={{
         flex: 1,
         border: "1px solid #1a2535",
