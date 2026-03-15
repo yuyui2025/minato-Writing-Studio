@@ -22,7 +22,7 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   const composingRef = useRef(false);
   const debounceTimerRef = useRef<number | null>(null);
 
-  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n").replace(/\n+$/, "");
+  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n");
   const readEditorText = () => editorRef.current?.innerText ?? "";
 
   const flushChange = (text: string) => {
@@ -58,7 +58,8 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     const editor = editorRef.current;
     if (!editor) return;
     const next = normalizeText(initialText);
-    const current = normalizeText(editor.innerText);
+    // contentEditable は末尾に合成 \n を1つ付加するため、editor.innerText 側のみ除去して比較
+    const current = normalizeText(editor.innerText.replace(/\n$/, ""));
     if (next !== current) {
       const prevLeft = editor.scrollLeft;
       const prevTop = editor.scrollTop;
