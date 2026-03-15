@@ -8,6 +8,9 @@ type VerticalEditorProps = {
   lineHeight?: number;
 };
 
+// contentEditable は \r\n を返すことがあるため正規化し、末尾の合成 \n を除去して比較用に使う
+const normForCompare = (v: string) => v.replace(/\r\n/g, "\n").replace(/\n$/, "");
+
 const SCROLLBAR_STYLE = `
   .vertical-editor-container::-webkit-scrollbar { width: 6px; height: 6px; }
   .vertical-editor-container::-webkit-scrollbar-track { background: transparent; }
@@ -22,7 +25,6 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   const composingRef = useRef(false);
   const debounceTimerRef = useRef<number | null>(null);
 
-  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n");
   const readEditorText = () => editorRef.current?.innerText ?? "";
 
   const flushChange = (text: string) => {
@@ -53,14 +55,14 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     };
   }, []);
 
-  // Initialize editor and sync when initialText changes from outside
+  // Initialize editor and sync when initialText changes from outside.
+  // Guard: skip while a debounce is pending — the editor is already ahead of the store
+  // and rewriting innerText here would reset the cursor mid-typing.
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    // contentEditable は末尾に合成 \n を1つ付加する。両側から1つだけ除去して対称比較する
-    const next = normalizeText(initialText).replace(/\n$/, "");
-    const current = normalizeText(editor.innerText).replace(/\n$/, "");
-    if (next !== current) {
+    if (debounceTimerRef.current !== null) return;
+    if (normForCompare(initialText) !== normForCompare(editor.innerText)) {
       const prevLeft = editor.scrollLeft;
       const prevTop = editor.scrollTop;
       editor.innerText = initialText;
