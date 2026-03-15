@@ -57,9 +57,9 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    const next = normalizeText(initialText);
-    // contentEditable は末尾に合成 \n を1つ付加するため、editor.innerText 側のみ除去して比較
-    const current = normalizeText(editor.innerText.replace(/\n$/, ""));
+    // contentEditable は末尾に合成 \n を1つ付加する。両側から1つだけ除去して対称比較する
+    const next = normalizeText(initialText).replace(/\n$/, "");
+    const current = normalizeText(editor.innerText).replace(/\n$/, "");
     if (next !== current) {
       const prevLeft = editor.scrollLeft;
       const prevTop = editor.scrollTop;
