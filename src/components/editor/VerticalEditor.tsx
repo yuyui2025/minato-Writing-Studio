@@ -8,9 +8,10 @@ type VerticalEditorProps = {
   lineHeight?: number;
 };
 
-// contentEditable は末尾に合成 \n を1つ付加する。
-// editor.innerText から読み取る際は除去して「真のテキスト」として扱う。
-const stripSyntheticNewline = (v: string) => v.replace(/\r\n/g, "\n").replace(/\n$/, "");
+// CRLF を LF に正規化するだけ。末尾の \n は一切除去しない。
+// contentEditable が付加する合成 \n も、ユーザーが意図した末尾改行も、
+// 同じ raw 値として扱うことで strip による情報損失を避ける。
+const normalizeLineEndings = (v: string) => v.replace(/\r\n/g, "\n");
 
 const SCROLLBAR_STYLE = `
   .vertical-editor-container::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -30,11 +31,8 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   // undo/redo (initialText != lastFlushed).
   const lastFlushedRef = useRef<string>("");
 
-  // Strip the synthetic trailing \n that contentEditable always appends.
-  // This keeps stored values clean and makes initialText directly comparable
-  // to the normalised editor content.
   const readEditorText = () =>
-    stripSyntheticNewline(editorRef.current?.innerText ?? "");
+    normalizeLineEndings(editorRef.current?.innerText ?? "");
 
   const flushChange = (text: string) => {
     lastFlushedRef.current = text;
@@ -68,24 +66,28 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   // Sync the DOM when initialText changes.
   //
   // Two cases while a debounce is pending (user is actively typing):
-  //   a) initialText === lastFlushed  →  stale round-trip from our own previous
+  //   a) storeText === lastFlushed  →  stale round-trip from our own previous
   //      flush; the editor is already ahead — skip to preserve the cursor.
-  //   b) initialText !== lastFlushed  →  external update (undo/redo, scene switch
+  //   b) storeText !== lastFlushed  →  external update (undo/redo, scene switch
   //      etc.); cancel the in-flight debounce so the external value wins, then sync.
+  //
+  // No trailing-\n stripping is done anywhere: the raw innerText (including
+  // the browser's synthetic trailing \n) is stored as-is, so the comparison
+  // here is a direct equality check after CRLF normalisation only.
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
 
+    const storeText = normalizeLineEndings(initialText);
+
     if (debounceTimerRef.current !== null) {
-      if (initialText === lastFlushedRef.current) return; // (a) round-trip
+      if (storeText === lastFlushedRef.current) return; // (a) round-trip
       // (b) external update — cancel pending debounce so stale text isn't committed
       window.clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
 
-    // initialText is already clean (no synthetic \n); compare against stripped
-    // editor.innerText so the synthetic newline doesn't trigger a false diff.
-    if (initialText !== stripSyntheticNewline(editor.innerText)) {
+    if (storeText !== readEditorText()) {
       const prevLeft = editor.scrollLeft;
       const prevTop = editor.scrollTop;
       editor.innerText = initialText;
