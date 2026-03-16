@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import type { ClipboardEvent, WheelEvent } from "react";
+import type { ClipboardEvent } from "react";
 
 type VerticalEditorProps = {
   initialText: string;
@@ -7,6 +7,11 @@ type VerticalEditorProps = {
   fontSize?: number;
   lineHeight?: number;
 };
+
+// CRLF を LF に正規化するだけ。末尾の \n は一切除去しない。
+// contentEditable が付加する合成 \n も、ユーザーが意図した末尾改行も、
+// 同じ raw 値として扱うことで strip による情報損失を避ける。
+const normalizeLineEndings = (v: string) => v.replace(/\r\n/g, "\n");
 
 const SCROLLBAR_STYLE = `
   .vertical-editor-container::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -21,11 +26,16 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
   const onChangeRef = useRef(onChange);
   const composingRef = useRef(false);
   const debounceTimerRef = useRef<number | null>(null);
+  // Tracks the last text committed to the store so we can distinguish our own
+  // debounce round-trips (initialText == lastFlushed) from external updates like
+  // undo/redo (initialText != lastFlushed).
+  const lastFlushedRef = useRef<string>("");
 
-  const normalizeText = (value: string) => value.replace(/\r\n/g, "\n");
-  const readEditorText = () => editorRef.current?.innerText ?? "";
+  const readEditorText = () =>
+    normalizeLineEndings(editorRef.current?.innerText ?? "");
 
   const flushChange = (text: string) => {
+    lastFlushedRef.current = text;
     onChangeRef.current(text);
   };
 
@@ -53,13 +63,31 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     };
   }, []);
 
-  // Initialize editor and sync when initialText changes from outside
+  // Sync the DOM when initialText changes.
+  //
+  // Two cases while a debounce is pending (user is actively typing):
+  //   a) storeText === lastFlushed  →  stale round-trip from our own previous
+  //      flush; the editor is already ahead — skip to preserve the cursor.
+  //   b) storeText !== lastFlushed  →  external update (undo/redo, scene switch
+  //      etc.); cancel the in-flight debounce so the external value wins, then sync.
+  //
+  // No trailing-\n stripping is done anywhere: the raw innerText (including
+  // the browser's synthetic trailing \n) is stored as-is, so the comparison
+  // here is a direct equality check after CRLF normalisation only.
   useEffect(() => {
     const editor = editorRef.current;
     if (!editor) return;
-    const next = normalizeText(initialText);
-    const current = normalizeText(editor.innerText);
-    if (next !== current) {
+
+    const storeText = normalizeLineEndings(initialText);
+
+    if (debounceTimerRef.current !== null) {
+      if (storeText === lastFlushedRef.current) return; // (a) round-trip
+      // (b) external update — cancel pending debounce so stale text isn't committed
+      window.clearTimeout(debounceTimerRef.current);
+      debounceTimerRef.current = null;
+    }
+
+    if (storeText !== readEditorText()) {
       const prevLeft = editor.scrollLeft;
       const prevTop = editor.scrollTop;
       editor.innerText = initialText;
@@ -117,19 +145,24 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
     scheduleChange(readEditorText());
   };
 
-  const handleWheelCapture = (e: WheelEvent<HTMLDivElement>) => {
-    if (e.ctrlKey) return;
-    if (e.deltaY === 0) return;
-    if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5) return;
-    const el = e.currentTarget;
-    const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientWidth : 1;
-    const delta = e.deltaY * unit;
-    const before = el.scrollLeft;
-    el.scrollLeft += delta;
-    if (el.scrollLeft !== before) {
-      e.preventDefault();
-    }
-  };
+  // #140: native addEventListener with {passive:false} to ensure preventDefault() works
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const handler = (e: globalThis.WheelEvent) => {
+      if (e.ctrlKey) return;
+      if (e.deltaY === 0) return;
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) * 0.5) return;
+      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? editor.clientWidth : 1;
+      const before = editor.scrollLeft;
+      editor.scrollLeft += e.deltaY * unit;
+      if (editor.scrollLeft !== before) {
+        e.preventDefault();
+      }
+    };
+    editor.addEventListener("wheel", handler, { passive: false });
+    return () => editor.removeEventListener("wheel", handler);
+  }, []);
 
   return (
     <div
@@ -143,7 +176,6 @@ export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeigh
       onCompositionStart={handleCompositionStart}
       onCompositionEnd={handleCompositionEnd}
       onPaste={handlePaste}
-      onWheelCapture={handleWheelCapture}
       style={{
         flex: 1,
         border: "1px solid #1a2535",

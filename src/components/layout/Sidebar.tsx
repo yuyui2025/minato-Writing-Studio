@@ -192,7 +192,7 @@ export const Sidebar: React.FC = () => {
       background: "#080c16",
       overflowY: sidebarOpen ? "auto" : "hidden",
       flexShrink: 0,
-      transition: "width 0.2s ease",
+      transition: sidebarFloat ? "width 0.2s ease" : "none",
       display: "flex", flexDirection: "column",
       ...(sidebarOpen && sidebarFloat ? {
         position: "absolute", left: 0, top: 0, bottom: 0, zIndex: 51,
@@ -200,8 +200,8 @@ export const Sidebar: React.FC = () => {
       } : {}),
     }}>
 
-      {/* リサイズハンドル（固定モード展開時のみ） */}
-      {sidebarOpen && !sidebarFloat && (
+      {/* リサイズハンドル（展開時） */}
+      {sidebarOpen && (
         <div
           onPointerDown={(e) => {
             dragStartXRef.current = e.clientX;
