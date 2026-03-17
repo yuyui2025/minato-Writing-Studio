@@ -9,6 +9,7 @@ This file provides foundational context and instructions for Gemini CLI when wor
 ### Core Tech Stack
 - **Frontend:** React 18, TypeScript, Vite 5
 - **State Management:** Zustand 5 (Single Store Pattern)
+- **Data Fetching:** TanStack Query (React Query) v5
 - **Backend/Auth:** Supabase (PostgreSQL + Google OAuth)
 - **AI Integration:** Anthropic Claude (API proxied via Vercel Serverless Functions)
 - **Text Analysis:** Rust (compiled to WebAssembly via `wasm-pack`)
