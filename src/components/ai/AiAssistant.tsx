@@ -65,10 +65,6 @@ export const AiAssistant: React.FC = () => {
     freeInstructMutation.mutate();
   };
 
-  if (!selectedScene) return null;
-
-  const panelWidth = Math.max(panelMinWidth, Math.min(panelMaxWidth, aiPanelWidth || 360));
-
   useEffect(() => {
     if (!resizing) return;
     const onMove = (e: PointerEvent) => {
@@ -84,6 +80,10 @@ export const AiAssistant: React.FC = () => {
       window.removeEventListener("pointerup", onUp);
     };
   }, [resizing, setAiPanelWidth]);
+
+  if (!selectedScene) return null;
+
+  const panelWidth = Math.max(panelMinWidth, Math.min(panelMaxWidth, aiPanelWidth || 360));
 
   return (
     <>
@@ -208,7 +208,9 @@ export const AiAssistant: React.FC = () => {
                     try {
                       const entries = parsePolishHistoryEntries(t);
                       entries.forEach(entry => addAiHistory("推敲提案", entry, selectedScene.title, selectedScene.id));
-                    } catch(e) {}
+                    } catch(e) {
+                      console.error("Failed to add AI history:", e);
+                    }
                   }
                 }}
                 loading={aiLoading.polish}
@@ -234,7 +236,9 @@ export const AiAssistant: React.FC = () => {
                       const hints = JSON.parse(clean);
                       const historyText = hints.map((h: any) => `・[${h.reason}] ${h.hint}`).join("\n");
                       addAiHistory("執筆ヒント", historyText, selectedScene.title, selectedScene.id);
-                    } catch(e) {}
+                    } catch(e) {
+                      console.error("Failed to add AI history:", e);
+                    }
                   }
                 }}
                 loading={aiLoading.hint}

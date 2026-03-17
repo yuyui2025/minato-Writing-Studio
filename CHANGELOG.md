@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
+- **TanStack Query (React Query) v5 を導入**
+  - AI API 呼び出しの状態管理（Loading/Error/Success）とリトライロジックを `useMutation` でカプセル化。
+- **インポート時のシーン検出プロトコルを追加（PR #185）**
+  - インポートしたテキストから特定のパターンでシーンの区切りを自動検出する仕組みを導入。
 - **ZIP ファイルのインポートに対応（YUY-43）**
   - `fflate` を依存追加（軽量 zip ライブラリ、動的インポートで遅延ロード）。
   - zip 内の `.md` / `.txt` を名前順にすべて展開・結合して解析。`__MACOSX` 等のメタファイルを除外。
@@ -17,6 +21,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
   - `ImportModal` の Preview ステップに「新規プロジェクト / 既存に追加 / 現在を置き換え」の選択 UI を追加（デフォルト: 新規プロジェクト）。
   - `useStudioStore` に `appendToProject`（シーン追加・設定変更なし）と `createProjectFromImport`（新規プロジェクト作成＋インポート）を追加。
   - 「追加」モードではキャラ・世界観フィールドを非表示にしてシンプルに。
+
+### Changed
+- **執筆 UI のレイアウト調整と Todo 記述 UI の改善**
+  - フルスクリーン時の折りたたみ挙動、サイドバーのリサイズ性能向上。
+
+### Fixed
+- **VerticalEditor の改行コード正規化と同期の修正（#165, PR #191）**
+  - CRLF 正規化の厳密化（不要な末尾改行の削除を停止）。
+  - Undo/Redo 時の本文上書き問題を解消。
+  - デバウンスの競合による同期漏れを防ぐためのガード処理を追加。
+- **AiAssistant の Lint エラーと Hooks ルール違反を修正**
+  - 条件付きでの `useEffect` 呼び出しを修正。
+  - 空の catch ブロックにエラーログ出力を追加。
+- AI提案「閉じる」で内容を保持するよう修正（YUY-34）
 
 ### Fixed
 - **AI提案を「閉じる」後も内容を保持するよう修正（YUY-34）**
