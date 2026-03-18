@@ -1,3 +1,6 @@
+import { supabase } from "../supabase";
+import type { AiMode } from "../types";
+
 const API_TIMEOUT_MS = 30_000;
 const MAX_RETRIES = 2;
 
@@ -25,17 +28,34 @@ async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs: nu
   }
 }
 
-export async function callAnthropic(prompt: string, maxTokens = 1000): Promise<string> {
+export async function callAnthropic(
+  prompt: string,
+  maxTokens = 1000,
+  aiMode: AiMode = "standard",
+  byokLocalKey = ""
+): Promise<string> {
   const body = JSON.stringify({
     model: "claude-sonnet-4-20250514",
     max_tokens: maxTokens,
     messages: [{ role: "user", content: prompt }],
+    ai_mode: aiMode,
   });
-  const init: RequestInit = {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body,
-  };
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  // JWT 付与
+  const { data: sessionData } = await supabase.auth.getSession();
+  const accessToken = sessionData?.session?.access_token;
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  // BYOK ローカルキーは専用ヘッダーで送信
+  if (aiMode === "byok_local" && byokLocalKey) {
+    headers["X-Byok-Key"] = byokLocalKey;
+  }
+
+  const init: RequestInit = { method: "POST", headers, body };
 
   let lastError: AiError = new AiError("ネットワークエラーが発生しました。接続を確認してください。");
 
