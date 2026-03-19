@@ -3,7 +3,7 @@ import { gzipSync } from "fflate";
 import type { User } from "@supabase/supabase-js";
 import type {
   SceneStatus, Scene, Settings, Manuscripts, AppliedState,
-  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord, ProjectFile
+  AiResults, AiLoading, AiErrors, Backup, SceneDraft, EditorSettings, TabKey, SidebarTabKey, SaveStatus, AiHistoryItem, TextMetrics, ImportData, ProjectRecord, ProjectFile, AiMode, UserProfile
 } from "../types";
 import { initialSettings, initialScenes } from "../constants";
 import { storageSet } from "../utils/storage";
@@ -109,6 +109,13 @@ export interface StudioState {
   historyFuture: EditorSnapshot[];
   historyLocked: boolean;
 
+  // AI mode (BYOK)
+  aiMode: AiMode;
+  // BYOK local key — localStorage直接保存、Supabase同期・エクスポート対象外
+  byokLocalKey: string;
+  byokCloudKeyHint: string | null;
+  userProfile: UserProfile | null;
+
   // derived (kept in store for fast access)
   selectedScene: Scene | null;
   manuscriptText: string;
@@ -163,6 +170,10 @@ export interface StudioState {
   setAiHistory: (v: AiHistoryItem[] | ((prev: AiHistoryItem[]) => AiHistoryItem[])) => void;
   setTextMetrics: (v: TextMetrics | null) => void;
   setHistoryLocked: (v: boolean) => void;
+  setAiMode: (v: AiMode) => void;
+  setByokLocalKey: (v: string) => void;
+  setByokCloudKeyHint: (v: string | null) => void;
+  setUserProfile: (v: UserProfile | null) => void;
 
   // ---------------------------------------------------------------------------
   // Actions (business logic)
@@ -281,6 +292,10 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "focus" },
   backups: [],
   autoBackups: [],
+  aiMode: (typeof localStorage !== "undefined" ? (localStorage.getItem("minato:ai_mode") as AiMode | null) : null) ?? "standard",
+  byokLocalKey: typeof localStorage !== "undefined" ? (localStorage.getItem("minato:byok_local_key") ?? "") : "",
+  byokCloudKeyHint: null,
+  userProfile: null,
   aiFloat: false,
   aiWide: false,
   aiPanelWidth: 360,
@@ -378,6 +393,15 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAiHistory: (v) => set((s) => ({ aiHistory: typeof v === "function" ? v(s.aiHistory) : v })),
   setTextMetrics: (v) => set({ textMetrics: v }),
   setHistoryLocked: (v) => set({ historyLocked: v }),
+  setAiMode: (v) => { localStorage.setItem("minato:ai_mode", v); set({ aiMode: v }); },
+  setByokLocalKey: (v) => {
+    // localStorage に直接保存（storageSet 経由しない＝Supabase同期なし）
+    if (v) localStorage.setItem("minato:byok_local_key", v);
+    else localStorage.removeItem("minato:byok_local_key");
+    set({ byokLocalKey: v });
+  },
+  setByokCloudKeyHint: (v) => set({ byokCloudKeyHint: v }),
+  setUserProfile: (v) => set({ userProfile: v }),
 
   // ---------------------------------------------------------------------------
   // Actions
@@ -928,5 +952,9 @@ export function resetStudioStore() {
     manuscriptText: "",
     wordCount: 0,
     textMetrics: null,
+    aiMode: "standard",
+    byokLocalKey: "",
+    byokCloudKeyHint: null,
+    userProfile: null,
   });
 }

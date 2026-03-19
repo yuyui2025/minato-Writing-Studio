@@ -1,6 +1,6 @@
 import { useMemo, Dispatch, SetStateAction } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { PolishSuggestion, AppliedState } from "../../types";
+import { PolishSuggestion, AppliedState, AiMode } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
 type PolishPanelProps = {
@@ -14,6 +14,8 @@ type PolishPanelProps = {
   onError: (value: string) => void;
   applied: AppliedState;
   onApplied: Dispatch<SetStateAction<AppliedState>>;
+  aiMode?: AiMode;
+  byokLocalKey?: string;
 };
 
 export function PolishPanel({
@@ -27,6 +29,8 @@ export function PolishPanel({
   onError,
   applied,
   onApplied,
+  aiMode = "standard",
+  byokLocalKey = "",
 }: PolishPanelProps) {
   const suggestions = useMemo(() => {
     if (!result) return null;
@@ -41,7 +45,7 @@ export function PolishPanel({
   const mutation = useMutation({
     mutationFn: () => {
       const prompt = `以下の文章を推敲してください。改善点を3つ見つけ、必ずJSONのみで返してください。余分なテキスト不要。\n形式: [{"original":"元の表現","suggestion":"改善案","reason":"理由"}]\n\n${manuscriptText.slice(-600)}`;
-      return callAnthropic(prompt);
+      return callAnthropic(prompt, 1000, aiMode, byokLocalKey);
     },
     onMutate: () => {
       onResult("");

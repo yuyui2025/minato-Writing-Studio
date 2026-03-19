@@ -50,6 +50,21 @@ export type TabKey = "write" | "structure" | "settings" | "prefs" | "ai";
 export type SidebarTabKey = TabKey | "ai";
 export type SaveStatus = "saving" | "saved" | "error" | "offline";
 
+export type AiMode = "standard" | "byok_local" | "byok_cloud";
+export type UserPlan = "free" | "pro" | "byok";
+
+export type UserCredits = {
+  dailyUsed: number;
+  dailyLimit: number;
+  monthlyUsed: number;
+  monthlyLimit: number;
+};
+
+export type UserProfile = {
+  plan: UserPlan;
+  credits?: UserCredits;
+};
+
 export type AiHistoryItem = {
   id: number;
   timestamp: string;
