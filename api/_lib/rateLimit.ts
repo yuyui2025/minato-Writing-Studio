@@ -32,8 +32,8 @@ export async function checkRateLimit(userId: string, ipAddress: string): Promise
     .single();
 
   if (error && error.code !== "PGRST116") {
-    // PGRST116 = no rows found。それ以外は無視してリクエストを通す
-    return;
+    // PGRST116 = no rows found（正常）。それ以外のDBエラーは安全方向で上限扱い
+    throw Object.assign(new Error("Rate limit check failed"), { status: 429 });
   }
 
   const count = data?.request_count ?? 0;

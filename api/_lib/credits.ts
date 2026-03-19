@@ -38,28 +38,29 @@ export async function checkAndConsumeCredit(userId: string): Promise<void> {
     .eq("user_id", userId)
     .single();
 
-  // 初回ユーザー: レコードがない場合は作成
+  // 初回ユーザー: レコードがない場合は 0 で初期化してから通常フローへ
   if (!credits) {
     await supabase.from("user_credits").insert({
       user_id: userId,
-      daily_used: 1,
+      daily_used: 0,
       daily_limit: limits.dailyLimit,
-      monthly_used: 1,
+      monthly_used: 0,
       monthly_limit: limits.monthlyLimit,
       daily_reset_at: today,
       monthly_reset_at: thisMonth,
     });
-    return;
+    // 上限チェック → インクリメントを通常フローで実行するため、
+    // ここで 0 として処理を続ける
   }
 
   // 遅延リセット方式: 日次・月次リセット
-  let dailyUsed = credits.daily_used;
-  let monthlyUsed = credits.monthly_used;
+  let dailyUsed = credits?.daily_used ?? 0;
+  let monthlyUsed = credits?.monthly_used ?? 0;
 
-  if (credits.daily_reset_at < today) {
+  if (credits && credits.daily_reset_at < today) {
     dailyUsed = 0;
   }
-  if (credits.monthly_reset_at < thisMonth) {
+  if (credits && credits.monthly_reset_at < thisMonth) {
     monthlyUsed = 0;
   }
 

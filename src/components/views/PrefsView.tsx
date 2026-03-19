@@ -196,7 +196,8 @@ function ByokCloudSection({ profile }: { profile: ReturnType<typeof useUserProfi
     if (!user) return;
     import("../../supabase").then(({ supabase }) => {
       supabase.from("user_byok_key_hints").select("key_hint").eq("user_id", user.id).single()
-        .then(({ data }) => { if (data?.key_hint) setCloudKeyHint(data.key_hint); });
+        .then(({ data }) => { if (data?.key_hint) setCloudKeyHint(data.key_hint); })
+        .catch(() => {});
     });
   }, [user]);
 
@@ -239,8 +240,6 @@ function ByokCloudSection({ profile }: { profile: ReturnType<typeof useUserProfi
       setErrMsg(e instanceof Error ? e.message : "エラーが発生しました");
     }
   }
-
-  void profile; // 将来的なPro判定に使用
 
   const sectionLabelStyle: React.CSSProperties = { fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 };
   const btn = (active: boolean): React.CSSProperties => ({

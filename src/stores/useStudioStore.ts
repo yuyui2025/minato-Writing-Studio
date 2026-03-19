@@ -292,7 +292,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "focus" },
   backups: [],
   autoBackups: [],
-  aiMode: "standard" as AiMode,
+  aiMode: (typeof localStorage !== "undefined" ? (localStorage.getItem("minato:ai_mode") as AiMode | null) : null) ?? "standard",
   byokLocalKey: typeof localStorage !== "undefined" ? (localStorage.getItem("minato:byok_local_key") ?? "") : "",
   byokCloudKeyHint: null,
   userProfile: null,
@@ -393,7 +393,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setAiHistory: (v) => set((s) => ({ aiHistory: typeof v === "function" ? v(s.aiHistory) : v })),
   setTextMetrics: (v) => set({ textMetrics: v }),
   setHistoryLocked: (v) => set({ historyLocked: v }),
-  setAiMode: (v) => set({ aiMode: v }),
+  setAiMode: (v) => { localStorage.setItem("minato:ai_mode", v); set({ aiMode: v }); },
   setByokLocalKey: (v) => {
     // localStorage に直接保存（storageSet 経由しない＝Supabase同期なし）
     if (v) localStorage.setItem("minato:byok_local_key", v);
