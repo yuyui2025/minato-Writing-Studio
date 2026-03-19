@@ -196,8 +196,7 @@ function ByokCloudSection({ profile }: { profile: ReturnType<typeof useUserProfi
     if (!user) return;
     import("../../supabase").then(({ supabase }) => {
       supabase.from("user_byok_key_hints").select("key_hint").eq("user_id", user.id).single()
-        .then(({ data }) => { if (data?.key_hint) setCloudKeyHint(data.key_hint); })
-        .catch(() => {});
+        .then(({ data }) => { if (data?.key_hint) setCloudKeyHint(data.key_hint); }, () => {});
     });
   }, [user]);
 
