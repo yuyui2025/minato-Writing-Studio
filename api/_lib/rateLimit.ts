@@ -23,27 +23,20 @@ export async function checkRateLimit(userId: string, ipAddress: string): Promise
   windowStart.setMinutes(Math.floor(windowStart.getMinutes() / WINDOW_MINUTES) * WINDOW_MINUTES);
   const windowKey = windowStart.toISOString();
 
-  const { data, error } = await supabase
-    .from("api_rate_limits")
-    .select("request_count")
-    .eq("user_id", userId)
-    .eq("ip_address", ipAddress)
-    .eq("window_start", windowKey)
-    .single();
+  // アトミックなインクリメント＋取得（race condition 対策）
+  // INSERT ... ON CONFLICT DO UPDATE により、チェックとインクリメントを1回のDB操作で実施
+  const { data, error } = await supabase.rpc("increment_rate_limit", {
+    p_user_id: userId,
+    p_ip_address: ipAddress,
+    p_window_start: windowKey,
+  });
 
-  if (error && error.code !== "PGRST116") {
-    // PGRST116 = no rows found（正常）。それ以外のDBエラーは安全方向で上限扱い
+  if (error) {
+    // DBエラーは安全方向で上限扱い
     throw Object.assign(new Error("Rate limit check failed"), { status: 429 });
   }
 
-  const count = data?.request_count ?? 0;
-  if (count >= MAX_REQUESTS) {
+  if ((data as number) > MAX_REQUESTS) {
     throw Object.assign(new Error("Rate limit exceeded"), { status: 429 });
   }
-
-  // カウントインクリメント（upsert）
-  await supabase.from("api_rate_limits").upsert(
-    { user_id: userId, ip_address: ipAddress, window_start: windowKey, request_count: count + 1 },
-    { onConflict: "user_id,ip_address,window_start" }
-  );
 }
