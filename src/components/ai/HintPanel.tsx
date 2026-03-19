@@ -1,6 +1,6 @@
 import { useMemo, Dispatch, SetStateAction } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { HintItem, AppliedState } from "../../types";
+import { HintItem, AppliedState, AiMode } from "../../types";
 import { callAnthropic, AiError } from "../../utils/ai";
 
 type HintPanelProps = {
@@ -15,6 +15,8 @@ type HintPanelProps = {
   onApplied: Dispatch<SetStateAction<AppliedState>>;
   manuscriptText: string;
   onInsert: (value: string) => void;
+  aiMode?: AiMode;
+  byokLocalKey?: string;
 };
 
 export function HintPanel({
@@ -29,6 +31,8 @@ export function HintPanel({
   onApplied,
   manuscriptText,
   onInsert,
+  aiMode = "standard",
+  byokLocalKey = "",
 }: HintPanelProps) {
   const hints = useMemo(() => {
     if (!result) return null;
@@ -43,7 +47,7 @@ export function HintPanel({
   const mutation = useMutation({
     mutationFn: () => {
       const finalPrompt = prompt + "\n\n必ずJSONのみで返してください。形式: [{\"hint\":\"ヒント内容\",\"reason\":\"根拠\",\"keyword\":\"本文中の関連する短いフレーズや単語（2〜8文字）\"}]";
-      return callAnthropic(finalPrompt);
+      return callAnthropic(finalPrompt, 1000, aiMode, byokLocalKey);
     },
     onMutate: () => {
       onResult("");

@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { callAnthropic, AiError } from "../../utils/ai";
+import type { AiMode } from "../../types";
 
 type AiPanelProps = {
   label: string;
@@ -13,6 +14,8 @@ type AiPanelProps = {
   onLoading: (value: boolean) => void;
   error?: string;
   onError: (value: string) => void;
+  aiMode?: AiMode;
+  byokLocalKey?: string;
 };
 
 export function AiPanel({
@@ -26,6 +29,8 @@ export function AiPanel({
   onLoading,
   error = "",
   onError,
+  aiMode = "standard",
+  byokLocalKey = "",
 }: AiPanelProps) {
   const onAppendRef = useRef(onAppend);
   useEffect(() => {
@@ -39,7 +44,7 @@ export function AiPanel({
   }, [result]);
 
   const mutation = useMutation({
-    mutationFn: () => callAnthropic(prompt),
+    mutationFn: () => callAnthropic(prompt, 1000, aiMode, byokLocalKey),
     onMutate: () => {
       onResult("");
       onError("");

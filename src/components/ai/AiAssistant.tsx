@@ -26,7 +26,8 @@ export const AiAssistant: React.FC = () => {
     aiErrors, setAiErrors,
     aiLoading, setAiLoading, aiApplied, setAiApplied,
     hintApplied, setHintApplied, manuscriptText,
-    handleManuscriptChange, settings, selectedScene, addAiHistory
+    handleManuscriptChange, settings, selectedScene, addAiHistory,
+    aiMode, byokLocalKey,
   } = useStudio();
   const [freeText, setFreeText] = useState("");
   const [resizing, setResizing] = useState(false);
@@ -38,7 +39,7 @@ export const AiAssistant: React.FC = () => {
   const freeInstructMutation = useMutation({
     mutationFn: () => {
       const context = `【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene ? `${selectedScene.chapter} / ${selectedScene.title}` : "未選択"}\n【本文末尾】${manuscriptText.slice(-300)}\n\n【指示】${freeText}`;
-      return callAnthropic(context);
+      return callAnthropic(context, 1000, aiMode, byokLocalKey);
     },
     onMutate: () => {
       setAiResults(r => ({ ...r, freeInstruct: "" }));
@@ -200,6 +201,8 @@ export const AiAssistant: React.FC = () => {
               </div>
 
               <PolishPanel
+                aiMode={aiMode}
+                byokLocalKey={byokLocalKey}
                 manuscriptText={manuscriptText}
                 result={aiResults.polish}
                 onResult={t => {
@@ -227,6 +230,8 @@ export const AiAssistant: React.FC = () => {
                 }}
               />
               <HintPanel
+                aiMode={aiMode}
+                byokLocalKey={byokLocalKey}
                 result={aiResults.hint}
                 onResult={t => {
                   setAiResults(r => ({ ...r, hint: t }));
@@ -252,6 +257,8 @@ export const AiAssistant: React.FC = () => {
                 prompt={`以下の世界観・設定と現在のシーンを踏まえて、このシーンをより良くするヒントを3点挙げてください。\n\n【世界観】${settings.world}\n【キャラクター】${settings.characters}\n【テーマ】${settings.theme}\n\n【シーン】${selectedScene.chapter} / ${selectedScene.title}\n【概要】${selectedScene.synopsis || "なし"}\n【本文末尾】${manuscriptText.slice(-300)}`}
               />
               <AiPanel
+                aiMode={aiMode}
+                byokLocalKey={byokLocalKey}
                 label="矛盾チェック"
                 result={aiResults.check}
                 onResult={t => { setAiResults(r => ({ ...r, check: t })); if (t) addAiHistory("矛盾チェック", t, selectedScene.title, selectedScene.id); }}

@@ -31,55 +31,23 @@ export async function checkAndConsumeCredit(userId: string): Promise<void> {
   // byok プランはクレジット不要
   if (plan === "byok") return;
 
-  // クレジット取得
-  const { data: credits } = await supabase
-    .from("user_credits")
-    .select("daily_used, daily_limit, monthly_used, monthly_limit, daily_reset_at, monthly_reset_at")
-    .eq("user_id", userId)
-    .single();
+  // アトミックな上限チェック＋インクリメント（race condition 排除）
+  const { data: result, error } = await supabase.rpc("check_and_consume_credit", {
+    p_user_id: userId,
+    p_daily_limit: limits.dailyLimit,
+    p_monthly_limit: limits.monthlyLimit,
+    p_today: today,
+    p_this_month: thisMonth,
+  });
 
-  // 初回ユーザー: レコードがない場合は 0 で初期化してから通常フローへ
-  if (!credits) {
-    await supabase.from("user_credits").insert({
-      user_id: userId,
-      daily_used: 0,
-      daily_limit: limits.dailyLimit,
-      monthly_used: 0,
-      monthly_limit: limits.monthlyLimit,
-      daily_reset_at: today,
-      monthly_reset_at: thisMonth,
-    });
-    // 上限チェック → インクリメントを通常フローで実行するため、
-    // ここで 0 として処理を続ける
+  if (error) {
+    throw Object.assign(new Error("クレジット確認中にエラーが発生しました。"), { status: 500 });
   }
 
-  // 遅延リセット方式: 日次・月次リセット
-  let dailyUsed = credits?.daily_used ?? 0;
-  let monthlyUsed = credits?.monthly_used ?? 0;
-
-  if (credits && credits.daily_reset_at < today) {
-    dailyUsed = 0;
-  }
-  if (credits && credits.monthly_reset_at < thisMonth) {
-    monthlyUsed = 0;
-  }
-
-  // 上限チェック
-  if (dailyUsed >= limits.dailyLimit) {
+  if (result === "daily_limit") {
     throw Object.assign(new Error("1日のAI利用上限に達しました。BYOKモードへの切り替えをご検討ください。"), { status: 429 });
   }
-  if (monthlyUsed >= limits.monthlyLimit) {
+  if (result === "monthly_limit") {
     throw Object.assign(new Error("今月のAI利用上限に達しました。BYOKモードへの切り替えをご検討ください。"), { status: 429 });
   }
-
-  // カウントインクリメント
-  await supabase.from("user_credits").update({
-    daily_used: dailyUsed + 1,
-    monthly_used: monthlyUsed + 1,
-    daily_limit: limits.dailyLimit,
-    monthly_limit: limits.monthlyLimit,
-    daily_reset_at: today,
-    monthly_reset_at: thisMonth,
-    updated_at: new Date().toISOString(),
-  }).eq("user_id", userId);
 }

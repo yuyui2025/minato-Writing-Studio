@@ -146,7 +146,9 @@ export function ImportModal() {
     if (mode !== "append") {
       aiResult = await extractImportMetadataBySections(
         parsedSections,
-        combinedText
+        combinedText,
+        store.aiMode,
+        store.byokLocalKey
       );
     }
 

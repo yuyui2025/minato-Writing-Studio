@@ -1,5 +1,5 @@
 import { callAnthropic } from "./ai";
-import type { AiExtractResult } from "../types";
+import type { AiExtractResult, AiMode } from "../types";
 
 type ImportSectionLike = {
   chapter?: string;
@@ -46,7 +46,9 @@ export function buildImportAnalysisExcerpt(sections: ImportSectionLike[]): strin
  * The caller should handle null gracefully (e.g. show an empty-state message).
  */
 export async function extractImportMetadata(
-  text: string
+  text: string,
+  aiMode: AiMode = "standard",
+  byokLocalKey = ""
 ): Promise<AiExtractResult | null> {
   const sample = text.slice(0, MAX_ANALYSIS_CHARS);
 
@@ -63,7 +65,7 @@ ${sample}
 情報が不足している場合は確認できた範囲の情報のみを記述してください。`;
 
   try {
-    const raw = await callAnthropic(prompt, 800);
+    const raw = await callAnthropic(prompt, 800, aiMode, byokLocalKey);
     const cleaned = raw
       .replace(/^```(?:json)?\s*/i, "")
       .replace(/\s*```$/, "")
@@ -80,11 +82,13 @@ ${sample}
 
 export async function extractImportMetadataBySections(
   sections: ImportSectionLike[],
-  fallbackText: string
+  fallbackText: string,
+  aiMode: AiMode = "standard",
+  byokLocalKey = ""
 ): Promise<AiExtractResult | null> {
   const excerpt = buildImportAnalysisExcerpt(sections);
   if (!excerpt) {
-    return extractImportMetadata(fallbackText);
+    return extractImportMetadata(fallbackText, aiMode, byokLocalKey);
   }
-  return extractImportMetadata(excerpt);
+  return extractImportMetadata(excerpt, aiMode, byokLocalKey);
 }
