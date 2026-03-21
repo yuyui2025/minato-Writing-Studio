@@ -81,6 +81,16 @@ async function resolveApiKey(mode: AiMode, req: VercelRequest, userId: string): 
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  try {
+    await _handler(req, res);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Internal Server Error";
+    console.error("Unhandled error in handler:", e);
+    try { res.status(500).json({ error: msg }); } catch { /* response already sent */ }
+  }
+}
+
+async function _handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
   // Body size check
@@ -109,12 +119,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(err.status ?? 403).json({ error: err.message ?? "Forbidden" });
   }
 
-  // レート制限
-  try {
-    await checkRateLimit(userId, getClientIp(req));
-  } catch (e) {
-    const err = e as { status?: number };
-    return res.status(err.status ?? 429).json({ error: "Too many requests" });
+  // レート制限（standard モードのみ）
+  if (mode === "standard") {
+    try {
+      await checkRateLimit(userId, getClientIp(req));
+    } catch (e) {
+      const err = e as { status?: number };
+      return res.status(err.status ?? 429).json({ error: "Too many requests" });
+    }
   }
 
   // リクエストバリデーション（既存）
