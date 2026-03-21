@@ -17,7 +17,14 @@ function getAdminClient() {
 }
 
 export async function checkRateLimit(userId: string, ipAddress: string): Promise<void> {
-  const supabase = getAdminClient();
+  let supabase: ReturnType<typeof createClient>;
+  try {
+    supabase = getAdminClient();
+  } catch {
+    // Service role key not configured — skip rate limiting
+    console.warn("Rate limit check skipped: admin client unavailable");
+    return;
+  }
   const windowStart = new Date();
   windowStart.setSeconds(0, 0);
   windowStart.setMinutes(Math.floor(windowStart.getMinutes() / WINDOW_MINUTES) * WINDOW_MINUTES);

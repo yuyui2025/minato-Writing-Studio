@@ -14,7 +14,14 @@ function getAdminClient() {
 }
 
 export async function checkAndConsumeCredit(userId: string): Promise<void> {
-  const supabase = getAdminClient();
+  let supabase: ReturnType<typeof createClient>;
+  try {
+    supabase = getAdminClient();
+  } catch {
+    // Service role key not configured — skip credit check
+    console.warn("Credit check skipped: admin client unavailable");
+    return;
+  }
   const today = new Date().toISOString().slice(0, 10);
   const thisMonth = today.slice(0, 7) + "-01";
 
