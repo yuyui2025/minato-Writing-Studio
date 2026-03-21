@@ -25,7 +25,8 @@ export async function checkRateLimit(userId: string, ipAddress: string): Promise
 
   // アトミックなインクリメント＋取得（race condition 対策）
   // INSERT ... ON CONFLICT DO UPDATE により、チェックとインクリメントを1回のDB操作で実施
-  const { data, error } = await supabase.rpc("increment_rate_limit", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any).rpc("increment_rate_limit", {
     p_user_id: userId,
     p_ip_address: ipAddress,
     p_window_start: windowKey,

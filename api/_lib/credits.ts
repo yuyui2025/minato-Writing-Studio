@@ -19,7 +19,8 @@ export async function checkAndConsumeCredit(userId: string): Promise<void> {
   const thisMonth = today.slice(0, 7) + "-01";
 
   // プラン取得
-  const { data: profile } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: profile } = await (supabase as any)
     .from("user_profiles")
     .select("plan")
     .eq("user_id", userId)
@@ -32,7 +33,8 @@ export async function checkAndConsumeCredit(userId: string): Promise<void> {
   if (plan === "byok") return;
 
   // アトミックな上限チェック＋インクリメント（race condition 排除）
-  const { data: result, error } = await supabase.rpc("check_and_consume_credit", {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: result, error } = await (supabase as any).rpc("check_and_consume_credit", {
     p_user_id: userId,
     p_daily_limit: limits.dailyLimit,
     p_monthly_limit: limits.monthlyLimit,
