@@ -5,8 +5,11 @@ let _adminClient: ReturnType<typeof createClient> | null = null;
 function getAdminClient() {
   if (!_adminClient) {
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!url || !key) throw new Error("Missing Supabase env vars");
+    // Service role key for admin ops; anon key is sufficient for auth.getUser() JWT verification
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+      ?? process.env.SUPABASE_ANON_KEY
+      ?? process.env.VITE_SUPABASE_ANON_KEY;
+    if (!url || !key) throw Object.assign(new Error("Missing Supabase env vars"), { status: 401 });
     _adminClient = createClient(url, key, { auth: { persistSession: false } });
   }
   return _adminClient;
