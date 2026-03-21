@@ -1,7 +1,4 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { verifyToken } from "./_lib/auth";
-import { checkRateLimit } from "./_lib/rateLimit";
-import { checkAndConsumeCredit } from "./_lib/credits";
 
 const ALLOWED_MODELS = ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"] as const;
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
@@ -102,10 +99,11 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // JWT 認証
   let userId: string;
   try {
+    const { verifyToken } = await import("./_lib/auth");
     userId = await verifyToken(req.headers["authorization"]);
   } catch (e) {
     const err = e as { status?: number; message?: string };
-    return res.status(err.status ?? 401).json({ error: "Unauthorized" });
+    return res.status(err.status ?? 401).json({ error: err.message ?? "Unauthorized" });
   }
 
   const { model, max_tokens, messages, ai_mode } = (req.body ?? {}) as RequestBody;
@@ -122,6 +120,7 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // レート制限（standard モードのみ）
   if (mode === "standard") {
     try {
+      const { checkRateLimit } = await import("./_lib/rateLimit");
       await checkRateLimit(userId, getClientIp(req));
     } catch (e) {
       const err = e as { status?: number };
@@ -155,6 +154,7 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // クレジット確認（standard モードのみ）
   if (mode === "standard") {
     try {
+      const { checkAndConsumeCredit } = await import("./_lib/credits");
       await checkAndConsumeCredit(userId);
     } catch (e) {
       const err = e as { status?: number; message?: string };
