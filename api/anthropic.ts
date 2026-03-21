@@ -1,4 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { verifyToken } from "./_lib/auth.js";
+import { checkRateLimit } from "./_lib/rateLimit.js";
+import { checkAndConsumeCredit } from "./_lib/credits.js";
 
 const ALLOWED_MODELS = ["claude-sonnet-4-20250514", "claude-haiku-4-5-20251001"] as const;
 type AllowedModel = (typeof ALLOWED_MODELS)[number];
@@ -52,7 +55,7 @@ async function resolveApiKey(mode: AiMode, req: VercelRequest, userId: string): 
   }
 
   if (mode === "byok_cloud") {
-    const { getDecryptedByokKey } = await import("./_lib/encrypt");
+    const { getDecryptedByokKey } = await import("./_lib/encrypt.js");
     const { createClient } = await import("@supabase/supabase-js");
     const url = process.env.SUPABASE_URL ?? process.env.VITE_SUPABASE_URL ?? "";
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
@@ -99,7 +102,6 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // JWT 認証
   let userId: string;
   try {
-    const { verifyToken } = await import("./_lib/auth");
     userId = await verifyToken(req.headers["authorization"]);
   } catch (e) {
     const err = e as { status?: number; message?: string };
@@ -120,7 +122,6 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // レート制限（standard モードのみ）
   if (mode === "standard") {
     try {
-      const { checkRateLimit } = await import("./_lib/rateLimit");
       await checkRateLimit(userId, getClientIp(req));
     } catch (e) {
       const err = e as { status?: number };
@@ -154,7 +155,6 @@ async function _handler(req: VercelRequest, res: VercelResponse) {
   // クレジット確認（standard モードのみ）
   if (mode === "standard") {
     try {
-      const { checkAndConsumeCredit } = await import("./_lib/credits");
       await checkAndConsumeCredit(userId);
     } catch (e) {
       const err = e as { status?: number; message?: string };

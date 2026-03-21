@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { PLAN_LIMITS, type UserPlan } from "./planConfig";
+import { PLAN_LIMITS, type UserPlan } from "./planConfig.js";
 
 let _adminClient: ReturnType<typeof createClient> | null = null;
 
