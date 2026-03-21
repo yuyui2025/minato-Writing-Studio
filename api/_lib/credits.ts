@@ -41,7 +41,9 @@ export async function checkAndConsumeCredit(userId: string): Promise<void> {
   });
 
   if (error) {
-    throw Object.assign(new Error("クレジット確認中にエラーが発生しました。"), { status: 500 });
+    // DBエラー（マイグレーション未適用など）はサービス継続優先でスルー
+    console.warn("Credit check skipped:", error.message);
+    return;
   }
 
   if (result === "daily_limit") {

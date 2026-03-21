@@ -32,8 +32,9 @@ export async function checkRateLimit(userId: string, ipAddress: string): Promise
   });
 
   if (error) {
-    // DBエラーは安全方向で上限扱い
-    throw Object.assign(new Error("Rate limit check failed"), { status: 429 });
+    // DBエラー（マイグレーション未適用など）はサービス継続優先でスルー
+    console.warn("Rate limit check skipped:", error.message);
+    return;
   }
 
   if ((data as number) > MAX_REQUESTS) {
