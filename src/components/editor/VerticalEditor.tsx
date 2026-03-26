@@ -101,6 +101,14 @@ function getCaretOffset(container: HTMLElement): number {
   let found = false;
   // readDomText と同じ: 空文字列は「\n 済み」扱い
   let endsNewline = true;
+  // P2: startContainer がエディタルート自身の場合（空エディタ、トップレベルノード間）
+  // walk は childNodes に対して node === targetNode を判定するため一致しない。
+  // startOffset は子インデックスなので、最初の startOffset 個の子の文字数を返す。
+  if (targetNode === container) {
+    const en = { v: endsNewline };
+    const slice = Array.from(container.childNodes).slice(0, targetOffset);
+    return countCharsWithBoundaries(slice, en);
+  }
   function walk(node: Node): void {
     if (found) return;
     if (node === targetNode) {
@@ -151,7 +159,8 @@ function getCaretOffset(container: HTMLElement): number {
   return found ? count : -1;
 }
 
-// 文字オフセットからカーソルを復元
+// 文字オフセットからカーソルを復元。
+// getCaretOffset と同じブロック境界ルールを適用し、一貫性を保証する。
 function restoreCaretOffset(container: HTMLElement, offset: number) {
   if (offset < 0) return;
   const sel = window.getSelection();
@@ -160,10 +169,13 @@ function restoreCaretOffset(container: HTMLElement, offset: number) {
   const selNN = sel;
   let remaining = offset;
   let found = false;
+  // getCaretOffset と同じ: 空文字列は「\n 済み」扱い
+  let endsNewline = true;
   function walk(node: Node): void {
     if (found) return;
     if (node.nodeType === Node.TEXT_NODE) {
-      const len = (node.textContent ?? "").length;
+      const text = node.textContent ?? "";
+      const len = text.length;
       if (remaining <= len) {
         const range = document.createRange();
         range.setStart(node, remaining);
@@ -174,8 +186,10 @@ function restoreCaretOffset(container: HTMLElement, offset: number) {
         return;
       }
       remaining -= len;
+      if (len > 0) endsNewline = text.endsWith("\n");
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-      if ((node as HTMLElement).tagName === "BR") {
+      const tag = (node as HTMLElement).tagName;
+      if (tag === "BR") {
         if (remaining === 0) {
           const range = document.createRange();
           range.setStartBefore(node);
@@ -185,8 +199,20 @@ function restoreCaretOffset(container: HTMLElement, offset: number) {
           found = true;
           return;
         }
-        remaining -= 1; // P1: <br> を 1 文字としてカウント
+        remaining -= 1;
+        endsNewline = true;
+      } else if (BLOCK_TAGS.has(tag)) {
+        // getCaretOffset と同じ: 直前が \n でなければブロック境界 \n を消費する
+        if (!endsNewline && remaining > 0) {
+          remaining -= 1;
+          endsNewline = true;
+        }
+        for (const child of node.childNodes) {
+          walk(child);
+          if (found) return;
+        }
       } else {
+        // インライン要素: 境界なしで再帰
         for (const child of node.childNodes) {
           walk(child);
           if (found) return;
