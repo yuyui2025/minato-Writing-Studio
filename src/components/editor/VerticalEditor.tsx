@@ -45,15 +45,45 @@ function readDomText(el: HTMLElement): string {
   return normalizeLineEndings(result);
 }
 
-// カーソルの文字オフセットを取得
+// カーソルの文字オフセットを取得。
+// getCaretOffset / restoreCaretOffset は同じ走査ロジックを共有し、
+// テキストノード長 + <br>=1 文字としてカウントする（block 境界 \n は除く）。
+// これにより両関数のオフセット定義が一致し、undo/redo 後も正確に復元できる。
 function getCaretOffset(container: HTMLElement): number {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return -1;
+  // P2: 選択がこのエディタ内にある場合のみ処理する
+  if (!container.contains(sel.anchorNode)) return -1;
   const range = sel.getRangeAt(0);
-  const preRange = document.createRange();
-  preRange.selectNodeContents(container);
-  preRange.setEnd(range.startContainer, range.startOffset);
-  return preRange.toString().length;
+  const targetNode = range.startContainer;
+  const targetOffset = range.startOffset;
+  let count = 0;
+  let found = false;
+  function walk(node: Node): void {
+    if (found) return;
+    if (node === targetNode) {
+      if (node.nodeType === Node.TEXT_NODE) count += targetOffset;
+      found = true;
+      return;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      count += (node.textContent ?? "").length;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if ((node as HTMLElement).tagName === "BR") {
+        count += 1; // P1: <br> を 1 文字としてカウント
+      } else {
+        for (const child of node.childNodes) {
+          walk(child);
+          if (found) return;
+        }
+      }
+    }
+  }
+  for (const child of container.childNodes) {
+    walk(child);
+    if (found) break;
+  }
+  return found ? count : -1;
 }
 
 // 文字オフセットからカーソルを復元
@@ -61,28 +91,54 @@ function restoreCaretOffset(container: HTMLElement, offset: number) {
   if (offset < 0) return;
   const sel = window.getSelection();
   if (!sel) return;
-
+  // TypeScript の narrowing は nested function 内で失われるため非null アサーションを使う
+  const selNN = sel;
   let remaining = offset;
-  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
-  let node: Text | null;
-  while ((node = walker.nextNode() as Text | null)) {
-    const len = node.length;
-    if (remaining <= len) {
-      const range = document.createRange();
-      range.setStart(node, remaining);
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-      return;
+  let found = false;
+  function walk(node: Node): void {
+    if (found) return;
+    if (node.nodeType === Node.TEXT_NODE) {
+      const len = (node.textContent ?? "").length;
+      if (remaining <= len) {
+        const range = document.createRange();
+        range.setStart(node, remaining);
+        range.collapse(true);
+        selNN.removeAllRanges();
+        selNN.addRange(range);
+        found = true;
+        return;
+      }
+      remaining -= len;
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+      if ((node as HTMLElement).tagName === "BR") {
+        if (remaining === 0) {
+          const range = document.createRange();
+          range.setStartBefore(node);
+          range.collapse(true);
+          selNN.removeAllRanges();
+          selNN.addRange(range);
+          found = true;
+          return;
+        }
+        remaining -= 1; // P1: <br> を 1 文字としてカウント
+      } else {
+        for (const child of node.childNodes) {
+          walk(child);
+          if (found) return;
+        }
+      }
     }
-    remaining -= len;
   }
-  // offset が全テキスト長を超えた場合は末尾に配置
+  for (const child of container.childNodes) {
+    walk(child);
+    if (found) return;
+  }
+  // offset が全長を超えた場合は末尾に配置
   const range = document.createRange();
   range.selectNodeContents(container);
   range.collapse(false);
-  sel.removeAllRanges();
-  sel.addRange(range);
+  selNN.removeAllRanges();
+  selNN.addRange(range);
 }
 
 export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }: VerticalEditorProps) {
