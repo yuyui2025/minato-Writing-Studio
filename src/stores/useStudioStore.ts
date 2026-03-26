@@ -207,9 +207,9 @@ export interface StudioState {
 // Store
 // ---------------------------------------------------------------------------
 
-const aiResultsInit: AiResults = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" };
-const aiErrorsInit: AiErrors = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" };
-const aiLoadingInit: AiLoading = { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false };
+const aiResultsInit: AiResults = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "", opening: "" };
+const aiErrorsInit: AiErrors = { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "", opening: "" };
+const aiLoadingInit: AiLoading = { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false, opening: false };
 
 function resetAiWorkspaceState() {
   return {
@@ -939,9 +939,9 @@ export function resetStudioStore() {
     aiFloat: false,
     aiWide: false,
     aiPanelWidth: 360,
-    aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
-    aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "" },
-    aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false },
+    aiResults: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "", opening: "" },
+    aiErrors: { polish: "", hint: "", check: "", continue: "", synopsis: "", worldExpand: "", characterExpand: "", themeExpand: "", freeInstruct: "", opening: "" },
+    aiLoading: { polish: false, hint: false, check: false, continue: false, synopsis: false, worldExpand: false, characterExpand: false, themeExpand: false, freeInstruct: false, opening: false },
     aiApplied: {},
     hintApplied: {},
     aiHistory: [],

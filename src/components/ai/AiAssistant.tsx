@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { AiPanel } from "./AiPanel";
 import { HintPanel } from "./HintPanel";
 import { PolishPanel } from "./PolishPanel";
+import { OpeningPanel } from "./OpeningPanel";
 import { callAnthropic, AiError } from "../../utils/ai";
 import { useStudio } from "../../contexts/StudioContext";
 
@@ -142,6 +143,24 @@ export const AiAssistant: React.FC = () => {
               <button onClick={() => setShowSettings(false)} style={{ background: "transparent", border: "none", color: "#3a5570", cursor: "pointer", fontSize: 13, fontFamily: "inherit" }}>✕</button>
             </div>
             <div style={{ padding: 16, overflowY: "auto", flex: 1, display: "flex", flexDirection: "column", gap: 16 }}>
+              {/* 書き出し生成パネル */}
+              <OpeningPanel
+                aiMode={aiMode}
+                byokLocalKey={byokLocalKey}
+                initialWorld={settings.world}
+                initialCharacters={settings.characters}
+                result={aiResults.opening}
+                onResult={t => {
+                  setAiResults(r => ({ ...r, opening: t }));
+                  if (t) addAiHistory("書き出し生成", t, selectedScene?.title, selectedScene?.id);
+                }}
+                loading={aiLoading.opening}
+                onLoading={v => setAiLoading(l => ({ ...l, opening: v }))}
+                error={aiErrors.opening}
+                onError={t => setAiErrors(e => ({ ...e, opening: t }))}
+                onInsert={text => handleManuscriptChange(text + (manuscriptText ? "\n\n" + manuscriptText : ""))}
+                onAppend={text => handleManuscriptChange(manuscriptText + (manuscriptText ? "\n\n" : "") + text)}
+              />
               {/* 自由指示パネル */}
               <div style={{ borderBottom: "1px solid #1a2535", paddingBottom: 16 }}>
                 <div style={{ fontSize: 10, letterSpacing: 2, color: "#4a6fa5", marginBottom: 8 }}>✦ 自由指示</div>
