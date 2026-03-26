@@ -27,6 +27,7 @@ export type AiResults = {
   characterExpand: string;
   themeExpand: string;
   freeInstruct: string;
+  opening: string;
 };
 
 export type AiErrors = Record<keyof AiResults, string>;

@@ -2,6 +2,19 @@ import type { Settings } from "../types";
 
 const MANUSCRIPT_CONTEXT_LIMIT = 1200;
 
+export function buildOpeningPrompt(
+  worldInput: string,
+  characterInput: string,
+  freeInstruction: string,
+): string {
+  const parts = ["小説の書き出しを日本語で生成してください。"];
+  if (worldInput.trim()) parts.push(`【世界観】\n${worldInput.trim()}`);
+  if (characterInput.trim()) parts.push(`【登場人物】\n${characterInput.trim()}`);
+  if (freeInstruction.trim()) parts.push(`【指示】\n${freeInstruction.trim()}`);
+  parts.push("冒頭100〜300字の書き出しを1パターンのみ出力してください。余分な説明は不要です。");
+  return parts.join("\n\n");
+}
+
 export function buildSettingExpansionPrompt(
   settingsTab: "world" | "characters" | "theme",
   settings: Settings,
