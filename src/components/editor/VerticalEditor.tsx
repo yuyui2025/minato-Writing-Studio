@@ -29,9 +29,14 @@ const BLOCK_TAGS = new Set(["DIV", "P", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "H
 // innerText より高速だが、<br> や block 要素の改行を拾えない。
 // contentEditable が生成する block 要素/<br> を \n に変換してから textContent を返す。
 // インライン要素（IME が生成する <span> 等）は改行を挿入しない。
+// lastWasBlock フラグにより <div>line1</div><span>line2</span> の形も正しく \n を挿入する。
 function readDomText(el: HTMLElement): string {
   let result = "";
+  let lastWasBlock = false;
   for (const node of el.childNodes) {
+    // ブロック要素の直後かつ \n で終わっていなければ \n を挿入
+    if (lastWasBlock && !result.endsWith("\n")) result += "\n";
+    lastWasBlock = false;
     if (node.nodeType === Node.TEXT_NODE) {
       result += node.textContent ?? "";
     } else if (node.nodeType === Node.ELEMENT_NODE) {
@@ -39,11 +44,9 @@ function readDomText(el: HTMLElement): string {
       if (tag === "BR") {
         result += "\n";
       } else if (BLOCK_TAGS.has(tag)) {
-        // ブロック要素のみ改行セパレータを追加（P2: インライン要素には追加しない）
-        if (result.length > 0 && !result.endsWith("\n")) {
-          result += "\n";
-        }
+        if (result.length > 0 && !result.endsWith("\n")) result += "\n";
         result += readDomText(node as HTMLElement);
+        lastWasBlock = true;
       } else {
         // インライン要素（span 等）— 改行なしで子要素を再帰処理
         result += readDomText(node as HTMLElement);
@@ -55,12 +58,16 @@ function readDomText(el: HTMLElement): string {
 
 // ノード列の文字数を readDomText と同じルールでカウント。
 // endsNewline: 直前の文字が \n かどうかを伝播させ、ブロック境界 \n を正確にカウントする。
+// lastWasBlock: ブロック要素の後にインライン要素が続く場合の \n も正確にカウントする。
 function countCharsWithBoundaries(
   children: Iterable<Node>,
   endsNewline: { v: boolean }
 ): number {
   let total = 0;
+  let lastWasBlock = false;
   for (const node of children) {
+    if (lastWasBlock && !endsNewline.v) { total += 1; endsNewline.v = true; }
+    lastWasBlock = false;
     if (node.nodeType === Node.TEXT_NODE) {
       const text = node.textContent ?? "";
       total += text.length;
@@ -71,13 +78,12 @@ function countCharsWithBoundaries(
         total += 1;
         endsNewline.v = true;
       } else if (BLOCK_TAGS.has(tag)) {
-        // readDomText と同じ: 直前が \n でなければブロック境界 \n を挿入
         if (total > 0 && !endsNewline.v) { total += 1; endsNewline.v = true; }
         const inner = { v: true };
         total += countCharsWithBoundaries((node as HTMLElement).childNodes, inner);
         endsNewline.v = inner.v;
+        lastWasBlock = true;
       } else {
-        // インライン要素: 改行なしで再帰
         const inner = { v: endsNewline.v };
         total += countCharsWithBoundaries((node as HTMLElement).childNodes, inner);
         endsNewline.v = inner.v;
@@ -89,147 +95,124 @@ function countCharsWithBoundaries(
 
 // カーソルの文字オフセットを取得。readDomText と同じブロック境界ルールを適用し、
 // restoreCaretOffset との一貫性を保証する。
+// walkSiblings で兄弟単位の lastWasBlock を管理し、<div>…</div><span>…</span> の形も正確に扱う。
 function getCaretOffset(container: HTMLElement): number {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return -1;
-  // 選択がこのエディタ内にある場合のみ処理する
   if (!container.contains(sel.anchorNode)) return -1;
   const range = sel.getRangeAt(0);
   const targetNode = range.startContainer;
   const targetOffset = range.startOffset;
   let count = 0;
   let found = false;
-  // readDomText と同じ: 空文字列は「\n 済み」扱い
   let endsNewline = true;
-  // P2: startContainer がエディタルート自身の場合（空エディタ、トップレベルノード間）
-  // walk は childNodes に対して node === targetNode を判定するため一致しない。
-  // startOffset は子インデックスなので、最初の startOffset 個の子の文字数を返す。
   if (targetNode === container) {
     const en = { v: endsNewline };
     const slice = Array.from(container.childNodes).slice(0, targetOffset);
     return countCharsWithBoundaries(slice, en);
   }
-  function walk(node: Node): void {
-    if (found) return;
-    if (node === targetNode) {
+  function walkSiblings(nodes: Iterable<Node>): void {
+    let lastWasBlock = false;
+    for (const node of nodes) {
+      if (found) return;
+      if (lastWasBlock && !endsNewline) { count += 1; endsNewline = true; }
+      lastWasBlock = false;
+      if (node === targetNode) {
+        if (node.nodeType === Node.TEXT_NODE) {
+          count += targetOffset;
+        } else {
+          if (BLOCK_TAGS.has((node as HTMLElement).tagName) && count > 0 && !endsNewline) count += 1;
+          const en = { v: endsNewline };
+          const slice = Array.from((node as HTMLElement).childNodes).slice(0, targetOffset);
+          count += countCharsWithBoundaries(slice, en);
+        }
+        found = true;
+        return;
+      }
       if (node.nodeType === Node.TEXT_NODE) {
-        count += targetOffset;
-      } else {
-        // 要素ノード上のカーソル — startOffset は子インデックスを示す。
-        // BLOCK 要素なら境界 \n を先に加算してから子をカウント。
-        if (BLOCK_TAGS.has((node as HTMLElement).tagName) && count > 0 && !endsNewline) {
-          count += 1;
-        }
-        const en = { v: endsNewline };
-        const slice = Array.from((node as HTMLElement).childNodes).slice(0, targetOffset);
-        count += countCharsWithBoundaries(slice, en);
-      }
-      found = true;
-      return;
-    }
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent ?? "";
-      count += text.length;
-      if (text.length > 0) endsNewline = text.endsWith("\n");
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const tag = (node as HTMLElement).tagName;
-      if (tag === "BR") {
-        count += 1;
-        endsNewline = true;
-      } else if (BLOCK_TAGS.has(tag)) {
-        // readDomText と同じ: 直前が \n でなければブロック境界 \n を挿入
-        if (count > 0 && !endsNewline) { count += 1; endsNewline = true; }
-        for (const child of node.childNodes) {
-          walk(child);
-          if (found) return;
-        }
-      } else {
-        // インライン要素
-        for (const child of node.childNodes) {
-          walk(child);
-          if (found) return;
+        const text = node.textContent ?? "";
+        count += text.length;
+        if (text.length > 0) endsNewline = text.endsWith("\n");
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = (node as HTMLElement).tagName;
+        if (tag === "BR") {
+          count += 1; endsNewline = true;
+        } else if (BLOCK_TAGS.has(tag)) {
+          if (count > 0 && !endsNewline) { count += 1; endsNewline = true; }
+          walkSiblings((node as HTMLElement).childNodes);
+          lastWasBlock = true;
+        } else {
+          walkSiblings((node as HTMLElement).childNodes);
         }
       }
     }
   }
-  for (const child of container.childNodes) {
-    walk(child);
-    if (found) break;
-  }
+  walkSiblings(container.childNodes);
   return found ? count : -1;
 }
 
 // 文字オフセットからカーソルを復元。
-// getCaretOffset と同じブロック境界ルールを適用し、一貫性を保証する。
+// getCaretOffset と同じブロック境界ルール（lastWasBlock を含む）を適用し、一貫性を保証する。
 function restoreCaretOffset(container: HTMLElement, offset: number) {
   if (offset < 0) return;
   const sel = window.getSelection();
   if (!sel) return;
-  // TypeScript の narrowing は nested function 内で失われるため非null アサーションを使う
   const selNN = sel;
   let remaining = offset;
   let found = false;
-  // getCaretOffset と同じ: 空文字列は「\n 済み」扱い
   let endsNewline = true;
-  function walk(node: Node): void {
-    if (found) return;
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent ?? "";
-      const len = text.length;
-      if (remaining <= len) {
-        const range = document.createRange();
-        range.setStart(node, remaining);
-        range.collapse(true);
-        selNN.removeAllRanges();
-        selNN.addRange(range);
-        found = true;
-        return;
-      }
-      remaining -= len;
-      if (len > 0) endsNewline = text.endsWith("\n");
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-      const tag = (node as HTMLElement).tagName;
-      if (tag === "BR") {
-        if (remaining === 0) {
+  function walkSiblings(nodes: Iterable<Node>): void {
+    let lastWasBlock = false;
+    for (const node of nodes) {
+      if (found) return;
+      if (lastWasBlock && !endsNewline && remaining > 0) { remaining -= 1; endsNewline = true; }
+      lastWasBlock = false;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent ?? "";
+        const len = text.length;
+        if (remaining <= len) {
           const range = document.createRange();
-          range.setStartBefore(node);
+          range.setStart(node, remaining);
           range.collapse(true);
           selNN.removeAllRanges();
           selNN.addRange(range);
           found = true;
           return;
         }
-        remaining -= 1;
-        endsNewline = true;
-      } else if (BLOCK_TAGS.has(tag)) {
-        // getCaretOffset と同じ: 直前が \n でなければブロック境界 \n を消費する
-        if (!endsNewline && remaining > 0) {
+        remaining -= len;
+        if (len > 0) endsNewline = text.endsWith("\n");
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = (node as HTMLElement).tagName;
+        if (tag === "BR") {
+          if (remaining === 0) {
+            const range = document.createRange();
+            range.setStartBefore(node);
+            range.collapse(true);
+            selNN.removeAllRanges();
+            selNN.addRange(range);
+            found = true;
+            return;
+          }
           remaining -= 1;
           endsNewline = true;
-        }
-        for (const child of node.childNodes) {
-          walk(child);
-          if (found) return;
-        }
-      } else {
-        // インライン要素: 境界なしで再帰
-        for (const child of node.childNodes) {
-          walk(child);
-          if (found) return;
+        } else if (BLOCK_TAGS.has(tag)) {
+          if (!endsNewline && remaining > 0) { remaining -= 1; endsNewline = true; }
+          walkSiblings((node as HTMLElement).childNodes);
+          lastWasBlock = true;
+        } else {
+          walkSiblings((node as HTMLElement).childNodes);
         }
       }
     }
   }
-  for (const child of container.childNodes) {
-    walk(child);
-    if (found) return;
+  walkSiblings(container.childNodes);
+  if (!found) {
+    const range = document.createRange();
+    range.selectNodeContents(container);
+    range.collapse(false);
+    selNN.removeAllRanges();
+    selNN.addRange(range);
   }
-  // offset が全長を超えた場合は末尾に配置
-  const range = document.createRange();
-  range.selectNodeContents(container);
-  range.collapse(false);
-  selNN.removeAllRanges();
-  selNN.addRange(range);
 }
 
 export function VerticalEditor({ initialText, onChange, fontSize = 16, lineHeight = 2.2 }: VerticalEditorProps) {
