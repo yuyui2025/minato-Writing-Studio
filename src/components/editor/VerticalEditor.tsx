@@ -21,9 +21,14 @@ const SCROLLBAR_STYLE = `
   .vertical-editor-outer::-webkit-scrollbar-corner { background: transparent; }
 `;
 
+// contentEditable が生成するブロック要素タグ。
+// スパン等のインライン要素は改行を挿入しない（P2対応）。
+const BLOCK_TAGS = new Set(["DIV", "P", "BLOCKQUOTE", "H1", "H2", "H3", "H4", "H5", "H6", "LI", "UL", "OL"]);
+
 // DOM からテキストを読む。textContent は layout reflow を起こさないため
 // innerText より高速だが、<br> や block 要素の改行を拾えない。
-// contentEditable が生成する <div>/<br> を \n に変換してから textContent を返す。
+// contentEditable が生成する block 要素/<br> を \n に変換してから textContent を返す。
+// インライン要素（IME が生成する <span> 等）は改行を挿入しない。
 function readDomText(el: HTMLElement): string {
   let result = "";
   for (const node of el.childNodes) {
@@ -33,16 +38,32 @@ function readDomText(el: HTMLElement): string {
       const tag = (node as HTMLElement).tagName;
       if (tag === "BR") {
         result += "\n";
-      } else {
-        // <div>, <p> etc. — block elements add a newline separator
+      } else if (BLOCK_TAGS.has(tag)) {
+        // ブロック要素のみ改行セパレータを追加（P2: インライン要素には追加しない）
         if (result.length > 0 && !result.endsWith("\n")) {
           result += "\n";
         }
+        result += readDomText(node as HTMLElement);
+      } else {
+        // インライン要素（span 等）— 改行なしで子要素を再帰処理
         result += readDomText(node as HTMLElement);
       }
     }
   }
   return normalizeLineEndings(result);
+}
+
+// ノードのサブツリー内の文字数を返す（getCaretOffset の要素ノード対応用）。
+// walk と同じカウント基準: テキストノード長 + <br>=1。
+function countCharsInNode(node: Node): number {
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? "").length;
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    if ((node as HTMLElement).tagName === "BR") return 1;
+    let total = 0;
+    for (const child of node.childNodes) total += countCharsInNode(child);
+    return total;
+  }
+  return 0;
 }
 
 // カーソルの文字オフセットを取得。
@@ -62,7 +83,18 @@ function getCaretOffset(container: HTMLElement): number {
   function walk(node: Node): void {
     if (found) return;
     if (node === targetNode) {
-      if (node.nodeType === Node.TEXT_NODE) count += targetOffset;
+      if (node.nodeType === Node.TEXT_NODE) {
+        count += targetOffset;
+      } else {
+        // P1: 要素ノード上のカーソル — startOffset は子インデックスを示す。
+        // 最初の targetOffset 個の子の文字数を合計して正確な位置を得る。
+        let idx = 0;
+        for (const child of node.childNodes) {
+          if (idx >= targetOffset) break;
+          count += countCharsInNode(child);
+          idx++;
+        }
+      }
       found = true;
       return;
     }
