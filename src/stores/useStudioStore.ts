@@ -85,6 +85,7 @@ export interface StudioState {
   showImport: boolean;
   verticalPreview: boolean;
   showProjectShelf: boolean;
+  showTutorial: boolean;
   activeProjectId: string;
   projects: ProjectRecord[];
 
@@ -154,6 +155,7 @@ export interface StudioState {
   setShowImport: (v: boolean) => void;
   setVerticalPreview: (v: boolean) => void;
   setShowProjectShelf: (v: boolean) => void;
+  setShowTutorial: (v: boolean) => void;
   setActiveProjectId: (v: string) => void;
   setProjects: (v: ProjectRecord[] | ((prev: ProjectRecord[]) => ProjectRecord[])) => void;
   setEditorSettings: (v: EditorSettings | ((prev: EditorSettings) => EditorSettings)) => void;
@@ -287,6 +289,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   showImport: false,
   verticalPreview: false,
   showProjectShelf: false,
+  showTutorial: false,
   activeProjectId: "default",
   projects: [],
   editorSettings: { fontSize: 15, lineHeight: 2.2, colorTheme: "focus" },
@@ -377,6 +380,7 @@ export const useStudioStore = create<StudioState>((set, get) => ({
   setShowImport: (v) => set({ showImport: v }),
   setVerticalPreview: (v) => set({ verticalPreview: v }),
   setShowProjectShelf: (v) => set({ showProjectShelf: v }),
+  setShowTutorial: (v) => set({ showTutorial: v }),
   setActiveProjectId: (v) => set({ activeProjectId: v }),
   setProjects: (v) => set((s) => ({ projects: typeof v === "function" ? v(s.projects) : v })),
   setEditorSettings: (v) => set((s) => ({ editorSettings: typeof v === "function" ? v(s.editorSettings) : v })),

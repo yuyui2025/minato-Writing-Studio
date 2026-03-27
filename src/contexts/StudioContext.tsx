@@ -124,6 +124,11 @@ export function StudioProvider({ children, user }: { children: React.ReactNode; 
 
     skipInitialSaveRef.current = true;
     store.setLoaded(true);
+
+    // YUY-93: 初回起動チュートリアル
+    if (typeof localStorage !== "undefined" && !localStorage.getItem("minato:tutorialSeen")) {
+      store.setShowTutorial(true);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadedData, isInitLoading]);
 
