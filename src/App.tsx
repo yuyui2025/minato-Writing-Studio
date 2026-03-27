@@ -25,6 +25,7 @@ import { ExportModal } from "./components/modals/ExportModal";
 import { ImportModal } from "./components/modals/ImportModal";
 import { ProjectShelfModal } from "./components/modals/ProjectShelfModal";
 import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
+import { TutorialModal } from "./components/modals/TutorialModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { StudioProvider, useStudio } from "./contexts/StudioContext";
 
@@ -117,7 +118,7 @@ export default function App() {
 function Studio() {
   const {
     loaded, tab, sidebarOpen, showSettings,
-    confirmDelete, showExport, showBackups, showImport, showProjectShelf, setSidebarOpen, setShowSettings,
+    confirmDelete, showExport, showBackups, showImport, showProjectShelf, showTutorial, setSidebarOpen, setShowSettings,
     sidebarFloat, aiHistory, clearAiHistory, manuscriptText, handleManuscriptChange,
     scenes, selectedSceneId, handleSceneSelect, manuscripts, setTab,
   } = useStudio();
@@ -138,6 +139,8 @@ function Studio() {
       {showExport && <ExportModal />}
       {/* Import modal */}
       {showImport && <ImportModal />}
+      {/* Tutorial modal — 初回起動時のみ */}
+      {showTutorial && <TutorialModal />}
       {/* Backup modal */}
       {showBackups && <BackupModal />}
       {/* Project shelf */}
