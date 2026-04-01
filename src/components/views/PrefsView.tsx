@@ -99,7 +99,10 @@ function PlanStatusSection({
           <CreditBar label="今日" used={credits.dailyUsed} limit={credits.dailyLimit} />
           <CreditBar label="今月" used={credits.monthlyUsed} limit={credits.monthlyLimit} />
           {atDailyLimit && (
-            <div style={{ marginTop: 6, fontSize: 11, color: "#c06060" }}>1日の上限に達しました。BYOKモードへの切り替えをご検討ください。</div>
+            <div style={{ marginTop: 6, fontSize: 11, color: "#c06060" }}>
+              1日の上限に達しました。
+              {(featureFlags.byokLocal || featureFlags.byokCloud) && "BYOKモードへの切り替えをご検討ください。"}
+            </div>
           )}
         </div>
       )}

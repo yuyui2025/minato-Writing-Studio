@@ -1,8 +1,9 @@
 export type UserPlan = "free" | "pro" | "byok";
 
 function parsePlanLimit(envVar: string | undefined, defaultValue: number): number {
-  const parsed = parseInt(envVar ?? "", 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : defaultValue;
+  if (envVar === undefined || envVar === "") return defaultValue;
+  const parsed = parseInt(envVar, 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : defaultValue;
 }
 
 export const PLAN_LIMITS: Record<UserPlan, { dailyLimit: number; monthlyLimit: number }> = {
