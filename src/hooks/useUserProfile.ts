@@ -19,7 +19,7 @@ export function useUserProfile() {
       return { plan: data.plan as UserProfile["plan"] };
     },
     enabled: !!user,
-    staleTime: 60_000,
+    staleTime: 10_000,
     gcTime: 300_000,
   });
 
