@@ -4,7 +4,7 @@ import { featureFlags } from "../../utils/featureFlags";
 import { testByokKey, removeByokLocalKey } from "../../utils/byokLocal";
 import { useCredits } from "../../hooks/useCredits";
 import { useUserProfile } from "../../hooks/useUserProfile";
-import type { AiMode } from "../../types";
+import type { AiMode, UserPlan } from "../../types";
 
 const sectionLabel: React.CSSProperties = { fontSize: 11, letterSpacing: 2, color: "#4a6fa5", marginBottom: 10 };
 const modeBtn = (active: boolean): React.CSSProperties => ({
@@ -15,6 +15,123 @@ const modeBtn = (active: boolean): React.CSSProperties => ({
   color: active ? "#7ab3e0" : "#3a5570",
   cursor: "pointer", fontSize: 12, borderRadius: 4, fontFamily: "inherit",
 });
+
+const PLAN_LABEL: Record<UserPlan, string> = {
+  free: "FREE",
+  pro: "PRO",
+  byok: "BYOK",
+};
+
+const PLAN_COLOR: Record<UserPlan, string> = {
+  free: "#8a6060",
+  pro: "#4a8a60",
+  byok: "#4a6fa5",
+};
+
+function PlanBadge({ plan }: { plan: UserPlan }) {
+  return (
+    <span style={{
+      display: "inline-block",
+      padding: "2px 8px",
+      border: `1px solid ${PLAN_COLOR[plan]}`,
+      borderRadius: 3,
+      fontSize: 10,
+      letterSpacing: 1,
+      color: PLAN_COLOR[plan],
+    }}>
+      {PLAN_LABEL[plan]}
+    </span>
+  );
+}
+
+function CreditBar({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const pct = limit > 0 ? Math.min(used / limit, 1) * 100 : 0;
+  const atLimit = used >= limit;
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#4a6fa5", marginBottom: 3 }}>
+        <span>{label}</span>
+        <span style={{ color: atLimit ? "#c06060" : "#c8d8e8" }}>{used} / {limit}</span>
+      </div>
+      <div style={{ height: 3, background: "#1a2535", borderRadius: 2 }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: atLimit ? "#c06060" : "#4a6fa5", borderRadius: 2, transition: "width 0.3s" }} />
+      </div>
+    </div>
+  );
+}
+
+function AdPlaceholder() {
+  return (
+    <div style={{
+      padding: "12px 16px",
+      border: "1px dashed #2a4060",
+      borderRadius: 4,
+      textAlign: "center",
+      color: "#2a4060",
+      fontSize: 11,
+      letterSpacing: 1,
+    }}>
+      AD
+    </div>
+  );
+}
+
+function PlanStatusSection({
+  credits,
+  profile,
+}: {
+  credits: ReturnType<typeof useCredits>;
+  profile: ReturnType<typeof useUserProfile>;
+}) {
+  const plan: UserPlan = profile?.plan ?? "free";
+  const atDailyLimit = credits ? credits.dailyUsed >= credits.dailyLimit : false;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, color: "#4a6fa5" }}>現在のプラン</span>
+        <PlanBadge plan={plan} />
+      </div>
+
+      {/* クレジット（BYOK 以外） */}
+      {plan !== "byok" && credits && (
+        <div style={{ padding: "10px 12px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 6 }}>
+          <CreditBar label="今日" used={credits.dailyUsed} limit={credits.dailyLimit} />
+          <CreditBar label="今月" used={credits.monthlyUsed} limit={credits.monthlyLimit} />
+          {atDailyLimit && (
+            <div style={{ marginTop: 6, fontSize: 11, color: "#c06060" }}>
+              1日の上限に達しました。
+              {(featureFlags.byokLocal || featureFlags.byokCloud) && "BYOKモードへの切り替えをご検討ください。"}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 広告プレースホルダー（Free のみ） */}
+      {plan === "free" && <AdPlaceholder />}
+
+      {/* Upgrade CTA（Free のみ） */}
+      {plan === "free" && (
+        <button
+          disabled
+          title="近日公開予定"
+          style={{
+            padding: "8px 12px",
+            background: "transparent",
+            border: "1px solid #2a4060",
+            borderRadius: 4,
+            color: "#3a5570",
+            fontSize: 12,
+            fontFamily: "inherit",
+            cursor: "not-allowed",
+          }}
+        >
+          Pro プランにアップグレード
+        </button>
+      )}
+    </div>
+  );
+}
 
 export const PrefsView: React.FC = () => {
   const { editorSettings, setEditorSettings, aiMode, setAiMode, byokLocalKey, setByokLocalKey } = useStudio();
@@ -27,8 +144,6 @@ export const PrefsView: React.FC = () => {
   const [testError, setTestError] = useState("");
 
   const hasAnyByok = featureFlags.byokLocal || featureFlags.byokCloud;
-  const isStandard = aiMode === "standard";
-  const atDailyLimit = credits && credits.dailyUsed >= credits.dailyLimit;
 
   async function handleTestByok() {
     const key = aiMode === "byok_local" ? byokLocalKey : byokInput;
@@ -92,21 +207,16 @@ export const PrefsView: React.FC = () => {
           </div>
         </div>
 
+        {/* プランと利用状況 */}
+        <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
+          <div style={sectionLabel}>プランと利用状況</div>
+          <PlanStatusSection credits={credits} profile={profile} />
+        </div>
+
         {/* AI設定 */}
         {hasAnyByok && (
           <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
             <div style={sectionLabel}>AI利用モード</div>
-
-            {/* クレジット残量（standard モード時のみ表示）*/}
-            {isStandard && credits && (
-              <div style={{ padding: "8px 12px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 6, marginBottom: 12, fontSize: 11, color: "#4a6fa5" }}>
-                <div>今日: <span style={{ color: atDailyLimit ? "#c06060" : "#c8d8e8" }}>{credits.dailyUsed} / {credits.dailyLimit}</span></div>
-                <div>今月: <span style={{ color: "#c8d8e8" }}>{credits.monthlyUsed} / {credits.monthlyLimit}</span></div>
-                {atDailyLimit && (
-                  <div style={{ marginTop: 6, color: "#c06060" }}>1日の上限に達しました。BYOKモードへの切り替えをご検討ください。</div>
-                )}
-              </div>
-            )}
 
             <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
               <button onClick={() => setAiMode("standard")} style={modeBtn(aiMode === "standard")}>
@@ -248,6 +358,9 @@ function ByokCloudSection({ profile }: { profile: ReturnType<typeof useUserProfi
     color: active ? "#7ab3e0" : "#3a5570",
     cursor: "pointer", fontSize: 12, borderRadius: 4, fontFamily: "inherit",
   });
+
+  // profile is used to satisfy the prop type; no logic needed here currently
+  void profile;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
