@@ -6,6 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### 起動時
 - Linear の Issue を取得して内容を確認・分類する
+- Linear MCP が利用できない場合は GitHub Issues を参照する（`mcp__github__list_issues`）
 
 ### 作業開始時
 - 必ず新しいブランチを切ってから作業を開始する
@@ -35,12 +36,38 @@ npm run build:wasm
 
 ### 環境変数
 
-`.env` に以下が必要：
+`.env`（開発時）に以下が必要：
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...     # 開発時のみ（本番は Vercel 側で設定）
+# 開発時のみ（本番は Vercel 側で設定）
+ANTHROPIC_API_KEY=sk-ant-...
 VITE_SUPABASE_URL=https://...
 VITE_SUPABASE_ANON_KEY=...
+```
+
+**Vercel 本番環境変数（サーバー側）**
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+SUPABASE_URL=https://...
+SUPABASE_SERVICE_ROLE_KEY=...          # admin 操作用
+BYOK_ENCRYPTION_KEY=...                # 64文字 hex（AES-256-GCM 鍵）
+ALLOW_BYOK_LOCAL=true                  # BYOK ローカルモードを許可
+ALLOW_BYOK_CLOUD=true                  # BYOK クラウドモードを許可
+PLAN_FREE_DAILY_LIMIT=10               # 省略時デフォルト
+PLAN_FREE_MONTHLY_LIMIT=100
+PLAN_PRO_DAILY_LIMIT=100
+PLAN_PRO_MONTHLY_LIMIT=2000
+```
+
+**クライアント側（ビルド時 `.env`）**
+
+```env
+VITE_ENABLE_BYOK_LOCAL=true            # BYOK ローカル UI を表示
+VITE_ENABLE_BYOK_CLOUD=true            # BYOK クラウド UI を表示
+VITE_KOFI_URL=https://ko-fi.com/...    # ドネーションボタン（未設定で非表示）
+VITE_AD_CLIENT=...                     # AdSense クライアント ID（未設定でプレースホルダー）
+VITE_AD_SLOT=...                       # AdSense スロット ID
 ```
 
 テスト実行時は `vitest.config.ts` でモック値が自動設定される。
@@ -101,6 +128,47 @@ App.tsx
 
 `ProjectRecord[]` が `minato:projects` キーで永続化される。`createProject()` / `switchProject()` でプロジェクト切り替え時に現在の状態を一覧へ保存してから新しいプロジェクトを読み込む。
 
+### プラン・クレジットシステム
+
+`api/_lib/planConfig.ts` にプランごとの上限値を定義（環境変数でオーバーライド可）。
+
+```
+Free:  10/日,  100/月
+Pro:  100/日, 2000/月
+BYOK: 無制限
+```
+
+- `api/_lib/credits.ts` の `checkAndConsumeCredit()` がリクエストごとにアトミックに消費
+- Supabase RPC `check_and_consume_credit()` でレースコンディションを排除
+- クレジット消費は `standard` モードのみ。BYOK モードはスキップ
+- `src/hooks/useCredits.ts` がクライアント側で 30s ポーリング
+- `src/hooks/useUserProfile.ts` がプラン情報を取得（staleTime: 10s）
+
+### BYOK（Bring Your Own Key）
+
+ユーザーが自分の Anthropic API キーを使うモード。クレジット消費なし。
+
+| モード | キー保存先 | 複数端末 |
+|--------|-----------|---------|
+| `byok_local` | ブラウザ localStorage | 不可 |
+| `byok_cloud` | Supabase（AES-256-GCM 暗号化） | 可 |
+
+- `ALLOW_BYOK_LOCAL` / `ALLOW_BYOK_CLOUD` サーバー環境変数で実行制御
+- `VITE_ENABLE_BYOK_LOCAL` / `VITE_ENABLE_BYOK_CLOUD` クライアント環境変数で UI 表示制御
+
+### Supabase マイグレーション
+
+`supabase/migrations/` に 001〜009 の SQL ファイル。**番号順に適用が必須**。
+
+```bash
+# Supabase CLI（Scoop でインストール）
+supabase login
+supabase link --project-ref <ref>
+supabase db push
+```
+
+手動適用の場合は Supabase ダッシュボードの SQL エディタに順番に貼り付け。各ファイルは冪等（`create table if not exists` / `create or replace`）。
+
 ### テスト
 
 `src/__mocks__/` にモジュールモックを配置。Supabase・WASM モジュールはモックされている。テストファイルは `src/__tests__/` に集約。
@@ -116,3 +184,7 @@ App.tsx
 - `Settings`: 世界観・登場人物・テーマのテキスト
 - `AiResults` / `AiLoading` / `AiErrors`: AI 機能ごとのキーを持つ Record
 - `TabKey`: `"write" | "structure" | "settings" | "prefs" | "ai"`
+- `AiMode`: `"standard" | "byok_local" | "byok_cloud"`
+- `UserPlan`: `"free" | "pro" | "byok"`
+- `UserCredits`: `{ dailyUsed, dailyLimit, monthlyUsed, monthlyLimit }`
+- `UserProfile`: `{ plan: UserPlan }`
