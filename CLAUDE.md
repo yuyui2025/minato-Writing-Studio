@@ -2,6 +2,44 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+---
+
+## 現在の状況・次のアクション
+
+> このセクションは作業進捗に合わせて更新する。新規セッション起動時はまずここを確認すること。
+
+### 未適用の Supabase マイグレーション（要手動実行）
+
+Supabase ダッシュボードの SQL エディタで以下を順番に実行する（冪等なので重複実行可）：
+
+| ファイル | 内容 | 状態 |
+|---------|------|------|
+| `010_remove_stripe_columns.sql` | Stripe カラム削除 | **未実行** |
+| `011_fix_security_definer_search_path.sql` | RPC 関数の search_path 固定 | **未実行** |
+| `012_idempotent_policies.sql` | RLS ポリシー冪等化 | **未実行** |
+
+### オープン Issue（優先順）
+
+| # | タイトル | 優先度 | 備考 |
+|---|---------|--------|------|
+| [#196](https://github.com/yuyui2025/minato-Writing-Studio/issues/196) | クレジット上限到達時の BYOK 誘導 CTA | 高 | featureFlags 廃止も含む |
+| [#213](https://github.com/yuyui2025/minato-Writing-Studio/issues/213) | 広告・ドネーション実装（Ko-fi: ko-fi.com/yuyui2025） | 高 | AdSense + Ko-fi ボタン |
+| [#192](https://github.com/yuyui2025/minato-Writing-Studio/issues/192) | キャラクタ自動判別で人物ごとに改行されない | 中 | バグ |
+| [#187](https://github.com/yuyui2025/minato-Writing-Studio/issues/187) | 長文シーンでパネル開閉が重い（10万字） | 中 | パフォーマンス |
+| [#216](https://github.com/yuyui2025/minato-Writing-Studio/issues/216) | クレジット・レート制限の設計見直し | 低 | 様子見でも可 |
+| [#153](https://github.com/yuyui2025/minato-Writing-Studio/issues/153) | 設定画面でAPIキー入力機能（セキュリティ検証） | 低 | #196 に近い |
+| [#152](https://github.com/yuyui2025/minato-Writing-Studio/issues/152) | AI マルチ対応 GPT/Gemini | 低 | 将来機能 |
+
+### 方針メモ
+
+- **課金モデル**: OSS 無料配布。コスト保護は Free クレジット上限（10/日）で担保。収益は広告 + Ko-fi ドネーション
+- **Pro プラン**: 廃止（#212 クローズ済み）。Stripe 連携なし
+- **BYOK**: クレジット消費なし。ヘビーユーザーの逃げ道として維持
+- **クレジット上限**: 通常使用で到達しない可能性あり。様子見（#216 で再検討）
+- **AI モデル**: Claude のみ（Haiku / Sonnet）。Gemini 等は品質理由で不採用
+
+---
+
 ## 作業フロー
 
 ### 起動時
