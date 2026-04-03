@@ -40,6 +40,34 @@ The application uses a **single Zustand store** for all global states, including
 Calls are proxied through `/api/anthropic` to protect API keys.
 - **Development:** Vite proxy redirects to Anthropic API using local `.env` keys.
 - **Production:** Vercel serverless function (`api/anthropic.ts`) manages keys.
+- **AI Mode:** `AiMode = "standard" | "byok_local" | "byok_cloud"` — controls which API key is used and whether credits are consumed.
+
+### 6. Plan & Credit System
+`api/_lib/planConfig.ts` defines per-plan limits (overridable via env vars):
+- Free: 10/day, 100/month
+- Pro: 100/day, 2000/month
+- BYOK: unlimited
+
+`api/_lib/credits.ts` atomically consumes credits via Supabase RPC `check_and_consume_credit()`. Credits are only consumed in `standard` mode. `src/hooks/useCredits.ts` polls every 30s on the client. `src/hooks/useUserProfile.ts` fetches the user's plan (staleTime: 10s).
+
+### 7. BYOK (Bring Your Own Key)
+Users can supply their own Anthropic API key to bypass credit consumption.
+
+| Mode | Storage | Multi-device |
+|------|---------|--------------|
+| `byok_local` | Browser localStorage | No |
+| `byok_cloud` | Supabase (AES-256-GCM encrypted) | Yes |
+
+Server-side: `ALLOW_BYOK_LOCAL` / `ALLOW_BYOK_CLOUD` env vars gate actual execution. Client-side: `VITE_ENABLE_BYOK_LOCAL` / `VITE_ENABLE_BYOK_CLOUD` control UI visibility.
+
+### 8. Supabase Migrations
+`supabase/migrations/` contains 001–009 SQL files. **Must be applied in order.**
+```bash
+supabase login
+supabase link --project-ref <ref>
+supabase db push
+```
+All files are idempotent (`CREATE TABLE IF NOT EXISTS` / `CREATE OR REPLACE`).
 
 ### 5. Text Analysis (`rust/text-analyzer/`)
 High-performance Japanese text analysis (character counts, kanji ratios, etc.) is implemented in Rust and exposed via WASM.
