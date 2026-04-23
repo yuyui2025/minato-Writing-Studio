@@ -17,6 +17,7 @@ type HintPanelProps = {
   onInsert: (value: string) => void;
   aiMode?: AiMode;
   byokLocalKey?: string;
+  onGoByok?: () => void;
 };
 
 export function HintPanel({
@@ -33,6 +34,7 @@ export function HintPanel({
   onInsert,
   aiMode = "standard",
   byokLocalKey = "",
+  onGoByok,
 }: HintPanelProps) {
   const hints = useMemo(() => {
     if (!result) return null;
@@ -101,7 +103,14 @@ export function HintPanel({
       </button>
 
       {error && (
-        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555" }}>⚠ {error}</div>
+        <div style={{ marginTop: 8, fontSize: 11, color: "#e05555", display: "flex", flexDirection: "column", gap: 4 }}>
+          <span>⚠ {error}</span>
+          {onGoByok && aiMode === "standard" && error.includes("上限に達しました") && (
+            <button onClick={onGoByok} style={{ alignSelf: "flex-start", padding: "4px 10px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}>
+              APIキーを設定してBYOKで続ける →
+            </button>
+          )}
+        </div>
       )}
 
       {result && !hints && (

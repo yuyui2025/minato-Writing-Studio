@@ -48,7 +48,13 @@ function validateMode(mode: unknown): AiMode {
 async function resolveApiKey(mode: AiMode, req: VercelRequest, userId: string): Promise<string> {
   if (mode === "byok_local") {
     const byokKey = req.headers["x-byok-key"];
-    if (typeof byokKey !== "string" || !byokKey.startsWith("sk-ant-")) {
+    if (
+      typeof byokKey !== "string" ||
+      !byokKey.startsWith("sk-ant-") ||
+      byokKey.length < 40 ||
+      byokKey.length > 256 ||
+      !/^[\x21-\x7E]+$/.test(byokKey)
+    ) {
       throw Object.assign(new Error("Invalid BYOK key format"), { status: 400 });
     }
     return byokKey;
