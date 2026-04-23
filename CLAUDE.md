@@ -52,8 +52,6 @@ ANTHROPIC_API_KEY=sk-ant-...
 SUPABASE_URL=https://...
 SUPABASE_SERVICE_ROLE_KEY=...          # admin 操作用
 BYOK_ENCRYPTION_KEY=...                # 64文字 hex（AES-256-GCM 鍵）
-ALLOW_BYOK_LOCAL=true                  # BYOK ローカルモードを許可
-ALLOW_BYOK_CLOUD=true                  # BYOK クラウドモードを許可
 PLAN_FREE_DAILY_LIMIT=10               # 省略時デフォルト
 PLAN_FREE_MONTHLY_LIMIT=100
 PLAN_PRO_DAILY_LIMIT=100
@@ -63,8 +61,6 @@ PLAN_PRO_MONTHLY_LIMIT=2000
 **クライアント側（ビルド時 `.env`）**
 
 ```env
-VITE_ENABLE_BYOK_LOCAL=true            # BYOK ローカル UI を表示
-VITE_ENABLE_BYOK_CLOUD=true            # BYOK クラウド UI を表示
 VITE_KOFI_URL=https://ko-fi.com/...    # ドネーションボタン（未設定で非表示）
 VITE_AD_CLIENT=...                     # AdSense クライアント ID（未設定でプレースホルダー）
 VITE_AD_SLOT=...                       # AdSense スロット ID
