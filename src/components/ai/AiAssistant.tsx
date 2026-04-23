@@ -28,8 +28,9 @@ export const AiAssistant: React.FC = () => {
     aiLoading, setAiLoading, aiApplied, setAiApplied,
     hintApplied, setHintApplied, manuscriptText,
     handleManuscriptChange, settings, selectedScene, addAiHistory,
-    aiMode, byokLocalKey,
+    aiMode, byokLocalKey, setTab,
   } = useStudio();
+  const goByok = () => setTab("prefs");
   const [freeText, setFreeText] = useState("");
   const [resizing, setResizing] = useState(false);
   const panelMinWidth = 280;
@@ -160,6 +161,7 @@ export const AiAssistant: React.FC = () => {
                 onError={t => setAiErrors(e => ({ ...e, opening: t }))}
                 onInsert={text => handleManuscriptChange(text + (manuscriptText ? "\n\n" + manuscriptText : ""))}
                 onAppend={text => handleManuscriptChange(manuscriptText + (manuscriptText ? "\n\n" : "") + text)}
+                onGoByok={goByok}
               />
               {/* 自由指示パネル */}
               <div style={{ borderBottom: "1px solid #1a2535", paddingBottom: 16 }}>
@@ -202,7 +204,17 @@ export const AiAssistant: React.FC = () => {
                   )}
                 </div>
                 {aiErrors.freeInstruct && (
-                  <div style={{ marginTop: 6, fontSize: 11, color: "#e05555" }}>⚠ {aiErrors.freeInstruct}</div>
+                  <div style={{ marginTop: 6, fontSize: 11, color: "#e05555", display: "flex", flexDirection: "column", gap: 4 }}>
+                    <span>⚠ {aiErrors.freeInstruct}</span>
+                    {aiMode === "standard" && aiErrors.freeInstruct.includes("上限に達しました") && (
+                      <button
+                        onClick={goByok}
+                        style={{ alignSelf: "flex-start", padding: "4px 10px", background: "rgba(74,111,165,0.15)", border: "1px solid #4a6fa5", color: "#7ab3e0", cursor: "pointer", borderRadius: 3, fontSize: 11, fontFamily: "inherit" }}
+                      >
+                        APIキーを設定してBYOKで続ける →
+                      </button>
+                    )}
+                  </div>
                 )}
                 {aiResults.freeInstruct && (
                   <div style={{ marginTop: 8, padding: "10px 12px", background: "#070a14", border: "1px solid #1a2535", borderRadius: 4, fontSize: 12, color: "#8ab0cc", lineHeight: 1.9, whiteSpace: "pre-wrap" }}>
@@ -222,6 +234,7 @@ export const AiAssistant: React.FC = () => {
               <PolishPanel
                 aiMode={aiMode}
                 byokLocalKey={byokLocalKey}
+                onGoByok={goByok}
                 manuscriptText={manuscriptText}
                 result={aiResults.polish}
                 onResult={t => {
@@ -251,6 +264,7 @@ export const AiAssistant: React.FC = () => {
               <HintPanel
                 aiMode={aiMode}
                 byokLocalKey={byokLocalKey}
+                onGoByok={goByok}
                 result={aiResults.hint}
                 onResult={t => {
                   setAiResults(r => ({ ...r, hint: t }));
@@ -278,6 +292,7 @@ export const AiAssistant: React.FC = () => {
               <AiPanel
                 aiMode={aiMode}
                 byokLocalKey={byokLocalKey}
+                onGoByok={goByok}
                 label="矛盾チェック"
                 result={aiResults.check}
                 onResult={t => { setAiResults(r => ({ ...r, check: t })); if (t) addAiHistory("矛盾チェック", t, selectedScene.title, selectedScene.id); }}

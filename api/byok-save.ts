@@ -14,7 +14,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const { apiKey } = req.body as { apiKey?: unknown };
-  if (typeof apiKey !== "string" || !apiKey.startsWith("sk-ant-")) {
+  if (
+    typeof apiKey !== "string" ||
+    !apiKey.startsWith("sk-ant-") ||
+    apiKey.length < 40 ||
+    apiKey.length > 256 ||
+    !/^[\x21-\x7E]+$/.test(apiKey)
+  ) {
     return res.status(400).json({ error: "Invalid API key format" });
   }
 

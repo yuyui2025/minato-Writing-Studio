@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useStudio } from "../../contexts/StudioContext";
-import { featureFlags } from "../../utils/featureFlags";
 import { testByokKey, removeByokLocalKey } from "../../utils/byokLocal";
 import { useCredits } from "../../hooks/useCredits";
 import { useUserProfile } from "../../hooks/useUserProfile";
@@ -100,8 +99,7 @@ function PlanStatusSection({
           <CreditBar label="今月" used={credits.monthlyUsed} limit={credits.monthlyLimit} />
           {atDailyLimit && (
             <div style={{ marginTop: 6, fontSize: 11, color: "#c06060" }}>
-              1日の上限に達しました。
-              {(featureFlags.byokLocal || featureFlags.byokCloud) && "BYOKモードへの切り替えをご検討ください。"}
+              1日の上限に達しました。BYOKモードへの切り替えをご検討ください。
             </div>
           )}
         </div>
@@ -109,26 +107,6 @@ function PlanStatusSection({
 
       {/* 広告プレースホルダー（Free のみ） */}
       {plan === "free" && <AdPlaceholder />}
-
-      {/* Upgrade CTA（Free のみ） */}
-      {plan === "free" && (
-        <button
-          disabled
-          title="近日公開予定"
-          style={{
-            padding: "8px 12px",
-            background: "transparent",
-            border: "1px solid #2a4060",
-            borderRadius: 4,
-            color: "#3a5570",
-            fontSize: 12,
-            fontFamily: "inherit",
-            cursor: "not-allowed",
-          }}
-        >
-          Pro プランにアップグレード
-        </button>
-      )}
     </div>
   );
 }
@@ -142,8 +120,6 @@ export const PrefsView: React.FC = () => {
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "ok" | "error">("idle");
   const [testError, setTestError] = useState("");
-
-  const hasAnyByok = featureFlags.byokLocal || featureFlags.byokCloud;
 
   async function handleTestByok() {
     const key = aiMode === "byok_local" ? byokLocalKey : byokInput;
@@ -214,35 +190,29 @@ export const PrefsView: React.FC = () => {
         </div>
 
         {/* AI設定 */}
-        {hasAnyByok && (
-          <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
-            <div style={sectionLabel}>AI利用モード</div>
+        <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
+          <div style={sectionLabel}>AI利用モード</div>
 
-            <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
-              <button onClick={() => setAiMode("standard")} style={modeBtn(aiMode === "standard")}>
-                スタンダード（運営サーバー経由）
-              </button>
-              {featureFlags.byokLocal && (
-                <button onClick={() => setAiMode("byok_local")} style={modeBtn(aiMode === "byok_local")}>
-                  BYOK ローカル（端末保持）
-                </button>
-              )}
-              {featureFlags.byokCloud && (
-                <button onClick={() => setAiMode("byok_cloud")} style={modeBtn(aiMode === "byok_cloud")}>
-                  BYOK クラウド（暗号化保存）
-                </button>
-              )}
-            </div>
-            <div style={{ fontSize: 10, color: "#2a4060", marginTop: 6 }}>
-              {aiMode === "standard" && "運営のAPIキーを使用します。クレジットを消費します。"}
-              {aiMode === "byok_local" && "自分のAPIキーを端末にのみ保存します。クレジットを消費しません。"}
-              {aiMode === "byok_cloud" && "自分のAPIキーを暗号化してクラウドに保存します。複数端末で利用できます。"}
-            </div>
+          <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+            <button onClick={() => setAiMode("standard")} style={modeBtn(aiMode === "standard")}>
+              スタンダード（運営サーバー経由）
+            </button>
+            <button onClick={() => setAiMode("byok_local")} style={modeBtn(aiMode === "byok_local")}>
+              BYOK ローカル（端末保持）
+            </button>
+            <button onClick={() => setAiMode("byok_cloud")} style={modeBtn(aiMode === "byok_cloud")}>
+              BYOK クラウド（暗号化保存）
+            </button>
           </div>
-        )}
+          <div style={{ fontSize: 10, color: "#2a4060", marginTop: 6 }}>
+            {aiMode === "standard" && "運営のAPIキーを使用します。クレジットを消費します。"}
+            {aiMode === "byok_local" && "自分のAPIキーを端末にのみ保存します。クレジットを消費しません。"}
+            {aiMode === "byok_cloud" && "自分のAPIキーを暗号化してクラウドに保存します。複数端末で利用できます。"}
+          </div>
+        </div>
 
         {/* BYOK ローカルキー入力 */}
-        {aiMode === "byok_local" && featureFlags.byokLocal && (
+        {aiMode === "byok_local" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={sectionLabel}>Anthropic APIキー</div>
             {byokLocalKey ? (
@@ -284,7 +254,7 @@ export const PrefsView: React.FC = () => {
         )}
 
         {/* BYOK クラウドキー UI */}
-        {aiMode === "byok_cloud" && featureFlags.byokCloud && (
+        {aiMode === "byok_cloud" && (
           <ByokCloudSection profile={profile} />
         )}
 
