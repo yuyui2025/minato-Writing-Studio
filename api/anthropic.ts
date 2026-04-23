@@ -33,12 +33,6 @@ function getClientIp(req: VercelRequest): string {
 }
 
 function validateMode(mode: unknown): AiMode {
-  if (mode === "byok_local" && process.env.ALLOW_BYOK_LOCAL !== "true") {
-    throw Object.assign(new Error("BYOK local mode is not enabled"), { status: 403 });
-  }
-  if (mode === "byok_cloud" && process.env.ALLOW_BYOK_CLOUD !== "true") {
-    throw Object.assign(new Error("BYOK cloud mode is not enabled"), { status: 403 });
-  }
   if (mode !== "standard" && mode !== "byok_local" && mode !== "byok_cloud") {
     return "standard";
   }
