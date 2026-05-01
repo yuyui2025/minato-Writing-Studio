@@ -72,6 +72,17 @@ Android アプリの署名情報を `public/.well-known/assetlinks.json` に書�
 
 ### SHA-256 フィンガープリントの取得
 
+> **重要**: Play Console の新規アプリはデフォルトで **Play App Signing** が有効です。
+> この場合 Google が独自の鍵で再署名するため、ローカル keystore の fingerprint では
+> Digital Asset Links 検証に**失敗**します。
+
+**Play App Signing 使用時（推奨・デフォルト）**
+
+Play Console → 該当アプリ → **リリース → 設定 → アプリの整合性**
+→「アプリ署名鍵の証明書」の **SHA-256 証明書フィンガープリント** をコピーする。
+
+**セルフ署名のみの場合（Play App Signing 無効時）**
+
 ```bash
 keytool -list -v -keystore ./minato-ws.keystore -alias minato-ws
 ```
