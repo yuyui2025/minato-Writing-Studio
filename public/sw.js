@@ -28,8 +28,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API リクエストはネットワーク優先（キャッシュしない）
-  if (url.pathname.startsWith('/api/')) {
+  // 非 GET・クロスオリジン（Supabase 等）・/api/ はキャッシュしない
+  if (
+    request.method !== 'GET' ||
+    url.origin !== self.location.origin ||
+    url.pathname.startsWith('/api/')
+  ) {
     return;
   }
 
