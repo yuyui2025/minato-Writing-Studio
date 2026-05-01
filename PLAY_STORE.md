@@ -21,12 +21,11 @@ TWA は Web アプリをそのまま Chrome ベースの Android アプリとし
 
 このリポジトリには以下がすでに含まれています:
 
-- `public/manifest.json` — Web App Manifest
-- `public/sw.js` — Service Worker（オフライン対応）
+- `vite.config.js` — `vite-plugin-pwa` による SW 自動生成・登録・マニフェスト出力
 - `public/.well-known/assetlinks.json` — Digital Asset Links（後で更新）
-- `index.html` — `<link rel="manifest">` リンク済み
-- `src/main.tsx` — Service Worker 登録済み
+- `public/icon-192.png` / `public/icon-512.png` — アイコン
 
+ビルド後、`dist/manifest.webmanifest` と `dist/sw.js`（Workbox 生成）が出力されます。
 デプロイ後、Chrome DevTools → Lighthouse → PWA スコアが 100 になることを確認してください。
 
 ---
@@ -39,7 +38,7 @@ npm install -g @bubblewrap/cli
 
 # TWA プロジェクトを初期化（別ディレクトリで実行）
 mkdir minato-ws-twa && cd minato-ws-twa
-bubblewrap init --manifest https://<あなたのVercelドメイン>/manifest.json
+bubblewrap init --manifest https://<あなたのVercelドメイン>/manifest.webmanifest
 ```
 
 対話式で聞かれる主な項目:
@@ -150,8 +149,7 @@ bubblewrap doctor
 
 | ファイル | 役割 |
 |---------|------|
-| `public/manifest.json` | PWA マニフェスト |
-| `public/sw.js` | Service Worker |
+| `vite.config.js` | VitePWA による SW・マニフェスト自動生成設定 |
 | `public/.well-known/assetlinks.json` | Digital Asset Links（要更新） |
 | `public/icon-192.png` | アイコン 192px |
 | `public/icon-512.png` | アイコン 512px / Play ストア用 |
