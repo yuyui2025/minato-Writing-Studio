@@ -51,14 +51,14 @@ export default function App() {
   if (authLoading) return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 8 }}>
       <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 2 }}>読み込み中…</div>
-      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
+      <div aria-hidden="true" style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
     </div>
   );
 
   if (!user && launchMode === "select") return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
-      <div>
-        <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+    <main style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
+      <div aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
           <rect x="4" y="4" width="20" height="20" rx="2" stroke="#1e3050" strokeWidth="1.5"/>
           <line x1="8" y1="9" x2="20" y2="9" stroke="#2a4060" strokeWidth="1.2"/>
           <line x1="8" y1="13" x2="20" y2="13" stroke="#2a4060" strokeWidth="1.2"/>
@@ -67,7 +67,7 @@ export default function App() {
           <line x1="20" y1="22" x2="24" y2="22" stroke="#4a6fa5" strokeWidth="1"/>
           <line x1="22" y1="20" x2="22" y2="24" stroke="#4a6fa5" strokeWidth="1"/>
         </svg>
-        <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
+        <div aria-hidden="true" style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
       </div>
       <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>minato Writing Studio</div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -85,11 +85,11 @@ export default function App() {
           オフラインで開始
         </button>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: "#58769a", textAlign: "center", lineHeight: 1.8 }}>
+      <p style={{ margin: 0, fontSize: 12, color: "#7a9ac0", textAlign: "center", lineHeight: 1.8 }}>
         DBログインすると端末間でデータを同期できます。<br />
         オフライン起動時は、この端末のローカル保存のみ利用します。
       </p>
-    </div>
+    </main>
   );
 
   if (!user && launchMode === "offline") {
@@ -127,7 +127,7 @@ function Studio() {
   if (!loaded) return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
       <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 3 }}>loading...</div>
-      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
+      <div aria-hidden="true" style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
     </div>
   );
 

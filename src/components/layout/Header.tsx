@@ -58,8 +58,8 @@ export const Header: React.FC = () => {
           aria-label="プロジェクト切替を開く"
           style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, border: "1px solid #1e2d42", borderRadius: 6, background: "rgba(30,45,66,0.2)", padding: "3px 6px", cursor: "pointer" }}
         >
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
-            <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
+          <div aria-hidden="true" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 1 }}>
+            <svg width="24" height="24" viewBox="0 0 28 28" fill="none" aria-hidden="true">
             <rect x="4.5" y="4.5" width="4" height="19" rx="0.8" stroke="#4a6fa5" strokeWidth="1.2"/>
             <rect x="9.8" y="5.4" width="3.6" height="18.1" rx="0.8" stroke="#3d5d8b" strokeWidth="1.2"/>
             <rect x="14.4" y="4.1" width="4.4" height="19.4" rx="0.8" stroke="#5f7fae" strokeWidth="1.2"/>
