@@ -1,3 +1,7 @@
+@import '@fontsource/noto-serif-jp/400.css';
+@import '@fontsource/noto-serif-jp/600.css';
+@import '@fontsource/noto-serif-jp/700.css';
+
 /* YUY-45: カスタムスクロールバー */
 ::-webkit-scrollbar {
   width: 6px;

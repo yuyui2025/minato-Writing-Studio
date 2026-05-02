@@ -17,6 +17,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@fontsource/noto-serif-jp": "^5.2.8",
     "@supabase/supabase-js": "^2.39.0",
     "@tanstack/react-query": "^5.90.21",
     "fflate": "^0.8.2",

@@ -1,7 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import type { User } from "@supabase/supabase-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { supabase } from "./supabase";
+import { Header } from "./components/layout/Header";
+import { Sidebar } from "./components/layout/Sidebar";
+import { WriteView } from "./components/views/WriteView";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { StudioProvider, useStudio } from "./contexts/StudioContext";
+
+const AiAssistant = lazy(() => import("./components/ai/AiAssistant").then(m => ({ default: m.AiAssistant })));
+const StructureView = lazy(() => import("./components/views/StructureView").then(m => ({ default: m.StructureView })));
+const SettingsView = lazy(() => import("./components/views/SettingsView").then(m => ({ default: m.SettingsView })));
+const PrefsView = lazy(() => import("./components/views/PrefsView").then(m => ({ default: m.PrefsView })));
+const BackupModal = lazy(() => import("./components/modals/BackupModal").then(m => ({ default: m.BackupModal })));
+const ExportModal = lazy(() => import("./components/modals/ExportModal").then(m => ({ default: m.ExportModal })));
+const ImportModal = lazy(() => import("./components/modals/ImportModal").then(m => ({ default: m.ImportModal })));
+const ProjectShelfModal = lazy(() => import("./components/modals/ProjectShelfModal").then(m => ({ default: m.ProjectShelfModal })));
+const DeleteConfirmModal = lazy(() => import("./components/modals/DeleteConfirmModal").then(m => ({ default: m.DeleteConfirmModal })));
+const TutorialModal = lazy(() => import("./components/modals/TutorialModal").then(m => ({ default: m.TutorialModal })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -12,22 +28,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-import { AiAssistant } from "./components/ai/AiAssistant";
-import { Header } from "./components/layout/Header";
-import { Sidebar } from "./components/layout/Sidebar";
-import { WriteView } from "./components/views/WriteView";
-import { StructureView } from "./components/views/StructureView";
-import { SettingsView } from "./components/views/SettingsView";
-import { PrefsView } from "./components/views/PrefsView";
-import { BackupModal } from "./components/modals/BackupModal";
-import { ExportModal } from "./components/modals/ExportModal";
-import { ImportModal } from "./components/modals/ImportModal";
-import { ProjectShelfModal } from "./components/modals/ProjectShelfModal";
-import { DeleteConfirmModal } from "./components/modals/DeleteConfirmModal";
-import { TutorialModal } from "./components/modals/TutorialModal";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { StudioProvider, useStudio } from "./contexts/StudioContext";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -51,14 +51,14 @@ export default function App() {
   if (authLoading) return (
     <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 8 }}>
       <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 2 }}>読み込み中…</div>
-      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
+      <div aria-hidden="true" style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
     </div>
   );
 
   if (!user && launchMode === "select") return (
-    <div style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
-      <div>
-        <svg width="32" height="32" viewBox="0 0 28 28" fill="none">
+    <main style={{ height: "100dvh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0e1a", gap: 24 }}>
+      <div aria-hidden="true">
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none" aria-hidden="true">
           <rect x="4" y="4" width="20" height="20" rx="2" stroke="#1e3050" strokeWidth="1.5"/>
           <line x1="8" y1="9" x2="20" y2="9" stroke="#2a4060" strokeWidth="1.2"/>
           <line x1="8" y1="13" x2="20" y2="13" stroke="#2a4060" strokeWidth="1.2"/>
@@ -67,7 +67,7 @@ export default function App() {
           <line x1="20" y1="22" x2="24" y2="22" stroke="#4a6fa5" strokeWidth="1"/>
           <line x1="22" y1="20" x2="22" y2="24" stroke="#4a6fa5" strokeWidth="1"/>
         </svg>
-        <div style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
+        <div aria-hidden="true" style={{ fontSize: 7, letterSpacing: 1.5, color: "#1e3050", textAlign: "center", marginTop: 4 }}>minato ws</div>
       </div>
       <div style={{ fontSize: 18, color: "#c8d8e8", fontWeight: 700, fontFamily: "'Noto Serif JP','Georgia',serif", letterSpacing: 1 }}>minato Writing Studio</div>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
@@ -85,11 +85,11 @@ export default function App() {
           オフラインで開始
         </button>
       </div>
-      <p style={{ margin: 0, fontSize: 12, color: "#58769a", textAlign: "center", lineHeight: 1.8 }}>
+      <p style={{ margin: 0, fontSize: 12, color: "#7a9ac0", textAlign: "center", lineHeight: 1.8 }}>
         DBログインすると端末間でデータを同期できます。<br />
         オフライン起動時は、この端末のローカル保存のみ利用します。
       </p>
-    </div>
+    </main>
   );
 
   if (!user && launchMode === "offline") {
@@ -127,24 +127,20 @@ function Studio() {
   if (!loaded) return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
       <div style={{ color: "#2a4060", fontSize: 12, letterSpacing: 3 }}>loading...</div>
-      <div style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
+      <div aria-hidden="true" style={{ color: "#1e3050", fontSize: 11, letterSpacing: 1 }}>minato Writing Studio</div>
     </div>
   );
 
   return (
     <div style={{ minHeight: "100vh", background: "#0a0e1a", color: "#c8d8e8", fontFamily: "'Noto Serif JP','Georgia',serif", display: "flex", flexDirection: "column" }}>
-      {/* Delete confirm modal */}
-      {confirmDelete && <DeleteConfirmModal />}
-      {/* Export modal */}
-      {showExport && <ExportModal />}
-      {/* Import modal */}
-      {showImport && <ImportModal />}
-      {/* Tutorial modal — 初回起動時のみ */}
-      {showTutorial && <TutorialModal />}
-      {/* Backup modal */}
-      {showBackups && <BackupModal />}
-      {/* Project shelf */}
-      {showProjectShelf && <ProjectShelfModal />}
+      <Suspense fallback={null}>
+        {confirmDelete && <DeleteConfirmModal />}
+        {showExport && <ExportModal />}
+        {showImport && <ImportModal />}
+        {showTutorial && <TutorialModal />}
+        {showBackups && <BackupModal />}
+        {showProjectShelf && <ProjectShelfModal />}
+      </Suspense>
       <Header />
 
       <div id="studio-main-shell" style={{ display: "flex", flex: 1, minHeight: 0, position: "relative" }}>
@@ -156,9 +152,11 @@ function Studio() {
 
         <main id={tab === "write" ? "studio-write-stage" : undefined} style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0, background: "#0a0e1a" }}>
           {tab === "write" && <WriteView />}
-          {tab === "structure" && <StructureView />}
-          {tab === "settings" && <SettingsView />}
-          {tab === "prefs" && <PrefsView />}
+          <Suspense fallback={null}>
+            {tab === "structure" && <StructureView />}
+            {tab === "settings" && <SettingsView />}
+            {tab === "prefs" && <PrefsView />}
+          </Suspense>
           {tab === "ai" && (
             <div style={{ padding: "40px", maxWidth: "800px", margin: "0 auto", width: "100%", boxSizing: "border-box", overflowY: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", marginBottom: "24px", borderBottom: "1px solid #1e2d42", paddingBottom: "12px" }}>
@@ -254,7 +252,9 @@ function Studio() {
         {/* AI Assistant */}
         {tab === "write" && (
           <ErrorBoundary fallback={<div style={{ position: "fixed", right: 16, bottom: 16, padding: "8px 16px", background: "#0a0e1a", border: "1px solid #2a4060", color: "#e05555", fontSize: 11, borderRadius: 4 }}>AIアシスタントでエラーが発生しました</div>}>
-            <AiAssistant />
+            <Suspense fallback={null}>
+              <AiAssistant />
+            </Suspense>
           </ErrorBoundary>
         )}
       </div>
