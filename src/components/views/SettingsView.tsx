@@ -4,6 +4,7 @@ import { AiPanel } from "../ai/AiPanel";
 import { useStudio } from "../../contexts/StudioContext";
 import { buildSettingExpansionPrompt, buildOpeningPrompt } from "../../utils/aiPrompts";
 import { callAnthropic, AiError } from "../../utils/ai";
+import { AdBanner } from "../ads/AdBanner";
 
 export const SettingsView: React.FC = () => {
   const {
@@ -180,6 +181,7 @@ export const SettingsView: React.FC = () => {
           )}
         </div>
       )}
+      <AdBanner />
     </div>
   );
 };

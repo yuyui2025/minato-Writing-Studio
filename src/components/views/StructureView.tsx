@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { statusColors, statusLabels } from "../../constants";
 import { useStudio } from "../../contexts/StudioContext";
 import type { Scene } from "../../types";
+import { AdBanner } from "../ads/AdBanner";
 
 export const StructureView: React.FC = () => {
   const {
@@ -212,6 +213,7 @@ export const StructureView: React.FC = () => {
         <span style={{ fontSize: 24, color: "#7ab3e0", fontWeight: 300 }}>{totalChars.toLocaleString()}</span>
         <span style={{ fontSize: 12, color: "#3a5570" }}>文字</span>
       </div>
+      <AdBanner />
     </div>
   );
 };

@@ -59,22 +59,6 @@ function CreditBar({ label, used, limit }: { label: string; used: number; limit:
   );
 }
 
-function AdPlaceholder() {
-  return (
-    <div style={{
-      padding: "12px 16px",
-      border: "1px dashed #2a4060",
-      borderRadius: 4,
-      textAlign: "center",
-      color: "#2a4060",
-      fontSize: 11,
-      letterSpacing: 1,
-    }}>
-      AD
-    </div>
-  );
-}
-
 function PlanStatusSection({
   credits,
   profile,
@@ -104,9 +88,6 @@ function PlanStatusSection({
           )}
         </div>
       )}
-
-      {/* 広告プレースホルダー（Free のみ） */}
-      {plan === "free" && <AdPlaceholder />}
     </div>
   );
 }
@@ -256,6 +237,37 @@ export const PrefsView: React.FC = () => {
         {/* BYOK クラウドキー UI */}
         {aiMode === "byok_cloud" && (
           <ByokCloudSection profile={profile} />
+        )}
+
+        {/* Ko-fi ドネーション */}
+        {import.meta.env.VITE_KOFI_URL && (
+          <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
+            <div style={sectionLabel}>サポート</div>
+            <a
+              href={import.meta.env.VITE_KOFI_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 16px",
+                background: "rgba(255,94,58,0.1)",
+                border: "1px solid #7a3020",
+                borderRadius: 4,
+                color: "#e07060",
+                fontSize: 12,
+                fontFamily: "inherit",
+                textDecoration: "none",
+                letterSpacing: 1,
+              }}
+            >
+              ☕ Support on Ko-fi
+            </a>
+            <div style={{ fontSize: 10, color: "#2a4060", marginTop: 6 }}>
+              開発・運営費用のサポートをいただけると助かります
+            </div>
+          </div>
         )}
 
       </div>
