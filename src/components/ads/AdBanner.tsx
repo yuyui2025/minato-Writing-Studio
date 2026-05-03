@@ -17,12 +17,16 @@ function injectAdSenseScript() {
 }
 
 export const AdBanner: React.FC = () => {
-  const { aiMode } = useStudio();
+  const { aiMode, user } = useStudio();
   const profile = useUserProfile();
   const pushed = useRef(false);
 
   if (aiMode === "byok_local" || aiMode === "byok_cloud") return null;
-  if (!profile || profile.plan !== "free") return null;
+  // ログイン済みだがプロフィールロード中 → 有料プランの可能性があるため待機
+  if (user && !profile) return null;
+  // プロフィール取得済みで Free 以外 → 非表示
+  if (profile && profile.plan !== "free") return null;
+  // オフラインユーザー（user=null, profile=null）は Free 扱いで広告表示
 
   if (!AD_CLIENT || !AD_SLOT) {
     return (
