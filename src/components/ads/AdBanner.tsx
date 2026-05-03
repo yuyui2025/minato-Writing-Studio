@@ -22,7 +22,7 @@ export const AdBanner: React.FC = () => {
   const pushed = useRef(false);
 
   if (aiMode === "byok_local" || aiMode === "byok_cloud") return null;
-  if (profile && profile.plan !== "free") return null;
+  if (!profile || profile.plan !== "free") return null;
 
   if (!AD_CLIENT || !AD_SLOT) {
     return (
