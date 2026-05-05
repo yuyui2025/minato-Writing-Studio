@@ -61,27 +61,42 @@ export const AdBanner: React.FC = () => {
 };
 
 function AdSenseBanner() {
-  // ref はこのコンポーネント内に置くことで、アンマウント→再マウント時にリセットされる
   const pushed = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     injectAdSenseScript();
-    if (pushed.current) return;
-    pushed.current = true;
-    try {
-      ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
-    } catch {
-      // ignore
-    }
+
+    const tryPush = () => {
+      if (pushed.current) return;
+      const el = containerRef.current;
+      // コンテナの幅が 0 の場合（AIパネルのアニメーション中など）はスキップ
+      if (!el || el.offsetWidth === 0) return;
+      try {
+        ((window as any).adsbygoogle = (window as any).adsbygoogle || []).push({});
+        pushed.current = true;
+      } catch {
+        // 失敗時は pushed を立てないことで ResizeObserver による再試行を許可
+      }
+    };
+
+    tryPush();
+
+    const ro = new ResizeObserver(tryPush);
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
   }, []);
 
   return (
-    <div style={{
-      padding: "8px 16px",
-      background: "#070a14",
-      borderTop: "1px solid #1a2535",
-      flexShrink: 0,
-    }}>
+    <div
+      ref={containerRef}
+      style={{
+        padding: "8px 16px",
+        background: "#070a14",
+        borderTop: "1px solid #1a2535",
+        flexShrink: 0,
+      }}
+    >
       <ins
         className="adsbygoogle"
         style={{ display: "block" }}
