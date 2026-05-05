@@ -19,7 +19,6 @@ function injectAdSenseScript() {
 export const AdBanner: React.FC = () => {
   const { aiMode, user } = useStudio();
   const profile = useUserProfile();
-  const pushed = useRef(false);
 
   if (aiMode === "byok_local" || aiMode === "byok_cloud") return null;
   // ログイン済みだがプロフィールロード中 → 有料プランの可能性があるため待機
@@ -58,10 +57,13 @@ export const AdBanner: React.FC = () => {
     );
   }
 
-  return <AdSenseBanner pushed={pushed} />;
+  return <AdSenseBanner />;
 };
 
-function AdSenseBanner({ pushed }: { pushed: React.MutableRefObject<boolean> }) {
+function AdSenseBanner() {
+  // ref はこのコンポーネント内に置くことで、アンマウント→再マウント時にリセットされる
+  const pushed = useRef(false);
+
   useEffect(() => {
     injectAdSenseScript();
     if (pushed.current) return;
@@ -71,7 +73,7 @@ function AdSenseBanner({ pushed }: { pushed: React.MutableRefObject<boolean> }) 
     } catch {
       // ignore
     }
-  }, [pushed]);
+  }, []);
 
   return (
     <div style={{
