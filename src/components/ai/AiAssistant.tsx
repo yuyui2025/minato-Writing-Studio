@@ -6,6 +6,7 @@ import { PolishPanel } from "./PolishPanel";
 import { OpeningPanel } from "./OpeningPanel";
 import { callAnthropic, AiError } from "../../utils/ai";
 import { useStudio } from "../../contexts/StudioContext";
+import { AdBanner } from "../ads/AdBanner";
 
 export function parsePolishHistoryEntries(result: string): string[] {
   const clean = result.replace(/```json|```/g, "").trim();
@@ -304,6 +305,7 @@ export const AiAssistant: React.FC = () => {
                 onAppend={() => {}}
               />
             </div>
+            <AdBanner />
           </div>
         )}
       </div>
