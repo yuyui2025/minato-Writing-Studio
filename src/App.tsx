@@ -89,6 +89,14 @@ export default function App() {
         DBログインすると端末間でデータを同期できます。<br />
         オフライン起動時は、この端末のローカル保存のみ利用します。
       </p>
+      <a
+        href="https://www.notion.so/36750786cdc380a8b2bdd4ca481f327f"
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ fontSize: 11, color: "#2a4060", textDecoration: "none" }}
+      >
+        プライバシーポリシー
+      </a>
     </main>
   );
 
