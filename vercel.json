@@ -21,6 +21,12 @@
       "headers": [
         { "key": "X-Robots-Tag", "value": "noindex" }
       ]
+    },
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" }
+      ]
     }
   ]
 }

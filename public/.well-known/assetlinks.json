@@ -3,9 +3,9 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "YOUR_PACKAGE_NAME",
+      "package_name": "app.minato_ws.twa",
       "sha256_cert_fingerprints": [
-        "YOUR_SHA256_FINGERPRINT"
+        "REPLACE_WITH_SHA256_FROM_PLAY_CONSOLE"
       ]
     }
   }
