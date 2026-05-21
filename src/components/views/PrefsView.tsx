@@ -270,6 +270,18 @@ export const PrefsView: React.FC = () => {
           </div>
         )}
 
+        {/* プライバシーポリシー */}
+        <div style={{ borderTop: "1px solid #1a2535", paddingTop: 20 }}>
+          <a
+            href="https://www.notion.so/36750786cdc380a8b2bdd4ca481f327f"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ fontSize: 11, color: "#2a4060", textDecoration: "none" }}
+          >
+            プライバシーポリシー
+          </a>
+        </div>
+
       </div>
     </div>
   );
